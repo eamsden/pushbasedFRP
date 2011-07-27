@@ -1,0 +1,56 @@
+\documentclass[11pt]{artikel3}
+\usepackage{fullpage, setspace, graphicx}
+\usepackage[margin=1in]{geometry}
+\usepackage{times}
+
+\title{RIT Department of Computer Science\\MSc Project/Thesis Pre-Proposal:\\\emph{Implementation of a Push Based Signal Function FRP System and Evaluation Interface}}
+\author{Edward Amsden}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+The sections shown below are adapted from the topic analysis forms provided in ``Writing the Doctoral Dissertation" (2nd edition) by Davis and Parker (pages 82-88). Your final document should be 1-2 pages including references. {\bf The final pre-proposal may present the items below in any format, but using prose (not bulleted lists).} 
+
+\section{Problem Description}
+Most of the work in Functional Reactive Programming centers around the construction and evaluation of FRP programs, and does not concern itself with the interface between FRP programs and the rest of the world. In fact, most literature on FRP ignores completely the problem  evaluation interface for FRP programs. 
+
+The signal function family of FRP semantics provides distinct advantages over the alternative signal/behavior family. These advantages include explicit inputs and the elimination of large classes of space and time leaks. However, there does not yet exist an implementation that provides "push-based" semantics (i.e. evaluation on event occurrences, rather than sampling for events) for signal functions. 
+
+Is it possible to create a push-based signal function FRP system with an intuitive and useful interface?
+
+\section{Importance of Research}
+FRP provides a declarative means of specifying reactive systems. This enables such systems to be created compositionally, and permits formal reasoning about such systems. However,
+for FRP to be useful, there must be a useful way of evaluating programs with outside input and permitting the output of the FRP system to affect the outside world. This concern has yet to be explored
+in the literature. An FRP system with a useful evaluation interface would provide a complete method of declaratively specifying reactive systems, specifying the inputs to a system, and specifying
+what should be done with the output of the system.
+
+\section{Related Work}
+
+FRP is a well-explored field. There is a wealth of research on the best semantics and most efficient implementation of FRP systems. I previously surveyed
+the literature of FRP for independent study credit~\cite{Amsden2011}. The proposed research would provide an efficient implementation of an elegant family of FRP semantics,
+and a compositional and intuitive means of providing input to and using output from such systems.
+
+\section{Methodology}
+\label{sec:methodology}
+
+I will utilize the well-explored signal function model for FRP, extended with the signal vector constructs described by Sculthorpe~\cite{Sculthorpe2011} to permit the system to distinguish events
+and signals at the type level. I will explore the creation of a monadic interface which maintains the current FRP expression and other information such as event output actions as state, and provides
+actions for pushing an event to an input of the FRP expression, incrementing the time, and sampling a signal output of the FRP expression at the current time. 
+
+I will make use of the HList type-level list construct to express signal vectors, and to provide "addressing" for inputs and outputs of the FRP expression. 
+
+I will consider making use of Template Haskell to smooth over the rather verbose type expressions necessitated by HLists, and to provide simple access to the type-level boilerplate necessary to permit addressing of the inputs and outputs of an FRP expression.
+
+A successful FRP abstraction and evaluation interface will permit the user of the abstraction to control the steps of evaluation, permit a decoupling between supplying input and acting on signal output, permit the specification of actions to be taken whenever an event occurrence reaches an event output, not require access to the IO system of the host language (Haskell), provide a compositional interface to the IO system of the host language if the user of the abstraction wishes (for instance, a MonadIO instance), utilize a "push" (evaluate when input is supplied) rather than "pull" (continuously poll for input) strategy for evaluation, and possibly provide a low-overhead (in terms of code and computational cost) interface for selecting between multiple inputs to push events to and outputs to sample signal values from for the FRP expression being evaluated.
+
+\section{Potential Outcomes}
+
+\begin{itemize}
+\item An interface meeting the requirements in Section \ref{sec:methodology} is created and demonstrated.
+\item It is discovered that the type system of Haskell is not expressive enough to permit such an interface.
+\item It is discovered that signal function semantics cannot support push-based evaluation
+\item Unforeseen challenges in a lack of expressivity in the language or the signal function semantics prevent the creation of the interface. 
+\end{itemize}
+
+\end{document}
