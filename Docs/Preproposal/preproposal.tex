@@ -1,10 +1,10 @@
 \documentclass[11pt]{artikel3}
 \usepackage{fullpage, setspace, graphicx}
-\usepackage[margin=1in]{geometry}
+\usepackage[margin=.75in]{geometry}
 \usepackage{times}
 \usepackage{url}
 
-\title{RIT Department of Computer Science\\MSc Thesis Pre-Proposal:\\\emph{Implementation of a Push-Based Signal-Function FRP System and Evaluation Interface}}
+\title{RIT Department of Computer Science\\MSc Thesis Pre-Proposal:\\\emph{Design and Implementation of a Push-Based Signal-Function FRP System}}
 \author{Edward Amsden}
 \date{\today}
 
@@ -16,7 +16,7 @@ The signal function family of FRP semantics provides distinct advantages over th
 
 Most of the work in Functional Reactive Programming centers around the construction and evaluation of FRP programs, and does not concern itself with the interface between FRP programs and the rest of the world. In fact, most literature on FRP ignores completely the problem of evaluation interface for FRP programs. 
 
-I intend to show that a monadic evaluation interface and signal vector typing enable a useful push-based FRP system.
+I intend to show that a monadic evaluation interface and signal vector typing enable a useful and efficient push-based FRP system.
 
 \section{Importance of Research}
 Functional reactive programming enables a denotative method of defining reactive systems. The efficient evaluation
@@ -56,6 +56,8 @@ Signal function networks will be described by a GADT using HLists~\cite{Kiselyov
 
 Possibilities to be explored for implementation include ``callbacks'' to be activated on output event occurrences, or on time
 steps for continuous output, and a means of addressing multiple inputs or outputs to a signal function network.
+
+The implementation will be compared against existing pull-based signal function FRP systems.
 
 \section{Potential Outcomes}
 
