@@ -1,0 +1,390 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  disstemplate.tex, to be compiled with latex.             %
+%%  08 April 2002   Version 4                    %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                   %
+%%  Writing a Doctoral Dissertation with LaTeX at            %
+%%  the University of Texas at Austin                %
+%%                                   %
+%%  (Modify this ``template'' for your own dissertation.)        %
+%%                                   %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\documentclass[12pt]{report}    % The documentclass must be ``report''.
+
+\usepackage{utdiss2}        % Dissertation package style file.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Optional packages used for this sample dissertation. If you don't  %
+% need a capability in your dissertation, feel free to comment out   %
+% the package usage command.                         %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage{amsmath,amsthm,amsfonts,amscd}
+                % Some packages to write mathematics.
+\usepackage{eucal}      % Euler fonts
+\usepackage{verbatim}       % Allows quoting source with commands.
+\usepackage{makeidx}        % Package to make an index.
+\usepackage{psfig}          % Allows inclusion of eps files.
+\usepackage{epsfig}             % Allows inclusion of eps files.
+\usepackage{citesort}           %
+\usepackage{url}        % Allows good typesetting of web URLs.
+\usepackage{draftcopy}     % Uncomment this line to have the
+                % word, "DRAFT," as a background
+                % "watermark" on all of the pages of
+                % of your draft versions. When ready
+                % to generate your final copy, re-comment
+                % it out with a percent sign to remove
+                % the word draft before you re-run
+                % Makediss for the last time.
+
+
+
+\author{Edward Amsden}    % Required
+
+\address{305A Perkins Rd \\ Rochester, New York 14623}  % Required
+
+\title{Push-Based Signal-Function Functional Reactive Programming}
+                                                    % Required
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% NOTICE: The total number of supervisors and other members %%%%%%%%%%
+%%%%%%%%%%%%%%% MUST be seven (7) or less! If you put in more, %%%%%%%
+%%%%%%%%%%%%%%% they are put on the page after the Committee %%%%%%%%%
+%%%%%%%%%%%%%%% Certification of Approved Version page. %%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Enter names of the supervisor and co-supervisor(s), if any,
+% of your dissertation committee. Put one name per line with
+% the name in square brackets. The name on the last line, however,
+% must be in curly braces.
+%
+% If you have only one supervisor, the entry below will read:
+%
+%   \supervisor
+%       {Supervisor's Name}
+%
+% NOTE: Maximum three supervisors. Minimum one supervisor.
+% NOTE: The Office of Graduate Studies will accept only two supervisors!
+%
+%
+\supervisor
+    {Dr. Matthew Fluet}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Enter names of the other (non-supervisor) members(s) of your
+% dissertation committee. Put one name per line with the name
+% in square brackets. The name on the last line, however, must
+% be in curly braces.
+%
+% NOTE: Maximum six other members. Minimum zero other members.
+% NOTE: The Office of Graduate Studies may restrict you to a total
+%   of six committee members.
+%
+%
+\committeemembers
+%    [Erwin Schr\"odinger]
+    [Arthur Nunes-Harwitt, Reader]
+    {Dr. Zach Butler, Observer}
+%    {Arthur Schawlow}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%\previousdegrees{B.E.}
+     % The abbreviated form of your previous degree(s).
+     % E.g., \previousdegrees{B.S., MBA}.
+     %
+     % The default value is `B.S., M.S.'
+
+%\graduationmonth{...}
+     % Graduation month, either May, August, or December, in the form
+     % as `\graduationmonth{May}'. Do not abbreviate.
+     %
+     % The default value (either May, August, or December) is guessed
+     % according to the time of running LaTeX.
+
+%\graduationyear{...}
+     % Graduation year, in the form as `\graduationyear{2001}'.
+     % Use a 4 digit (not a 2 digit) number.
+     %
+     % The default value is guessed according to the time of
+     % running LaTeX.
+
+%\typist{...}
+     % The name(s) of typist(s), put `the author' if you do it yourself.
+     % E.g., `\typist{Maryann Hersey and the author}'.
+     %
+     % The default value is `the author'.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Commands for master's theses and reports.              %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% If the degree you're seeking is NOT Doctor of Philosophy, uncomment
+% (remove the % in front of) the following two command lines (the ones
+% that have the \ as their second character).
+%
+\degree{Master of Science} \degreeabbr{M.S.}
+
+% Uncomment the line below that corresponds to the type of master's
+% document you are writing.
+%
+%\masterreport
+\masterthesis
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Some optional commands to change the document's defaults.      %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%\singlespacing
+%\oneandonehalfspacing
+
+%\singlespacequote
+\oneandonehalfspacequote
+
+\topmargin 0.125in  % Adjust this value if the PostScript file output
+            % of your dissertation has incorrect top and
+            % bottom margins. Print a copy of at least one
+            % full page of your dissertation (not the first
+            % page of a chapter) and measure the top and
+            % bottom margins with a ruler. You must have
+            % a top margin of 1.5" and a bottom margin of
+            % at least 1.25". The page numbers must be at
+            % least 1.00" from the bottom of the page.
+            % If the margins are not correct, adjust this
+            % value accordingly and re-compile and print again.
+            %
+            % The default value is 0.125"
+
+        % If you want to adjust other margins, they are in the
+        % utdiss2-nn.sty file near the top. If you are using
+        % the shell script Makediss on a Unix/Linux system, make
+        % your changes in the utdiss2-nn.sty file instead of
+        % utdiss2.sty because Makediss will overwrite any changes
+        % made to utdiss2.sty.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Some optional commands to be tested.                   %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% If there are 10 or more sections, 10 or more subsections for a section,
+% etc., you need to make an adjustment to the Table of Contents with the
+% command \longtocentry.
+%
+%\longtocentry
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%   Some math support.                       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%   Theorem environments (these need the amsthm package)
+%
+%% \theoremstyle{plain} %% This is the default
+
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{prop}[thm]{Proposition}
+\newtheorem{ax}{Axiom}
+
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}[section]
+
+\theoremstyle{remark}
+\newtheorem{rem}{Remark}[section]
+\newtheorem*{notation}{Notation}
+
+%\numberwithin{equation}{section}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%   Macros.                              %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%   Here some macros that are needed in this document:
+
+
+\newcommand{\latexe}{{\LaTeX\kern.125em2%
+                      \lower.5ex\hbox{$\varepsilon$}}}
+
+\newcommand{\amslatex}{\AmS-\LaTeX{}}
+
+\chardef\bslash=`\\ % \bslash makes a backslash (in tt fonts)
+            %   p. 424, TeXbook
+
+\newcommand{\cn}[1]{\texttt{\bslash #1}}
+
+\makeatletter       % Starts section where @ is considered a letter
+            % and thus may be used in commands.
+\def\square{\RIfM@\bgroup\else$\bgroup\aftergroup$\fi
+  \vcenter{\hrule\hbox{\vrule\@height.6em\kern.6em\vrule}%
+                                              \hrule}\egroup}
+\makeatother        % Ends sections where @ is considered a letter.
+            % Now @ cannot be used in commands.
+
+\makeindex    % Make the index
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%       The document starts here.                %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%\copyrightpage          % Produces the copyright page.
+
+
+%
+% NOTE: In a doctoral dissertation, the Committee Certification page
+%       (with signatures) is BEFORE the Title page.
+%   In a masters thesis or report, the Signature page
+%       (with signatures) is AFTER the Title page.
+%
+%   If you are writing a masters thesis or report, you MUST REVERSE
+%   the order of the \commcertpage and \titlepage commands below.
+%
+\commcertpage           % Produces the Committee Certification
+            %   of Approved Version page (doctoral)
+            %   or Signature page (masters).
+            %       20 Mar 2002 cwm
+
+\titlepage              % Produces the title page.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dedication and/or epigraph are optional, but must occur here.      %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%\begin{dedication}
+%\index{Dedication@\emph{Dedication}}%
+%Dedicated to my wife Shirley.
+%\end{dedication}
+
+
+\begin{acknowledgments}     % Optional
+\index{Acknowledgments@\emph{Acknowledgments}}%
+I wish to thank the multitudes of people who helped me. Time would
+fail me to tell of \ldots
+\end{acknowledgments}
+
+
+% The abstract is required. Note the use of ``utabstract'' instead of
+% ``abstract''! This was necessary to fix a page numbering problem.
+% The abstract heading is generated automatically.
+% Do NOT use \begin{abstract} ... \end{abstract}.
+%
+\utabstract
+\index{Abstract}%
+\indent
+%\input{abstract}
+
+
+
+\tableofcontents   % Table of Contents will be automatically
+                   % generated and placed here.
+
+\listoftables      % List of Tables and List of Figures will be placed
+\listoffigures     % here, if applicable.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Actual text starts here.                       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Including external files for each chapter makes this document simpler,
+% makes each chapter simpler, and allows for generating test documents
+% with as few as zero chapters (by commenting out the include statements).
+% This allows quicker processing by the Makediss command file in case you
+% are not working on a specific, long and slow to compile chapter. You
+% can even change the chapter order by merely interchanging the order
+% of the include statements (something I found helpful in my own
+% dissertation).
+%
+
+%\include{abstract}
+%\include{introduction}
+%\include{background}
+%\include{semantics.tex}
+%\include{implementation.tex}
+%\include{comparison.tex}
+%\include{conclustion.tex}
+%\include{furtherwork.tex}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Appendix/Appendices                                                %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% If you have only one appendix, use the command \appendix instead
+% of \appendices.
+%
+%\appendices
+%\index{Appendices@\emph{Appendices}}%
+
+%\include{chapter-appendix1}
+
+%\include{chapter-appendix2}
+
+%\include{chapter-appendix3}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Generate the bibliography.                         %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                    %
+% NOTE: For master's theses and reports, NOTHING is permitted to     %
+%   come between the bibliography and the vita. The command      %
+%   to generate the index (if used) MUST be moved to before      %
+%   this section.                            %
+%                                    %
+%
+\nocite{*}      % This command causes all items in the           %
+                % bibliographic database to be added to          %
+                % the bibliography, even if they are not         %
+                % explicitly cited in the text.              %
+        %                            %
+  % Here the bibliography           %
+        % is inserted.                %
+
+\index{Bibliography@\emph{Bibliography}}%
+\bibliographystyle{plain}
+\bibliography{thesis}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Generate the index.                            %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                    %
+% NOTE: For master's theses and reports, NOTHING is permitted to     %
+%   come between the bibliography and the vita. This section     %
+%   to generate the index (if used) MUST be moved to before      %
+%   the bibliography section.                    %
+%                                    %
+%\printindex%    % Include the index here. Comment out this line      %
+%       % with a percent sign if you do not want an index.   %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Vita page.                                 %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{vita}
+Edward Amsden was born in Dayton, Ohio on July 21, 1990, to Andrew and
+Vivian Amsden. He is currently pursuing his B.S. and M.S. degrees
+concurrently at the Rochester Institute of Technology. Once his
+M.S. is completed, he plans to begin his Ph. D. at Indiana University.
+His research interests include functional programming languages,
+concurrency and parallelism, computer graphics, and computer audio. 
+\end{vita}
+\end{document}

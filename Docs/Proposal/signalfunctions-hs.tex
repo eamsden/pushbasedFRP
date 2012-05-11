@@ -1,0 +1,10 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PY{c+c1}{-- "Identity" type constructor}
+\PY{k+kr}{newtype} \PY{k+kt}{Id} \PY{n}{a} \PY{o+ow}{=} \PY{k+kt}{Id} \PY{n}{a}
+
+\PY{c+c1}{-- Signal Function (initialized) datatype}
+\PY{k+kr}{data} \PY{k+kt}{SFInitialized} \PY{o+ow}{::} \PY{o}{*} \PY{o+ow}{-\PYZgt{}} \PY{o}{*} \PY{o+ow}{-\PYZgt{}} \PY{o}{*} \PY{k+kr}{where}
+  \PY{k+kt}{SFInitialized} \PY{o+ow}{::} \PY{p}{(}\PY{k+kt}{DTime} \PY{o+ow}{-\PYZgt{}} \PY{p}{(}\PY{p}{[}\PY{k+kt}{SVIndex} \PY{k+kt}{Id} \PY{n}{svOut}\PY{p}{]}\PY{p}{,} \PY{k+kt}{SFInitialized} \PY{n}{svIn} \PY{n}{svOut}\PY{p}{)}\PY{p}{)} \PY{o+ow}{-\PYZgt{}} 
+                   \PY{p}{(}\PY{k+kt}{SVIndex} \PY{k+kt}{Id} \PY{n}{svIn} \PY{o+ow}{-\PYZgt{}} \PY{p}{(}\PY{p}{[}\PY{k+kt}{SVIndex} \PY{k+kt}{Id} \PY{n}{svOut}\PY{p}{]}\PY{p}{,} \PY{k+kt}{SFInitialized} \PY{n}{svIn} \PY{n}{svOut}\PY{p}{)}\PY{p}{)} \PY{o+ow}{-\PYZgt{}}
+                   \PY{k+kt}{SFInitialized} \PY{n}{svIn} \PY{n}{svOut}
+\end{Verbatim}
