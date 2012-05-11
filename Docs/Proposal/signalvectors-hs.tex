@@ -1,0 +1,14 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PY{c+c1}{-- Signal Vectors}
+\PY{k+kr}{data} \PY{k+kt}{SVEmpty}
+\PY{k+kr}{data} \PY{k+kt}{SVSignal} \PY{o+ow}{::} \PY{o}{*} \PY{o+ow}{-\PYZgt{}} \PY{o}{*}
+\PY{k+kr}{data} \PY{k+kt}{SVEvent}  \PY{o+ow}{::} \PY{o}{*} \PY{o+ow}{-\PYZgt{}} \PY{o}{*}
+\PY{k+kr}{data} \PY{k+kt}{SVAppend} \PY{o+ow}{::} \PY{o}{*} \PY{o+ow}{-\PYZgt{}} \PY{o}{*} \PY{o+ow}{-\PYZgt{}} \PY{o}{*}
+
+\PY{c+c1}{-- Signal Vector indexes}
+\PY{k+kr}{data} \PY{k+kt}{SVIndex} \PY{o+ow}{::} \PY{p}{(}\PY{o}{*} \PY{o+ow}{-\PYZgt{}} \PY{o}{*}\PY{p}{)} \PY{o+ow}{-\PYZgt{}} \PY{o}{*} \PY{o+ow}{-\PYZgt{}} \PY{o}{*} \PY{k+kr}{where}
+  \PY{k+kt}{SVISignal} \PY{o+ow}{::} \PY{n}{a} \PY{o+ow}{-\PYZgt{}} \PY{k+kt}{SVIndex} \PY{n}{p} \PY{p}{(}\PY{k+kt}{SVSignal} \PY{n}{p} \PY{n}{a}\PY{p}{)}
+  \PY{k+kt}{SVIEvent}  \PY{o+ow}{::} \PY{n}{a} \PY{o+ow}{-\PYZgt{}} \PY{k+kt}{SVIndex} \PY{n}{p} \PY{p}{(}\PY{k+kt}{SVEvent} \PY{n}{p} \PY{n}{a}\PY{p}{)}
+  \PY{k+kt}{SVILeft}   \PY{o+ow}{::} \PY{k+kt}{SVIndex} \PY{n}{p} \PY{n}{svl} \PY{o+ow}{-\PYZgt{}} \PY{k+kt}{SVIndex} \PY{n}{p} \PY{p}{(}\PY{k+kt}{SVAppend} \PY{n}{svl} \PY{n}{svr}\PY{p}{)}
+  \PY{k+kt}{SVIRight}  \PY{o+ow}{::} \PY{k+kt}{SVIndex} \PY{n}{p} \PY{n}{svr} \PY{o+ow}{-\PYZgt{}} \PY{k+kt}{SVIndex} \PY{n}{p} \PY{p}{(}\PY{k+kt}{SVAppend} \PY{n}{svl} \PY{n}{svr}\PY{p}{)}
+\end{Verbatim}

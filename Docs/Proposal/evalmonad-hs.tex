@@ -1,0 +1,21 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PY{c+c1}{-- SF Evaluation monad transformer}
+
+\PY{k+kr}{data} \PY{k+kt}{SFEvalMonadT} \PY{o+ow}{::} \PY{o}{*} \PY{o+ow}{-\PYZgt{}} \PY{o}{*} \PY{o+ow}{-\PYZgt{}} \PY{o}{*} \PY{o+ow}{-\PYZgt{}} \PY{o}{*} \PY{o+ow}{-\PYZgt{}} \PY{o}{*}
+
+\PY{k+kr}{instance} \PY{k+kt}{Monad} \PY{p}{(}\PY{k+kt}{SFEvalMonadT} \PY{n}{svIn} \PY{n}{svOut} \PY{n}{m}\PY{p}{)}
+
+\PY{k+kr}{instance} \PY{k+kt}{SFMonadTransformer} \PY{p}{(}\PY{k+kt}{SFEvalMonadT} \PY{n}{svIn} \PY{n}{svOut}\PY{p}{)}
+
+\PY{n+nf}{initSF} \PY{o+ow}{::} \PY{k+kt}{SF} \PY{n}{svIn} \PY{n}{svOut} \PY{o+ow}{-\PYZgt{}} \PY{k+kt}{SFState} \PY{n}{svIn} \PY{n}{svOut}
+
+\PY{n+nf}{runSFEvalMonadT} \PY{o+ow}{::} \PY{p}{(}\PY{k+kt}{EventOnly} \PY{n}{svIn}\PY{p}{,} \PY{k+kt}{EventOnly} \PY{n}{svOut}\PY{p}{,} \PY{k+kt}{Monad} \PY{n}{m}\PY{p}{)} \PY{o+ow}{=\PYZgt{}} 
+                   \PY{k+kt}{SFState} \PY{n}{svIn} \PY{n}{svOut} \PY{o+ow}{-\PYZgt{}}
+                   \PY{p}{[}\PY{k+kt}{SVIndex} \PY{p}{(}\PY{o+ow}{-\PYZgt{}} \PY{n}{m} \PY{n+nb}{()}\PY{p}{)} \PY{n}{svOut}\PY{p}{]} \PY{o+ow}{-\PYZgt{}}
+                   \PY{k+kt}{SFEvalMonadT} \PY{n}{svIn} \PY{n}{svOut} \PY{n}{m} \PY{n}{a} \PY{o+ow}{-\PYZgt{}}
+                   \PY{n}{m} \PY{p}{(}\PY{n}{a}\PY{p}{,} \PY{k+kt}{SFState} \PY{n}{svIn} \PY{n}{svOut}\PY{p}{)}
+
+\PY{n+nf}{push} \PY{o+ow}{::} \PY{p}{(}\PY{k+kt}{EventOnly} \PY{n}{svIn}\PY{p}{,} \PY{k+kt}{EventOnly} \PY{n}{svOut}\PY{p}{)} \PY{o+ow}{=\PYZgt{}}
+		\PY{k+kt}{SVIndex} \PY{k+kt}{Id} \PY{n}{svIn} \PY{o+ow}{-\PYZgt{}}
+		\PY{k+kt}{SFEvalMonadT} \PY{n}{svIn} \PY{n}{svOut} \PY{n}{m} \PY{n+nb}{()}
+\end{Verbatim}

@@ -1,0 +1,83 @@
+\section{Proposed Work}
+\label{section:ProposedWork}
+
+Recent work on types for signal-function FRP systems has yielded N-ary FRP~\cite{Sculthorpe2011}, which types signal function inputs and outputs
+with {\em signal vectors} rather than types of values. Signal vectors are phantom types: signal or event type constructor taking a value type,
+or a product type of signal vectors. This permits individual components of a signal function's input or output to be designated as an event
+or as a signal, and provides precisely the flexibility necessary to create a push-based implementation.
+
+When signal functions are typed using value representations, where events are simply option values, the entire input and output must be constructed
+for every step of a signal function. In particular, there is no obvious mechanism for producing signal values which contain only the updated components
+of the signal, together with actually occurring events. 
+
+By making use of phantom types which designate components of a signal vector, together with Generalized Algebraic Datatypes (GADTs) which
+permit the specification of the input and output types of a signal function and type-safe indexing of the input and output components,
+individual components of the input of a signal function may be processed as they become available, and may produce individual components of
+the output.
+
+I will create a library of combinators for creating signal-function FRP systems which may be evaluated when input is provided, and which
+is typed with phantom types describing signal vectors~(Figure~\ref{fig:proposed_work_example_signalvectors}). These combinators will produce continuations
+which accept values together with signal vector indexes and produce replacement continuations together with collections of signal vector indexed values
+~(Figure~\ref{fig:proposed_work_example_signalfunctions}). 
+The indexes allow combinators to use only the continuations necessary to process a specific input, as opposed to requiring the entire input
+to be constructed for a signal function. In particular, sequential composition will detect output changes or event
+occurrences from the left-side signal function and only evaluate the right-side signal function as necessary, parallel composition ({\tt first} and {\tt second})
+will only evaluate their left or right side signal function depending on the index, and routing combinators will produce outputs for a given index
+in the output signal vector only when there is an input presented on the corresponding index in the input signal vector. 
+
+\begin{figure}
+\input{signalvectors-hs.tex}
+\hrule
+\caption{Examples data types for push-based signal functions}
+\label{fig:proposed_work_example_signalvectors}
+\end{figure}
+
+\begin{figure}
+\input{signalfunctions-hs.tex}
+\hrule
+\caption{Example data type for push-based signal functions}
+\label{fig:proposed_work_example_signalfunctions}
+\end{figure}
+
+Further, I will create an evaluation interface for signal functions created with this library, which will provide monadic actions to push
+events into the signal function, activating predefined callbacks on output events (Figure \ref{fig:proposed_work_example_evalmonad}). Signals
+will not be permitted on the inputs or outputs of evaluated signal functions, but only internally to the signal function.
+
+\begin{figure}
+\input{evalmonad-hs.tex}
+\hrule
+\caption{Example functions and monadic combinators for evaluation of push-based signal functions}
+\label{fig:proposed_work_example_evalmonad}
+\end{figure}
+
+I will provide a formal semantic description for the combinator library and evaluation interface which will permit me to argue that the
+new implementation solves a particularly thorny problem with ``merging'' events.
+
+This implementation will be compared to the existing pull-based signal-function implementation, Yampa, by implementing a simple
+2-dimensional game with both Yampa and the new implementation, combining both with OpenGL~\cite{Akeley2011} and GLUT~\cite{Kilgard96} for graphics. CPU usage, framerate,
+and response latency will be measured for both systems and comparisons given. In  addition, I expect the proposed implementation to be usable with
+GLUT and other event-loop based libraries, or even combinations of event-based libraries, simply and without an additional thread for the
+FRP system, something not possible with the present evaluation function in Yampa or with current classic FRP systems.
+
+\subsection{Timeline}
+\label{subsection:ProposedWork:Timeline}
+
+\begin{tabular}{rp{34em}}
+ \withRightVertBar{April 2, 2012}  & Submit draft proposal with proposed work, timeline, and introduction for review by Professor Fluet. \\
+                                   & \\
+ \withRightVertBar{April 23, 2012} & Complete initial implementation of FRP library, begin debugging and testing. \\
+                                   & \\
+ \withRightVertBar{April 30, 2012} & Finish proposal including background. Submit final proposal to \newline
+                                     Professor Fluet, Professor Nunes-Harwitt and Professor Butler to\newline
+                                     convene committee. \\
+                                   &\\
+ \withRightVertBar{May 31, 2012}   & Submit ongoing work writeup to Haskell Symposium. Include semantics and an interactive demonstration.\\
+                                   & \\
+ \withRightVertBar{June 11, 2012}  & Complete demonstration application (2D graphical game) in new FRP library and in Yampa.\\
+                                   & \\
+ \withRightVertBar{June 18, 2012}  & Complete testing and comparisons of demonstration application.\\
+                                   & \\
+ \withRightVertBar{June 25, 2012}  & Thesis draft submission.\\
+                                   & \\
+ \withRightVertBar{July 8, 2012}   & Thesis defense.
+\end{tabular}

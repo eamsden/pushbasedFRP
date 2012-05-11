@@ -1,0 +1,38 @@
+\documentclass[letterpaper]{article}
+\usepackage[margin=1.2in]{geometry}
+\usepackage{ifthen}
+\usepackage{stmaryrd}
+\usepackage{mathpartir}
+\usepackage[usenames]{color}
+\usepackage{hyperref}
+\usepackage{multicol}
+\usepackage{fancyvrb}
+
+% For HsColour
+%\newsavebox{\spaceb}
+%\newsavebox{\tabb}
+%\savebox{\spaceb}[1ex]{~}
+%\savebox{\tabb}[4ex]{~}
+%\newcommand{\hsspace}{\usebox{\spaceb}}
+%\newcommand{\hstab}{\usebox{\tabb}}
+%\newcommand{\conceal}[1]{}
+
+\input{pygments.tex}
+\input{amsden-commands.tex}
+
+
+\title{Push-Based Signal-Function Functional Reactive Programming (Thesis Proposal)}
+\author{Edward Amsden}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\input{abstract.tex}
+\input{introduction.tex}
+\input{background.tex}
+\input{proposed_work.tex}
+
+\bibliographystyle{acm}
+\bibliography{proposal}
+\end{document}

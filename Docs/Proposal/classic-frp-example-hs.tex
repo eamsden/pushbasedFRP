@@ -1,0 +1,44 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PY{c+c1}{-- Assumed primitives:}
+\PY{c+c1}{-- mousePosition, mouseLeftClick, microphoneAudio}
+
+\PY{c+c1}{-- onceE :: Event a -\PYZgt{} Event a, gives only the first occurrence}
+\PY{c+c1}{-- restE :: Event a -\PYZgt{} Event a, gives all except the first occurrence}
+\PY{c+c1}{-- switcher :: Behavior a -\PYZgt{} Event (Behavior a) -\PYZgt{} Behavior a,}
+\PY{c+c1}{--             act like the given behavior, then each successive}
+\PY{c+c1}{--             behavior in the event stream}
+
+\PY{c+c1}{-- Assumed pre-existing functions:}
+\PY{c+c1}{-- bandpassFilter :: Behavior Double -\PYZgt{} Behavior Double -\PYZgt{} Behavior Double -\PYZgt{} Behavior Double}
+\PY{c+c1}{-- (Audio, low frequency, high frequency, audio output)}
+
+\PY{k+kr}{import} \PY{n+nn}{Control.FRP} \PY{c+c1}{-- Our theoretical classic FRP module}
+\PY{k+kr}{import} \PY{n+nn}{Control.Applicative} \PY{p}{(}\PY{o}{\PYZlt{}\PYZdl{}\PYZgt{}}\PY{p}{,} \PY{o}{\PYZlt{}*\PYZgt{}}\PY{p}{,} \PY{n+nf}{pure}\PY{p}{)} \PY{c+c1}{-- fmap and applicative functor application}
+
+\PY{n+nf}{mouseX} \PY{o+ow}{::} \PY{k+kt}{Behavior} \PY{k+kt}{Double}
+\PY{n+nf}{mouseX} \PY{o+ow}{=} \PY{p}{(}\PY{n+nf}{\PYZbs{}}\PY{p}{(}\PY{n}{x}\PY{p}{,} \PY{k+kr}{\PYZus{}}\PY{p}{)} \PY{o+ow}{-\PYZgt{}} \PY{n}{fromIntegral} \PY{n}{x} \PY{o}{/} \PY{n}{fromIntegral} \PY{n}{screenWidth}\PY{p}{)} \PY{o}{\PYZlt{}\PYZdl{}\PYZgt{}} \PY{n}{mousePosition}
+
+\PY{n+nf}{mouseY} \PY{o+ow}{::} \PY{k+kt}{Behavior} \PY{k+kt}{Double}
+\PY{n+nf}{mouseY} \PY{o+ow}{=} \PY{n}{fmap} \PY{p}{(}\PY{n+nf}{\PYZbs{}}\PY{p}{(}\PY{k+kr}{\PYZus{}}\PY{p}{,} \PY{n}{y}\PY{p}{)} \PY{o+ow}{-\PYZgt{}} \PY{n}{fromIntegral} \PY{n}{y} \PY{o}{/} \PY{n}{fromIntegral} \PY{n}{screenHeight}\PY{p}{)} \PY{n}{mousePosition}
+
+\PY{n+nf}{highFreq} \PY{o+ow}{::} \PY{k+kt}{Behavior} \PY{k+kt}{Double}
+\PY{n+nf}{highFreq} \PY{o+ow}{=} \PY{n}{fmap} \PY{p}{(}\PY{n+nf}{\PYZbs{}}\PY{n}{x} \PY{o+ow}{-\PYZgt{}} \PY{l+m+mi}{60} \PY{o}{*} \PY{n}{exp} \PY{p}{(}\PY{n}{x} \PY{o}{*} \PY{n}{ln} \PY{p}{(}\PY{l+m+mi}{20000} \PY{o}{/} \PY{l+m+mi}{60}\PY{p}{)}\PY{p}{)} \PY{n}{mouseX}
+
+\PY{n+nf}{lowFreq} \PY{o+ow}{::} \PY{k+kt}{Behavior} \PY{k+kt}{Double}
+\PY{n+nf}{lowFreq} \PY{o+ow}{=} \PY{p}{(}\PY{n+nf}{\PYZbs{}}\PY{n}{y} \PY{n}{highF} \PY{o+ow}{-\PYZgt{}} \PY{l+m+mi}{60} \PY{o}{*} \PY{n}{exp} \PY{p}{(}\PY{n}{y} \PY{o}{*} \PY{n}{ln} \PY{p}{(}\PY{n}{highF} \PY{o}{/} \PY{l+m+mi}{60}\PY{p}{)}\PY{p}{)} \PY{o}{\PYZlt{}\PYZdl{}\PYZgt{}} \PY{n}{mouseY} \PY{o}{\PYZlt{}*\PYZgt{}} \PY{n}{highFreq}
+
+\PY{n+nf}{audioOutput} \PY{o+ow}{::} \PY{k+kt}{Behavior} \PY{k+kt}{Double}
+\PY{n+nf}{audioOutput} \PY{o+ow}{=} \PY{k+kr}{let} \PY{n}{filtered} \PY{o+ow}{=} \PY{n}{bandpass} \PY{n}{microphoneInput} \PY{n}{lowFreq} \PY{n}{highFreq}
+                  \PY{n}{willStopFiltering} \PY{o+ow}{=} 
+                     \PY{p}{(}\PY{n+nf}{\PYZbs{}}\PY{n}{evt} \PY{o+ow}{-\PYZgt{}} \PY{n}{filtered} \PY{p}{`}\PY{n}{switcher}\PY{p}{`} 
+                              \PY{n}{fmap} \PY{p}{(}\PY{n}{const} \PY{p}{(}\PY{n}{willStartFiltering} \PY{o}{\PYZdl{}} \PY{n}{restE} \PY{n}{evt}\PY{p}{)}\PY{p}{)} 
+                              \PY{o}{\PYZdl{}} \PY{n}{onceE} \PY{n}{evt}\PY{p}{)}
+                  \PY{n}{willStartFiltering} \PY{o+ow}{=} 
+                     \PY{p}{(}\PY{n+nf}{\PYZbs{}}\PY{n}{evt} \PY{o+ow}{-\PYZgt{}} \PY{n}{microphoneInput} \PY{p}{`}\PY{n}{switcher}\PY{p}{`} 
+                              \PY{n}{fmap} \PY{p}{(}\PY{n}{const} \PY{p}{(}\PY{n}{willStopFiltering} \PY{o}{\PYZdl{}} \PY{n}{restE} \PY{n}{evt}\PY{p}{)}\PY{p}{)} 
+                              \PY{o}{\PYZdl{}} \PY{n}{onceE} \PY{n}{evt}\PY{p}{)}
+              \PY{k+kr}{in} \PY{n}{willStopFiltering} \PY{n}{mouseLeftClick}
+
+\PY{n+nf}{main} \PY{o+ow}{::} \PY{k+kt}{IO} \PY{n}{a}
+\PY{n+nf}{main} \PY{o+ow}{=} \PY{n}{playBehaviorAsSound} \PY{n}{audioOutput}
+\end{Verbatim}
