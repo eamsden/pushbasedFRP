@@ -1,0 +1,102 @@
+\section{Implementation}
+\label{section:implementation}
+
+Since the signal functions will operate on signal vectors, the first step in an implementation is to represent signal vectors.
+We represent signal vectors at the type level as empty types:
+
+\begin{verbatim}
+-- An empty signal vector
+data SVEmpty
+-- A singleton vector of a signal
+data SVSignal a
+-- A singleton vector of an event stream
+data SVEvent a
+-- The concatenation of two signal vectors
+data SVAppend svl svr 
+\end{verbatim}
+
+Once we have this type-level representation of signal vectors, we represent components of the signal vector as a GADT\footnote{Generalized Algebraic Datatype}
+with phantom types:
+
+\begin{verbatim}
+data SVIndex ::   (* -> *) -> * -> * where
+  SVISignal  ::   tc a -> SVIndex tc (SVSignal a)
+  SVIEvent   ::   tc a -> SVIndex tc (SVEvent a)
+  SVILeft    ::   SVIndex tc svl 
+               -> SVIndex tc (SVAppend svl svr)
+  SVIRight   ::   SVIndex tc svr 
+               -> SVIndex tc (SVAppend svl svr)
+\end{verbatim}
+
+Note the addition of the higher-kinded type parameter, which allows us to represent components where the types of the data
+in the component are dependent on but not equivalent to the the types of the signals and events in the vector. For instance,
+we may instantiate $tc$ as $(\rightarrow IO ())$ to represent a new handler for the output of a signal function.
+
+Another datatype provides a means of accumulating partial information about the state of a signal vector:
+\begin{verbatim}
+data SVMemory ::   (* -> *) -> * -> *
+  SVMSignal   ::   tc a -> SVMemory tc (SVSignal a)
+  SVMEvent    ::   tc a -> SVMemory tc (SVEvent a)
+  SVMNothing  ::   SVMemory tc sv
+  SVMBoth     ::   SVMemory tc svl
+                -> SVMemory tc svr 
+                -> SVMemory tc (SVAppend svl svr)
+\end{verbatim}
+
+Again notice the higher-kinded type parameter, which in this case might be used to produce a record of the current
+handlers for the outputs of a signal function. 
+
+With these representations in hand we can describe an implementation type for signal functions:
+\begin{verbatim}
+newtype Id a = Id a
+
+data NonInitialized
+data Initialized
+
+data SF  :: * -> * -> * -> * where
+  SFInit ::  (SVIndex Id svIn 
+              -> ([SVIndex Id svOut],
+                  SF Initialized svIn svOut)) 
+           -> SF Initialized svIn svOut
+  SF     ::  (SVMemory svIn 
+              -> (SVMemory Id svOut,
+                  SF Initialized svInt svOut)) 
+           -> SF NonInitialized svIn svOut
+\end{verbatim}
+
+Combinators produce the second constructor, which takes a partial memory of the input state of the signal function.
+This enables preservation of the values of signals when a new signal function becomes a part of the network. 
+Once a signal function has been supplied with the current state, it exists as a continuation (wrapped by the first constructor)
+which takes a change (represented as an event occurrences or a new values for a signal in a signal vector index) to 
+a list of output changes and a new signal function.
+
+This implementation strategy is very similar to that used for other signal-function FRP systems, such as Yampa~\cite{Nilsson2005}.
+The distinction is that, with the inputs separated, the continuation produced by a combinator may select the appropriate continuation
+for a particular input, and components of the input may be responded to as they arrive, rather than all together at each time step.
+
+The implementation strategy can be demonstrated with a few examples of combinators from the library:
+
+The {\tt identity} signal function is perhaps the simplest. It is completely polymorphic in its input, and simply
+copies inputs to its output:
+\begin{verbatim}
+identity :: SF NonInitialized sv sv
+identity = SF (\mem -> (mem, identityInit))
+
+identityInit :: SF Initialized sv sv
+identityInit = 
+  SFInit (\change -> ([change], identityInit))
+\end{verbatim}
+
+Note that every signal function must specify its replacement along with its output.
+In this case, since identity does not react to but merely passes along inputs, its replacement is itself.
+
+The sequential composition operator ({\tt >>>}) is perhaps the most crucial combinator.
+
+The parallel composition functions {\tt first} and {\tt second} allow signal functions to
+operate on one side of a signal vector, with the other side passed through unchanged.
+{\tt first} is shown here.
+
+The feedback combinator {\tt loop} allows a signal function to take its own input as output.
+
+The remaining combinators are implemented similarly.
+

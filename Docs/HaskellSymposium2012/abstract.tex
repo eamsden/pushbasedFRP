@@ -1,0 +1,14 @@
+Functional Reactive Programming (FRP) is a promising class of abstractions for encoding interactive and time-dependent programs in
+functional languages, but has proven difficult to implement efficiently. Signal-function FRP is a subclass of FRP which does not provide
+direct access to the time-varying  values by the programmer, but rather provides {\em signal functions} as first class objects.
+All signal-function implementations of FRP to date have utilized demand-driven or ``pull-based''  evaluation, producing output from
+the FRP system whenever the consumer of the output is ready. This greatly simplifies the implementation of signal-function FRP systems, but
+leads to inefficient and wasteful evaluation of the FRP system.
+
+In contrast, an input-driven or ``push-based'' system evaluates the network whenever new input is available. This frees the system from
+evaluating the network when nothing has changed, and then only components necessary to react to the input are reevaluated.
+This form of evaluation has been partially applied to standard FRP systems~\cite{Elliott2009} but not to signal-function FRP systems.
+
+I describe ongoing work toward the implementation of a push-based signal-function FRP system. Informal semantics
+and the current method of implementation are described, and challenges and possible solutions for a completed implementation
+are discussed.

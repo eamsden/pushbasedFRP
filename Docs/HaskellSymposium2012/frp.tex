@@ -1,0 +1,39 @@
+\section{Signal-Function FRP}
+\label{section:functional_reactive_programming}
+
+Most reactive programs are written in an imperative style, using low-level and non-composable abstractions including callbacks
+or object based event handlers, called by event loops. This ties the model of interactivity to low-level implementation details such as timing and event handling models. 
+
+FRP implies that a model should keep the characteristics of functional programming (i.e. that the basic constructs of the language
+should remain first-class) while incorporating reactivity into the language model. In particular, functions should be lifted to operate on reactive values,
+and functions themselves ought to be reactive.
+
+The goal of FRP is to provide compositional and high-level abstractions for creating reactive programs. The key
+abstractions of FRP are behaviors or signals, which are time-dependent values defined at every point in continuous time, and events, which are 
+values defined at countably many points in time. An FRP system will provide functions to manipulate events and signals and to react
+to events by replacing a portion of the running program in response to an event. Behaviors and events, or some abstraction
+based on them, will be first class, in keeping with the spirit of functional programming. Programs implemented in functional reactive
+models should of course be efficiently executable. This has proven to be the main challenge in implementing Functional Reactive Programming.
+
+The two general approaches to FRP are ``classic'' FRP, where behaviors and signals are first-class and reactive objects, and ``signal-function'' FRP,
+where transformers of signals and events are first-class and reactive objects.
+
+In signal-function FRP, programs are written by composing signal functions, which take one or more signals and/or event streams as input
+and produce one or more signals and/or event-streams as output. Ideally, the programmer has only point-wise access to signals (values at the current
+point in time) and conditional access to event streams (access when there is an event occurrence).
+
+In current signal-function FRP systems, such as Yampa~\cite{Nilsson2005}, a signal function transforms a single signal,
+and combinators combine signal functions by splitting input and/or combining output values. Event streams
+are represented as option-valued components of the signal. This leads to inefficient implementation, as event streams
+are sampled at every time step. Further, the latency between event occurrent and event response is, on average, one-half
+of the sampling rate~\cite{Elliott2009}. The pull-based evaluation is necessitated by the single signal value, since
+there is, in general, no way to separate components of a signal which have been updated or do carry event occurrences
+from those which have not.
+
+In N-Ary FRP~\cite{Sculthorpe2011}, signal functions conceptually operate on {\em signal vectors}, which represent collections
+of signals and event streams at the type level. This opens the possibility of push-based evaluation, since there
+is now a clear distinction between individual signals and event streams. A push-based evaluation of an N-Ary FRP
+system can define reactive operations for signal functions in terms of individual inputs, with combinators
+maintaining the distinctions between elements of the signal vector and skipping evaluation of signal functions for
+which there is no input.
+
