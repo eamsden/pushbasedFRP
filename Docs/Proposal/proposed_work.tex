@@ -2,9 +2,11 @@
 \label{section:ProposedWork}
 
 Recent work on types for signal-function FRP systems has yielded N-ary FRP~\cite{Sculthorpe2011}, which types signal function inputs and outputs
-with {\em signal vectors} rather than types of values. Signal vectors are phantom types: signal or event type constructor taking a value type,
-or a product type of signal vectors. This permits individual components of a signal function's input or output to be designated as an event
-or as a signal, and provides precisely the flexibility necessary to create a push-based implementation.
+with {\em signal vectors} rather than types of values. Signal vectors are types: a signal or event type constructor taking a value type,
+or a product type of signal vectors. A signal function then uses signal vectors for its input and output types. Since the actual values which are supplied to the
+representation of a signal function also parameterize over signal vectors, this representation permits us to restrict the type of values which may be supplied to the signal
+function, even though no values take the type of the signal vector as their whole type. This permits individual components of a signal function's input or output to be
+designated as an event or as a signal, and provides precisely the flexibility necessary to create a push-based implementation.
 
 When signal functions are typed using value representations, where events are simply option values, the entire input and output must be constructed
 for every step of a signal function. In particular, there is no obvious mechanism for producing signal values which contain only the updated components
