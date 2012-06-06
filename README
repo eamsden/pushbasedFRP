@@ -1,5 +1,13 @@
 Edward Amsden - Master's Thesis
 
 Code/ - experimental code
+  Code/SignalVectors.hs - Definition of Signal Vectors and related
+                          types
+  Code/SignalFunctions.hs - Definition of Signal Functions and their
+                              evaluation
+Docs/ - Thesis documents
+  Docs/Preproposal/preproposal.pdf - Preproposal
+  Docs/Proposal/proposal.pdf - Proposal
+  Docs/Thesis/ - Under construction
 
 
