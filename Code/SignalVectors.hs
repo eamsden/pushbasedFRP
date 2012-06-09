@@ -60,7 +60,8 @@ module SignalVectors
     -- *** Helper Functions
     emptySMemory,
     updateSMemory,
-    combineSignalMemory
+    combineSignalMemory,
+    toIndices
   )
   where
 
@@ -111,6 +112,13 @@ combineSignalMemory :: SMemory p vl -> SMemory p vr -> SMemory p (SVAppend vl vr
 combineSignalMemory SMEmpty SMEmpty = SMEmpty
 combineSignalMemory SMEmpty x = SMBoth SMEmpty x
 combineSignalMemory x y = SMBoth x y
+
+-- | Create a list of signal vector indices from a signal memory
+toIndices :: SMemory p v -> [SVIndex p v]
+toIndices SMEmpty = []
+toIndices (SMSignal x) = [SVISignal x]
+toIndices (SMEvent x) = [SVIEvent x]
+toIndices (SMBoth sml smr) = map SVILeft (toIndices sml) ++ map SVIRight (toIndices smr)
 
 -- | Is this particular index to an event?
 indexIsEvent :: SVIndex p sv -> Bool
