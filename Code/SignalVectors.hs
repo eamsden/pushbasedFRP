@@ -1,20 +1,69 @@
 {-# LANGUAGE KindSignatures, EmptyDataDecls, GADTs #-}
+-- | This module defines /signal vectors/, a type-level representation
+-- of the input and output structure of signal functions, and value
+-- representations typed with signal vectors for use in implementing
+-- signal functions.
 module SignalVectors
   (
+    -- * Type Representation of Signal Vectors
+    -- | A signal vector is a type which describes
+    -- the structure of the input or output of a signal
+    -- function. Signal vectors do not have value members,
+    -- but by representing signal functions and other implementation
+    -- types using GADTs, we can include signal vectors in the types
+    -- of signal functions and their implementations.
     SVEmpty(), SVSignal(), SVEvent(), SVAppend(),
+
+    -- * Signal Vector Element Functors
+    -- | These newtypes are used as higher-kinded type parameters
+    -- to the constructors of signal vector indices and signal vector memories,
+    -- which both apply the functor to each element of the signal vector
     Id(..),
+    To(..),
+
+    -- * Value Representations of Signal Vectors
+    -- | These types are used in the implementation of signal functions
+    -- to represent values for inputs and outputs. The first parameter
+    -- to each type is higher-kinded, and is applied to the type at an index
+    -- of a signal vector to produce the actual type contained in the 
+    -- representation. This permits, for instance, the re-use of these
+    -- representations for storing output handlers in the monadic evaluator.
+
+    -- ** Signal Vector Indices
+    -- | Signal vector indices are representations of individual values at
+    -- a particular index of a signal vector. They take the type of the whole
+    -- signal vector, while dynamically representing which index the value
+    -- corresponds to, and statically ensuring that this value matches the type.
+    -- This representation is used internally to the implementation of signal
+    -- functions (module "SignalFunctions") and is not manipulated by users.
+
+    -- *** Datatype
     SVIndex(..),
-    SMemory(..),
-    emptySMemory,
-    updateSMemory,
+
+    -- *** Helper Functions
     indexIsEvent,
     indexIsSignal,
-    combineSignalMemory,
-    splitIndices
+    splitIndices,
+
+    -- ** Signal Memories
+    -- | Signal memories store values for a subset of all indices in a signal
+    -- vector. Signal memories are used in the implementation of 
+    -- signal functions (module "SignalFunctions") but may also be manipulated
+    -- by the user for the specification of properties corresponding
+    -- to evaluated signal functions. For instance, the monadic evaluation
+    -- interface uses signal memories to specify output handlers for the
+    -- signal function being evaluated.
+ 
+    -- *** Datatypes
+    SMemory(..),
+
+    -- *** Helper Functions
+    emptySMemory,
+    updateSMemory,
+    combineSignalMemory
   )
   where
 
--- Signal Vectors
 -- | Empty signal vector phantom type
 data SVEmpty  :: *
 -- | Singleton signal signal vector phantom type
@@ -24,17 +73,22 @@ data SVEvent  :: * -> *
 -- | Combine two signal vector phantom types
 data SVAppend :: * -> * -> *
 
--- | "Identity" type constructor
+-- | \"Identity\" type constructor, for use as a functor on the element
+-- types of a signal vector
 newtype Id a = Id a
 
--- | Signal Vector indices
+-- | Newtype representing a function \"to\" a value of the first type parameter,
+-- from a value of the second parameter. Essentially "flip" for the arrow type.
+newtype To b a = To (a -> b) 
+
+-- | A single value at an index of a signal vector
 data SVIndex :: (* -> *) -> * -> * where
   SVISignal  :: p a -> SVIndex p (SVSignal a)
   SVIEvent   :: p a -> SVIndex p (SVEvent a)
   SVILeft    :: SVIndex p svl -> SVIndex p (SVAppend svl svr)
   SVIRight   :: SVIndex p svr -> SVIndex p (SVAppend svl svr)
 
--- | Signal memories
+-- | A partial collection of values at indices of a signal vector
 data SMemory :: (* -> *) -> * -> * where
   SMEmpty  :: SMemory p sv
   SMSignal :: p a -> SMemory p (SVSignal a)
@@ -72,7 +126,7 @@ indexIsSignal (SVIEvent _)   = False
 indexIsSignal (SVILeft idx)  = indexIsSignal idx
 indexIsSignal (SVIRight idx) = indexIsSignal idx
 
--- | Split a list of indices
+-- | Split a list of indices into lists of left and right indices
 splitIndices :: [SVIndex p (SVAppend svl svr)] -> ([SVIndex p svl], [SVIndex p svr])
 splitIndices [] = ([], [])
 splitIndices ((SVILeft x):idxs) = let (xs, ys) = splitIndices idxs
