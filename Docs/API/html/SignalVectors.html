@@ -1,0 +1,741 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+><head
+  ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
+     /><title
+    >SignalVectors</title
+    ><link href="ocean.css" rel="stylesheet" type="text/css" title="Ocean"
+     /><script src="haddock-util.js" type="text/javascript"
+    ></script
+    ><script type="text/javascript"
+    >//<![CDATA[
+window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");};
+//]]>
+</script
+    ></head
+  ><body
+  ><div id="package-header"
+    ><ul class="links" id="page-menu"
+      ><li
+	><a href="index.html"
+	  >Contents</a
+	  ></li
+	><li
+	><a href="doc-index.html"
+	  >Index</a
+	  ></li
+	></ul
+      ><p class="caption" class="empty"
+      >&nbsp;</p
+      ></div
+    ><div id="content"
+    ><div id="module-header"
+      ><table class="info"
+	><tr
+	  ><th
+	    >Safe Haskell</th
+	    ><td
+	    >Safe-Infered</td
+	    ></tr
+	  ></table
+	><p class="caption"
+	>SignalVectors</p
+	></div
+      ><div id="table-of-contents"
+      ><p class="caption"
+	>Contents</p
+	><ul
+	><li
+	  ><a href="#g:1"
+	    >Type Representation of Signal Vectors
+</a
+	    ></li
+	  ><li
+	  ><a href="#g:2"
+	    >Signal Vector Element Functors
+</a
+	    ></li
+	  ><li
+	  ><a href="#g:3"
+	    >Value Representations of Signal Vectors
+</a
+	    ><ul
+	    ><li
+	      ><a href="#g:4"
+		>Signal Vector Indices
+</a
+		><ul
+		><li
+		  ><a href="#g:5"
+		    >Datatype
+</a
+		    ></li
+		  ><li
+		  ><a href="#g:6"
+		    >Helper Functions
+</a
+		    ></li
+		  ></ul
+		></li
+	      ><li
+	      ><a href="#g:7"
+		>Signal Memories
+</a
+		><ul
+		><li
+		  ><a href="#g:8"
+		    >Datatypes
+</a
+		    ></li
+		  ><li
+		  ><a href="#g:9"
+		    >Helper Functions
+</a
+		    ></li
+		  ></ul
+		></li
+	      ></ul
+	    ></li
+	  ></ul
+	></div
+      ><div id="description"
+      ><p class="caption"
+	>Description</p
+	><div class="doc"
+	><p
+	  >This module defines <em
+	    >signal vectors</em
+	    >, a type-level representation
+ of the input and output structure of signal functions, and value
+ representations typed with signal vectors for use in implementing
+ signal functions.
+</p
+	  ></div
+	></div
+      ><div id="synopsis"
+      ><p id="control.syn" class="caption expander" onclick="toggleSection('syn')"
+	>Synopsis</p
+	><ul id="section.syn" class="hide" onclick="toggleSection('syn')"
+	><li class="src short"
+	  ><span class="keyword"
+	    >data</span
+	    >  <a href="#t:SVEmpty"
+	    >SVEmpty</a
+	    > </li
+	  ><li class="src short"
+	  ><span class="keyword"
+	    >data</span
+	    >  <a href="#t:SVSignal"
+	    >SVSignal</a
+	    > </li
+	  ><li class="src short"
+	  ><span class="keyword"
+	    >data</span
+	    >  <a href="#t:SVEvent"
+	    >SVEvent</a
+	    > </li
+	  ><li class="src short"
+	  ><span class="keyword"
+	    >data</span
+	    >  <a href="#t:SVAppend"
+	    >SVAppend</a
+	    > </li
+	  ><li class="src short"
+	  ><span class="keyword"
+	    >newtype</span
+	    >  <a href="#t:Id"
+	    >Id</a
+	    > a = <a href="#v:Id"
+	    >Id</a
+	    > a</li
+	  ><li class="src short"
+	  ><span class="keyword"
+	    >newtype</span
+	    >  <a href="#t:To"
+	    >To</a
+	    > b a = <a href="#v:To"
+	    >To</a
+	    > (a &#8594; b)</li
+	  ><li class="src short"
+	  ><span class="keyword"
+	    >data</span
+	    >  <a href="#t:SVIndex"
+	    >SVIndex</a
+	    >  <span class="keyword"
+	    >where</span
+	    ><ul class="subs"
+	    ><li
+	      ><a href="#v:SVISignal"
+		>SVISignal</a
+		> &#8759;  p a &#8594; <a href="SignalVectors.html#t:SVIndex"
+		>SVIndex</a
+		> p (<a href="SignalVectors.html#t:SVSignal"
+		>SVSignal</a
+		> a)  </li
+	      ><li
+	      ><a href="#v:SVIEvent"
+		>SVIEvent</a
+		> &#8759;  p a &#8594; <a href="SignalVectors.html#t:SVIndex"
+		>SVIndex</a
+		> p (<a href="SignalVectors.html#t:SVEvent"
+		>SVEvent</a
+		> a)  </li
+	      ><li
+	      ><a href="#v:SVILeft"
+		>SVILeft</a
+		> &#8759;  <a href="SignalVectors.html#t:SVIndex"
+		>SVIndex</a
+		> p svl &#8594; <a href="SignalVectors.html#t:SVIndex"
+		>SVIndex</a
+		> p (<a href="SignalVectors.html#t:SVAppend"
+		>SVAppend</a
+		> svl svr)  </li
+	      ><li
+	      ><a href="#v:SVIRight"
+		>SVIRight</a
+		> &#8759;  <a href="SignalVectors.html#t:SVIndex"
+		>SVIndex</a
+		> p svr &#8594; <a href="SignalVectors.html#t:SVIndex"
+		>SVIndex</a
+		> p (<a href="SignalVectors.html#t:SVAppend"
+		>SVAppend</a
+		> svl svr)  </li
+	      ></ul
+	    ></li
+	  ><li class="src short"
+	  ><a href="#v:indexIsEvent"
+	    >indexIsEvent</a
+	    > &#8759;  <a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p sv &#8594; Bool</li
+	  ><li class="src short"
+	  ><a href="#v:indexIsSignal"
+	    >indexIsSignal</a
+	    > &#8759;  <a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p sv &#8594; Bool</li
+	  ><li class="src short"
+	  ><a href="#v:splitIndices"
+	    >splitIndices</a
+	    > &#8759;  [<a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p (<a href="SignalVectors.html#t:SVAppend"
+	    >SVAppend</a
+	    > svl svr)] &#8594; ([<a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p svl], [<a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p svr])</li
+	  ><li class="src short"
+	  ><span class="keyword"
+	    >data</span
+	    >  <a href="#t:SMemory"
+	    >SMemory</a
+	    >  <span class="keyword"
+	    >where</span
+	    ><ul class="subs"
+	    ><li
+	      ><a href="#v:SMEmpty"
+		>SMEmpty</a
+		> &#8759;  <a href="SignalVectors.html#t:SMemory"
+		>SMemory</a
+		> p sv  </li
+	      ><li
+	      ><a href="#v:SMSignal"
+		>SMSignal</a
+		> &#8759;  p a &#8594; <a href="SignalVectors.html#t:SMemory"
+		>SMemory</a
+		> p (<a href="SignalVectors.html#t:SVSignal"
+		>SVSignal</a
+		> a)  </li
+	      ><li
+	      ><a href="#v:SMEvent"
+		>SMEvent</a
+		> &#8759;  p a &#8594; <a href="SignalVectors.html#t:SMemory"
+		>SMemory</a
+		> p (<a href="SignalVectors.html#t:SVEvent"
+		>SVEvent</a
+		> a)  </li
+	      ><li
+	      ><a href="#v:SMBoth"
+		>SMBoth</a
+		> &#8759;  <a href="SignalVectors.html#t:SMemory"
+		>SMemory</a
+		> p svl &#8594; <a href="SignalVectors.html#t:SMemory"
+		>SMemory</a
+		> p svr &#8594; <a href="SignalVectors.html#t:SMemory"
+		>SMemory</a
+		> p (<a href="SignalVectors.html#t:SVAppend"
+		>SVAppend</a
+		> svl svr)  </li
+	      ></ul
+	    ></li
+	  ><li class="src short"
+	  ><a href="#v:emptySMemory"
+	    >emptySMemory</a
+	    > &#8759;  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p sv</li
+	  ><li class="src short"
+	  ><a href="#v:updateSMemory"
+	    >updateSMemory</a
+	    > &#8759;  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p sv &#8594; <a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p sv &#8594; <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p sv</li
+	  ><li class="src short"
+	  ><a href="#v:combineSignalMemory"
+	    >combineSignalMemory</a
+	    > &#8759;  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p vl &#8594; <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p vr &#8594; <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p (<a href="SignalVectors.html#t:SVAppend"
+	    >SVAppend</a
+	    > vl vr)</li
+	  ></ul
+	></div
+      ><div id="interface"
+      ><h1 id="g:1"
+	>Type Representation of Signal Vectors
+</h1
+	><div class="doc"
+	><p
+	  >A signal vector is a type which describes
+ the structure of the input or output of a signal
+ function. Signal vectors do not have value members,
+ but by representing signal functions and other implementation
+ types using GADTs, we can include signal vectors in the types
+ of signal functions and their implementations.
+</p
+	  ></div
+	><div class="top"
+	><p class="src"
+	  ><span class="keyword"
+	    >data</span
+	    >  <a name="t:SVEmpty" class="def"
+	    >SVEmpty</a
+	    >  </p
+	  ><div class="doc"
+	  ><p
+	    >Empty signal vector phantom type
+</p
+	    ></div
+	  ></div
+	><div class="top"
+	><p class="src"
+	  ><span class="keyword"
+	    >data</span
+	    >  <a name="t:SVSignal" class="def"
+	    >SVSignal</a
+	    >  </p
+	  ><div class="doc"
+	  ><p
+	    >Singleton signal signal vector phantom type
+</p
+	    ></div
+	  ></div
+	><div class="top"
+	><p class="src"
+	  ><span class="keyword"
+	    >data</span
+	    >  <a name="t:SVEvent" class="def"
+	    >SVEvent</a
+	    >  </p
+	  ><div class="doc"
+	  ><p
+	    >Singleton event signal vector phantom type
+</p
+	    ></div
+	  ></div
+	><div class="top"
+	><p class="src"
+	  ><span class="keyword"
+	    >data</span
+	    >  <a name="t:SVAppend" class="def"
+	    >SVAppend</a
+	    >  </p
+	  ><div class="doc"
+	  ><p
+	    >Combine two signal vector phantom types
+</p
+	    ></div
+	  ></div
+	><h1 id="g:2"
+	>Signal Vector Element Functors
+</h1
+	><div class="doc"
+	><p
+	  >These newtypes are used as higher-kinded type parameters
+ to the constructors of signal vector indices and signal vector memories,
+ which both apply the functor to each element of the signal vector
+</p
+	  ></div
+	><div class="top"
+	><p class="src"
+	  ><span class="keyword"
+	    >newtype</span
+	    >  <a name="t:Id" class="def"
+	    >Id</a
+	    > a </p
+	  ><div class="doc"
+	  ><p
+	    >&quot;Identity&quot; type constructor, for use as a functor on the element
+ types of a signal vector
+</p
+	    ></div
+	  ><div class="subs constructors"
+	  ><p class="caption"
+	    >Constructors</p
+	    ><table
+	    ><tr
+	      ><td class="src"
+		><a name="v:Id" class="def"
+		  >Id</a
+		  > a</td
+		><td class="doc empty"
+		>&nbsp;</td
+		></tr
+	      ></table
+	    ></div
+	  ></div
+	><div class="top"
+	><p class="src"
+	  ><span class="keyword"
+	    >newtype</span
+	    >  <a name="t:To" class="def"
+	    >To</a
+	    > b a </p
+	  ><div class="doc"
+	  ><p
+	    >Newtype representing a function &quot;to&quot; a value of the first type parameter,
+ from a value of the second parameter. Essentially <a href="flip.html"
+	      >flip</a
+	      > for the arrow type.
+</p
+	    ></div
+	  ><div class="subs constructors"
+	  ><p class="caption"
+	    >Constructors</p
+	    ><table
+	    ><tr
+	      ><td class="src"
+		><a name="v:To" class="def"
+		  >To</a
+		  > (a &#8594; b)</td
+		><td class="doc empty"
+		>&nbsp;</td
+		></tr
+	      ></table
+	    ></div
+	  ></div
+	><h1 id="g:3"
+	>Value Representations of Signal Vectors
+</h1
+	><div class="doc"
+	><p
+	  >These types are used in the implementation of signal functions
+ to represent values for inputs and outputs. The first parameter
+ to each type is higher-kinded, and is applied to the type at an index
+ of a signal vector to produce the actual type contained in the 
+ representation. This permits, for instance, the re-use of these
+ representations for storing output handlers in the monadic evaluator.
+</p
+	  ></div
+	><h2 id="g:4"
+	>Signal Vector Indices
+</h2
+	><div class="doc"
+	><p
+	  >Signal vector indices are representations of individual values at
+ a particular index of a signal vector. They take the type of the whole
+ signal vector, while dynamically representing which index the value
+ corresponds to, and statically ensuring that this value matches the type.
+ This representation is used internally to the implementation of signal
+ functions (module <a href="SignalFunctions.html"
+	    >SignalFunctions</a
+	    >) and is not manipulated by users.
+</p
+	  ></div
+	><h3 id="g:5"
+	>Datatype
+</h3
+	><div class="top"
+	><p class="src"
+	  ><span class="keyword"
+	    >data</span
+	    >  <a name="t:SVIndex" class="def"
+	    >SVIndex</a
+	    >  <span class="keyword"
+	    >where</span
+	    ></p
+	  ><div class="doc"
+	  ><p
+	    >A single value at an index of a signal vector
+</p
+	    ></div
+	  ><div class="subs constructors"
+	  ><p class="caption"
+	    >Constructors</p
+	    ><table
+	    ><tr
+	      ><td class="src"
+		><a name="v:SVISignal" class="def"
+		  >SVISignal</a
+		  > &#8759;  p a &#8594; <a href="SignalVectors.html#t:SVIndex"
+		  >SVIndex</a
+		  > p (<a href="SignalVectors.html#t:SVSignal"
+		  >SVSignal</a
+		  > a)</td
+		><td class="doc empty"
+		>&nbsp;</td
+		></tr
+	      ><tr
+	      ><td class="src"
+		><a name="v:SVIEvent" class="def"
+		  >SVIEvent</a
+		  > &#8759;  p a &#8594; <a href="SignalVectors.html#t:SVIndex"
+		  >SVIndex</a
+		  > p (<a href="SignalVectors.html#t:SVEvent"
+		  >SVEvent</a
+		  > a)</td
+		><td class="doc empty"
+		>&nbsp;</td
+		></tr
+	      ><tr
+	      ><td class="src"
+		><a name="v:SVILeft" class="def"
+		  >SVILeft</a
+		  > &#8759;  <a href="SignalVectors.html#t:SVIndex"
+		  >SVIndex</a
+		  > p svl &#8594; <a href="SignalVectors.html#t:SVIndex"
+		  >SVIndex</a
+		  > p (<a href="SignalVectors.html#t:SVAppend"
+		  >SVAppend</a
+		  > svl svr)</td
+		><td class="doc empty"
+		>&nbsp;</td
+		></tr
+	      ><tr
+	      ><td class="src"
+		><a name="v:SVIRight" class="def"
+		  >SVIRight</a
+		  > &#8759;  <a href="SignalVectors.html#t:SVIndex"
+		  >SVIndex</a
+		  > p svr &#8594; <a href="SignalVectors.html#t:SVIndex"
+		  >SVIndex</a
+		  > p (<a href="SignalVectors.html#t:SVAppend"
+		  >SVAppend</a
+		  > svl svr)</td
+		><td class="doc empty"
+		>&nbsp;</td
+		></tr
+	      ></table
+	    ></div
+	  ></div
+	><h3 id="g:6"
+	>Helper Functions
+</h3
+	><div class="top"
+	><p class="src"
+	  ><a name="v:indexIsEvent" class="def"
+	    >indexIsEvent</a
+	    > &#8759;  <a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p sv &#8594; Bool</p
+	  ><div class="doc"
+	  ><p
+	    >Is this particular index to an event?
+</p
+	    ></div
+	  ></div
+	><div class="top"
+	><p class="src"
+	  ><a name="v:indexIsSignal" class="def"
+	    >indexIsSignal</a
+	    > &#8759;  <a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p sv &#8594; Bool</p
+	  ><div class="doc"
+	  ><p
+	    >Is this particular index to a signal?
+</p
+	    ></div
+	  ></div
+	><div class="top"
+	><p class="src"
+	  ><a name="v:splitIndices" class="def"
+	    >splitIndices</a
+	    > &#8759;  [<a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p (<a href="SignalVectors.html#t:SVAppend"
+	    >SVAppend</a
+	    > svl svr)] &#8594; ([<a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p svl], [<a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p svr])</p
+	  ><div class="doc"
+	  ><p
+	    >Split a list of indices into lists of left and right indices
+</p
+	    ></div
+	  ></div
+	><h2 id="g:7"
+	>Signal Memories
+</h2
+	><div class="doc"
+	><p
+	  >Signal memories store values for a subset of all indices in a signal
+ vector. Signal memories are used in the implementation of 
+ signal functions (module <a href="SignalFunctions.html"
+	    >SignalFunctions</a
+	    >) but may also be manipulated
+ by the user for the specification of properties corresponding
+ to evaluated signal functions. For instance, the monadic evaluation
+ interface uses signal memories to specify output handlers for the
+ signal function being evaluated.
+</p
+	  ></div
+	><h3 id="g:8"
+	>Datatypes
+</h3
+	><div class="top"
+	><p class="src"
+	  ><span class="keyword"
+	    >data</span
+	    >  <a name="t:SMemory" class="def"
+	    >SMemory</a
+	    >  <span class="keyword"
+	    >where</span
+	    ></p
+	  ><div class="doc"
+	  ><p
+	    >A partial collection of values at indices of a signal vector
+</p
+	    ></div
+	  ><div class="subs constructors"
+	  ><p class="caption"
+	    >Constructors</p
+	    ><table
+	    ><tr
+	      ><td class="src"
+		><a name="v:SMEmpty" class="def"
+		  >SMEmpty</a
+		  > &#8759;  <a href="SignalVectors.html#t:SMemory"
+		  >SMemory</a
+		  > p sv</td
+		><td class="doc empty"
+		>&nbsp;</td
+		></tr
+	      ><tr
+	      ><td class="src"
+		><a name="v:SMSignal" class="def"
+		  >SMSignal</a
+		  > &#8759;  p a &#8594; <a href="SignalVectors.html#t:SMemory"
+		  >SMemory</a
+		  > p (<a href="SignalVectors.html#t:SVSignal"
+		  >SVSignal</a
+		  > a)</td
+		><td class="doc empty"
+		>&nbsp;</td
+		></tr
+	      ><tr
+	      ><td class="src"
+		><a name="v:SMEvent" class="def"
+		  >SMEvent</a
+		  > &#8759;  p a &#8594; <a href="SignalVectors.html#t:SMemory"
+		  >SMemory</a
+		  > p (<a href="SignalVectors.html#t:SVEvent"
+		  >SVEvent</a
+		  > a)</td
+		><td class="doc empty"
+		>&nbsp;</td
+		></tr
+	      ><tr
+	      ><td class="src"
+		><a name="v:SMBoth" class="def"
+		  >SMBoth</a
+		  > &#8759;  <a href="SignalVectors.html#t:SMemory"
+		  >SMemory</a
+		  > p svl &#8594; <a href="SignalVectors.html#t:SMemory"
+		  >SMemory</a
+		  > p svr &#8594; <a href="SignalVectors.html#t:SMemory"
+		  >SMemory</a
+		  > p (<a href="SignalVectors.html#t:SVAppend"
+		  >SVAppend</a
+		  > svl svr)</td
+		><td class="doc empty"
+		>&nbsp;</td
+		></tr
+	      ></table
+	    ></div
+	  ></div
+	><h3 id="g:9"
+	>Helper Functions
+</h3
+	><div class="top"
+	><p class="src"
+	  ><a name="v:emptySMemory" class="def"
+	    >emptySMemory</a
+	    > &#8759;  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p sv</p
+	  ><div class="doc"
+	  ><p
+	    >An empty signal memory
+</p
+	    ></div
+	  ></div
+	><div class="top"
+	><p class="src"
+	  ><a name="v:updateSMemory" class="def"
+	    >updateSMemory</a
+	    > &#8759;  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p sv &#8594; <a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p sv &#8594; <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p sv</p
+	  ><div class="doc"
+	  ><p
+	    >Update signal memory with a signal vector index
+</p
+	    ></div
+	  ></div
+	><div class="top"
+	><p class="src"
+	  ><a name="v:combineSignalMemory" class="def"
+	    >combineSignalMemory</a
+	    > &#8759;  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p vl &#8594; <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p vr &#8594; <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p (<a href="SignalVectors.html#t:SVAppend"
+	    >SVAppend</a
+	    > vl vr)</p
+	  ><div class="doc"
+	  ><p
+	    >Combine two signal memories
+</p
+	    ></div
+	  ></div
+	></div
+      ></div
+    ><div id="footer"
+    ><p
+      >Produced by <a href="http://www.haskell.org/haddock/"
+	>Haddock</a
+	> version 2.10.0</p
+      ></div
+    ></body
+  ></html
+>
