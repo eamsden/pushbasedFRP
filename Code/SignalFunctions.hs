@@ -269,24 +269,46 @@ unassociateInit = SFInit (const ([], unassociateInit)) (\change -> ((case change
 -- the first occurrence of the event on the right side of the given signal
 -- function's output, act as the signal function contained by the occurrence.
 switch :: SF NonInitialized svIn (SVAppend svOut (SVEvent (SF NonInitialized svIn svOut))) -> SF NonInitialized svIn svOut
-switch (SF memF) = SF (\mem -> let (memOut, sfInit) = memF mem 
-                               in ((case memOut of
-                                      SMEmpty -> SMEmpty
-                                      SMBoth x y -> x), switchInit mem sfInit)) 
-                     
-switchInit :: SMemory Id svIn -> SF Initialized svIn (SVAppend svOut (SVEvent (SF NonInitialized svIn svOut))) -> SF Initialized svIn svOut
-switchInit mem sf@(SFInit timeCont inputCont) = 
-  let switchInitSF = SFInit (\dt -> let (changes, newSF) = timeCont dt
-                                        (outputChanges, switchEvents) = splitIndices changes
-                                    in (outputChanges, case switchEvents of
-                                                         (SVIEvent (Id (SF memF))):_ -> let (_, sfInit) = memF mem in sfInit
-                                                         _ -> switchInitSF))
-                            (\change -> let (changes, newSF) = inputCont change
-                                            (outputChanges, switchEvents) = splitIndices changes
-                                        in (outputChanges, case switchEvents of
-                                                             (SVIEvent (Id (SF memF))):_ -> let (_, sfInit) = memF mem in sfInit
-                                                             _ -> switchInitSF))
-  in switchInitSF
+switch (SF memF) = SF (\mem -> let (sfMemOut, sf) = memF mem
+                                   memOut = case sfMemOut of
+                                              SMEmpty -> SMEmpty
+                                              SMBoth sml _ -> sml
+                               in (memOut, switchInit mem SMEmpty sf))
+
+switchInit :: SMemory Id svIn -> SMemory Id svOut -> SF Initialized svIn (SVAppend svOut (SVEvent (SF NonInitialized svIn svOut))) -> SF Initialized svIn svOut
+switchInit inputMem outputMem sf = SFInit (\dt -> let (SFInit timeCont _) = sf
+                                                      (changes, newSF) = timeCont dt
+                                                      (outputChanges, switchChanges) = splitIndices changes
+                                                  in case switchChanges of
+                                                       (SVIEvent (Id (SF memF))):_ -> let (memOut, switchedSF) = memF inputMem
+                                                                                      in (toIndices memOut, switchedSF)
+                                                       [] -> let newOutputMem = foldr (flip updateSMemory) outputMem (filter indexIsSignal outputChanges)
+                                                                 finalOutputChanges = toIndices newOutputMem ++ filter indexIsEvent outputChanges
+                                                                 nextSF = switchInit inputMem SMEmpty newSF
+                                                             in (finalOutputChanges, nextSF))
+                                          (\change -> let (SFInit _ changeCont) = sf
+                                                          (changes, newSF) = changeCont change
+                                                          (outputChanges, switchChanges) = splitIndices changes
+                                                          newOutputMem = foldr (flip updateSMemory) outputMem (filter indexIsSignal outputChanges)
+                                                          newInputMem = if indexIsSignal change then updateSMemory inputMem change else inputMem
+                                                          nextSF = case switchChanges of 
+                                                                     [] -> switchInit newInputMem newOutputMem newSF
+                                                                     (SVIEvent (Id (SF memF))):_ -> let (switchOutputMem, switchSF) = memF newInputMem
+                                                                                                        finalOutputMem = foldr (flip updateSMemory) 
+                                                                                                                         newOutputMem (toIndices switchOutputMem)
+                                                                                                    in switchWait finalOutputMem switchSF
+                                                      in (filter indexIsEvent outputChanges, nextSF))
+
+switchWait :: SMemory Id svOut -> SF Initialized svIn svOut -> SF Initialized svIn svOut
+switchWait mem (SFInit timeCont changeCont) = SFInit (\dt -> let (changes, newSF) = timeCont dt
+                                                                 finalChanges = filter indexIsEvent changes ++ 
+                                                                                toIndices (foldr (flip updateSMemory) mem (filter indexIsSignal changes))
+                                                             in (finalChanges, newSF))
+                                                     (\change -> let (changes, newSF) = changeCont change
+                                                                     newOutputMem = foldr (flip updateSMemory) mem (filter indexIsSignal changes)
+                                                                     outputChanges = filter indexIsEvent changes
+                                                                 in (outputChanges, switchWait newOutputMem newSF))
+                              
 
 
 
