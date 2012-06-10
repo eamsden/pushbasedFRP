@@ -1,4 +1,4 @@
-{-# LANGUAGE KindSignatures, EmptyDataDecls, GADTs #-}
+{-# LANGUAGE KindSignatures, EmptyDataDecls, GADTs, ScopedTypeVariables, NoMonomorphismRestriction #-}
 
 -- | Signal functions are stateful, reactive, and time-dependent entities
 -- which respond to inputs by producing outputs. Signal functions are typed
@@ -77,6 +77,15 @@ data SF :: * -> * -> * -> * where
             -> (SVIndex Id svIn -> ([SVIndex Id svOut], SF Initialized svIn svOut)) 
             -> SF Initialized svIn svOut
 
+-- Utility functions
+-- | Apply a signal function to a list of changes, producing a list of
+-- output changes and an updated signal function
+applySF :: SF Initialized svIn svOut -> [SVIndex Id svIn] -> ([SVIndex Id svOut], SF Initialized svIn svOut)
+applySF sf indices = foldr (\idx (changes, SFInit _ changeCont) -> let (newChanges, nextSF) = changeCont idx
+                                                                   in (newChanges ++ changes, nextSF))
+                     ([], sf)
+                     indices
+
 -- | Identity signal function: reproduce the input exactly as the output.
 identity :: SF NonInitialized sv sv
 identity = SF (\mem -> (mem, identityInit))
@@ -118,15 +127,11 @@ composeInit (SFInit dtCont1 inputCont1) sf2@(SFInit dtCont2 inputCont2) =
   SFInit
     (\dt -> let (sf1Outputs, newSf1) = dtCont1 dt
                 (sf2TimeOutputs, timeNewSf2) = dtCont2 dt
-                (sf2FoldOutputs, newSf2) = foldl (\(outputs, SFInit _ inputCont) idx -> let (theseOutputs, nextSF) = inputCont idx in (theseOutputs ++ outputs, nextSF))
-                                             ([], timeNewSf2)
-                                             sf1Outputs
+                (sf2FoldOutputs, newSf2) = applySF timeNewSf2  sf1Outputs
             in (sf2FoldOutputs ++ sf2TimeOutputs, composeInit newSf1 newSf2)
     )
     (\idx -> let (sf1Outputs, newSf1) = inputCont1 idx
-                 (sf2FoldOutputs, newSf2) = foldl (\(outputs, SFInit _ inputCont) idx -> let (theseOutputs, nextSF) = inputCont idx in (theseOutputs ++ outputs, nextSF))
-                                              ([], sf2)
-                                              sf1Outputs
+                 (sf2FoldOutputs, newSf2) = applySF sf2 sf1Outputs
              in (sf2FoldOutputs, composeInit newSf1 newSf2)   
     )
 
@@ -264,24 +269,46 @@ unassociateInit = SFInit (const ([], unassociateInit)) (\change -> ((case change
 -- the first occurrence of the event on the right side of the given signal
 -- function's output, act as the signal function contained by the occurrence.
 switch :: SF NonInitialized svIn (SVAppend svOut (SVEvent (SF NonInitialized svIn svOut))) -> SF NonInitialized svIn svOut
-switch (SF memF) = SF (\mem -> let (memOut, sfInit) = memF mem 
-                               in ((case memOut of
-                                      SMEmpty -> SMEmpty
-                                      SMBoth x y -> x), switchInit mem sfInit)) 
-                     
-switchInit :: SMemory Id svIn -> SF Initialized svIn (SVAppend svOut (SVEvent (SF NonInitialized svIn svOut))) -> SF Initialized svIn svOut
-switchInit mem sf@(SFInit timeCont inputCont) = 
-  let switchInitSF = SFInit (\dt -> let (changes, newSF) = timeCont dt
-                                        (outputChanges, switchEvents) = splitIndices changes
-                                    in (outputChanges, case switchEvents of
-                                                         (SVIEvent (Id (SF memF))):_ -> let (_, sfInit) = memF mem in sfInit
-                                                         _ -> switchInitSF))
-                            (\change -> let (changes, newSF) = inputCont change
-                                            (outputChanges, switchEvents) = splitIndices changes
-                                        in (outputChanges, case switchEvents of
-                                                             (SVIEvent (Id (SF memF))):_ -> let (_, sfInit) = memF mem in sfInit
-                                                             _ -> switchInitSF))
-  in switchInitSF
+switch (SF memF) = SF (\mem -> let (sfMemOut, sf) = memF mem
+                                   memOut = case sfMemOut of
+                                              SMEmpty -> SMEmpty
+                                              SMBoth sml _ -> sml
+                               in (memOut, switchInit mem SMEmpty sf))
+
+switchInit :: SMemory Id svIn -> SMemory Id svOut -> SF Initialized svIn (SVAppend svOut (SVEvent (SF NonInitialized svIn svOut))) -> SF Initialized svIn svOut
+switchInit inputMem outputMem sf = SFInit (\dt -> let (SFInit timeCont _) = sf
+                                                      (changes, newSF) = timeCont dt
+                                                      (outputChanges, switchChanges) = splitIndices changes
+                                                  in case switchChanges of
+                                                       (SVIEvent (Id (SF memF))):_ -> let (memOut, switchedSF) = memF inputMem
+                                                                                      in (toIndices memOut, switchedSF)
+                                                       [] -> let newOutputMem = foldr (flip updateSMemory) outputMem (filter indexIsSignal outputChanges)
+                                                                 finalOutputChanges = toIndices newOutputMem ++ filter indexIsEvent outputChanges
+                                                                 nextSF = switchInit inputMem SMEmpty newSF
+                                                             in (finalOutputChanges, nextSF))
+                                          (\change -> let (SFInit _ changeCont) = sf
+                                                          (changes, newSF) = changeCont change
+                                                          (outputChanges, switchChanges) = splitIndices changes
+                                                          newOutputMem = foldr (flip updateSMemory) outputMem (filter indexIsSignal outputChanges)
+                                                          newInputMem = if indexIsSignal change then updateSMemory inputMem change else inputMem
+                                                          nextSF = case switchChanges of 
+                                                                     [] -> switchInit newInputMem newOutputMem newSF
+                                                                     (SVIEvent (Id (SF memF))):_ -> let (switchOutputMem, switchSF) = memF newInputMem
+                                                                                                        finalOutputMem = foldr (flip updateSMemory) 
+                                                                                                                         newOutputMem (toIndices switchOutputMem)
+                                                                                                    in switchWait finalOutputMem switchSF
+                                                      in (filter indexIsEvent outputChanges, nextSF))
+
+switchWait :: SMemory Id svOut -> SF Initialized svIn svOut -> SF Initialized svIn svOut
+switchWait mem (SFInit timeCont changeCont) = SFInit (\dt -> let (changes, newSF) = timeCont dt
+                                                                 finalChanges = filter indexIsEvent changes ++ 
+                                                                                toIndices (foldr (flip updateSMemory) mem (filter indexIsSignal changes))
+                                                             in (finalChanges, newSF))
+                                                     (\change -> let (changes, newSF) = changeCont change
+                                                                     newOutputMem = foldr (flip updateSMemory) mem (filter indexIsSignal changes)
+                                                                     outputChanges = filter indexIsEvent changes
+                                                                 in (outputChanges, switchWait newOutputMem newSF))
+                              
 
 
 
@@ -291,37 +318,41 @@ switchInit mem sf@(SFInit timeCont inputCont) =
 -- the left output of the given signal function as the output. Use the right
 -- output of the given signal function as the right input to the given
 -- signal function, thus providing a means for a signal function to act
--- on its own output and encode a feedback loop.
+-- on its own output and encode a feedback loop. This function is decoupled
+-- for signals, meaning that a signal function will produce output that depends
+-- on the signal input at the previous time step, but not for events, meaning
+-- that feedback events will have an immediate effect. It is the programmer's
+-- responsibility to ensure that an feedback event does not result in an
+-- infinite set of resulting events.
 loop :: SF NonInitialized (SVAppend svIn svLoop) (SVAppend svOut svLoop) -> SF NonInitialized svIn svOut
-loop (SF memF) = SF (\mem -> let (memOutAndFeedback, sfInit) = memF memIn
-                                 (memOut, memFeedback) = case memOutAndFeedback of
-                                                           SMEmpty -> (SMEmpty, SMEmpty)
-                                                           (SMBoth out feedback) -> (out, feedback)
-                                 memIn = combineSignalMemory mem memFeedback
-                             in (memOut, loopInit sfInit))
+loop (SF memF) = SF (\mem -> let (memOut, sfInit) = memF (combineSignalMemory mem SMEmpty)
+                                 output = 
+                                   case memOut of
+                                     SMEmpty -> SMEmpty
+                                     SMBoth out _ -> out
+                              in (output, loopInit memOut sfInit))
 
-loopInit :: SF Initialized (SVAppend svIn svLoop) (SVAppend svOut svLoop) -> SF Initialized svIn svOut
-loopInit (SFInit timeCont idxCont) = SFInit (\dt -> let (outputs, newSF) = timeCont dt
-                                                        (newSF', outOutputs, feedbackOutputs) = foldl (\(sf@(SFInit _ inputCont), outs, feedbacks) idx -> 
-                                                                                                        case idx of
-                                                                                                          SVILeft out -> (sf, outs . (out:), feedbacks)
-                                                                                                          SVIRight feedback -> let (outputs, newSF'') = 
-                                                                                                                                    inputCont (SVIRight feedback)
-                                                                                                                               in (newSF'', outs, feedbacks ++ outputs))
-                                                                                                (newSF, id, [])
-                                                                                                (outputs ++ feedbackOutputs)
-                                                    in (outOutputs [], loopInit newSF'))
-                                            (\idx -> let (outputs, newSF) = idxCont (SVILeft idx)
-                                                         (newSF', outOutputs, feedbackOutputs) = foldl (\(sf@(SFInit _ inputCont), outs, feedbacks) idx -> 
-                                                                                                        case idx of
-                                                                                                          SVILeft out -> (sf, outs . (out:), feedbacks)
-                                                                                                          SVIRight feedback -> let (outputs, newSF'') = 
-                                                                                                                                    inputCont (SVIRight feedback)
-                                                                                                                               in (newSF'', outs, feedbacks ++ outputs))
-                                                                                                (newSF, id, [])
-                                                                                                (outputs ++ feedbackOutputs)
-                                                    in (outOutputs [], loopInit newSF')) 
-
+loopInit :: SMemory Id (SVAppend svOut svLoop) -> SF Initialized (SVAppend svIn svLoop) (SVAppend svOut svLoop) -> SF Initialized svIn svOut
+loopInit mem sf = SFInit (\dt -> let (outputMem, feedbackMem) = case mem of
+                                                                  SMEmpty -> (SMEmpty, SMEmpty)
+                                                                  SMBoth sml smr -> (sml, smr)
+                                     feedbackChanges = toIndices feedbackMem
+                                     (outputs, newSF) = applySF sf changes
+                                     (outputChanges, newFeedbackChanges) = splitIndices outputs
+                                     changes = map SVIRight (feedbackChanges ++ filter indexIsEvent newFeedbackChanges)
+                                     newFeedbackMem = foldr (flip updateSMemory) SMEmpty (filter indexIsSignal newFeedbackChanges)
+                                     finalOutputMem = foldr (flip updateSMemory) outputMem (filter indexIsSignal outputChanges)
+                                     finalOutputChanges = toIndices finalOutputMem ++ filter indexIsEvent outputChanges
+                                   in (finalOutputChanges, loopInit (combineSignalMemory SMEmpty newFeedbackMem) newSF))
+                         (\change -> let (SFInit _ changeCont) = sf
+                                         (outputChanges, changedSF) = changeCont $ SVILeft change
+                                         (outputs, newSF) = applySF changedSF routedFeedbackChanges
+                                         combinedChanges = outputChanges ++ outputs
+                                         newMem = foldr (flip updateSMemory) mem (filter indexIsSignal combinedChanges)
+                                         (finalOutputChanges, feedbackChanges) = splitIndices (filter indexIsEvent combinedChanges)
+                                         routedFeedbackChanges = map SVIRight feedbackChanges
+                                      in (finalOutputChanges, loopInit newMem newSF))
+                                          
 
 
 -- | With an empty input, produce the time since the signal function began
