@@ -113,6 +113,14 @@ combineSignalMemory SMEmpty SMEmpty = SMEmpty
 combineSignalMemory SMEmpty x = SMBoth SMEmpty x
 combineSignalMemory x y = SMBoth x y
 
+-- | Merge two signal memories, given priority 
+updateWithSMemory :: SMemory p v -> SMemory p v -> SMemory p v
+updateWithSMemory SMEmpty mem = mem
+updateWithSMemory mem SMEmpty = mem
+updateWithSMemory (SMBoth meml memr) (SMBoth meml' memr') = SMBoth (updateWithSMemory meml meml') (updateWithSMemory memr memr')
+updateWithSMemory sms@(SMSignal _) _ = sms
+updateWithSMemory sme@(SMEvent _) _ = sme
+
 -- | Create a list of signal vector indices from a signal memory
 toIndices :: SMemory p v -> [SVIndex p v]
 toIndices SMEmpty = []
