@@ -60,6 +60,7 @@ module SignalVectors
     -- *** Helper Functions
     emptySMemory,
     updateSMemory,
+    updateWithSMemory,
     combineSignalMemory,
     toIndices
   )
