@@ -155,7 +155,7 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	    >To</a
 	    > b a = <a href="#v:To"
 	    >To</a
-	    > (a &#8594; b)</li
+	    > (a -&gt; b)</li
 	  ><li class="src short"
 	  ><span class="keyword"
 	    >data</span
@@ -167,7 +167,7 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	    ><li
 	      ><a href="#v:SVISignal"
 		>SVISignal</a
-		> &#8759;  p a &#8594; <a href="SignalVectors.html#t:SVIndex"
+		> ::  p a -&gt; <a href="SignalVectors.html#t:SVIndex"
 		>SVIndex</a
 		> p (<a href="SignalVectors.html#t:SVSignal"
 		>SVSignal</a
@@ -175,7 +175,7 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><li
 	      ><a href="#v:SVIEvent"
 		>SVIEvent</a
-		> &#8759;  p a &#8594; <a href="SignalVectors.html#t:SVIndex"
+		> ::  p a -&gt; <a href="SignalVectors.html#t:SVIndex"
 		>SVIndex</a
 		> p (<a href="SignalVectors.html#t:SVEvent"
 		>SVEvent</a
@@ -183,9 +183,9 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><li
 	      ><a href="#v:SVILeft"
 		>SVILeft</a
-		> &#8759;  <a href="SignalVectors.html#t:SVIndex"
+		> ::  <a href="SignalVectors.html#t:SVIndex"
 		>SVIndex</a
-		> p svl &#8594; <a href="SignalVectors.html#t:SVIndex"
+		> p svl -&gt; <a href="SignalVectors.html#t:SVIndex"
 		>SVIndex</a
 		> p (<a href="SignalVectors.html#t:SVAppend"
 		>SVAppend</a
@@ -193,9 +193,9 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><li
 	      ><a href="#v:SVIRight"
 		>SVIRight</a
-		> &#8759;  <a href="SignalVectors.html#t:SVIndex"
+		> ::  <a href="SignalVectors.html#t:SVIndex"
 		>SVIndex</a
-		> p svr &#8594; <a href="SignalVectors.html#t:SVIndex"
+		> p svr -&gt; <a href="SignalVectors.html#t:SVIndex"
 		>SVIndex</a
 		> p (<a href="SignalVectors.html#t:SVAppend"
 		>SVAppend</a
@@ -205,23 +205,23 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	  ><li class="src short"
 	  ><a href="#v:indexIsEvent"
 	    >indexIsEvent</a
-	    > &#8759;  <a href="SignalVectors.html#t:SVIndex"
+	    > ::  <a href="SignalVectors.html#t:SVIndex"
 	    >SVIndex</a
-	    > p sv &#8594; Bool</li
+	    > p sv -&gt; Bool</li
 	  ><li class="src short"
 	  ><a href="#v:indexIsSignal"
 	    >indexIsSignal</a
-	    > &#8759;  <a href="SignalVectors.html#t:SVIndex"
+	    > ::  <a href="SignalVectors.html#t:SVIndex"
 	    >SVIndex</a
-	    > p sv &#8594; Bool</li
+	    > p sv -&gt; Bool</li
 	  ><li class="src short"
 	  ><a href="#v:splitIndices"
 	    >splitIndices</a
-	    > &#8759;  [<a href="SignalVectors.html#t:SVIndex"
+	    > ::  [<a href="SignalVectors.html#t:SVIndex"
 	    >SVIndex</a
 	    > p (<a href="SignalVectors.html#t:SVAppend"
 	    >SVAppend</a
-	    > svl svr)] &#8594; ([<a href="SignalVectors.html#t:SVIndex"
+	    > svl svr)] -&gt; ([<a href="SignalVectors.html#t:SVIndex"
 	    >SVIndex</a
 	    > p svl], [<a href="SignalVectors.html#t:SVIndex"
 	    >SVIndex</a
@@ -237,13 +237,13 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	    ><li
 	      ><a href="#v:SMEmpty"
 		>SMEmpty</a
-		> &#8759;  <a href="SignalVectors.html#t:SMemory"
+		> ::  <a href="SignalVectors.html#t:SMemory"
 		>SMemory</a
 		> p sv  </li
 	      ><li
 	      ><a href="#v:SMSignal"
 		>SMSignal</a
-		> &#8759;  p a &#8594; <a href="SignalVectors.html#t:SMemory"
+		> ::  p a -&gt; <a href="SignalVectors.html#t:SMemory"
 		>SMemory</a
 		> p (<a href="SignalVectors.html#t:SVSignal"
 		>SVSignal</a
@@ -251,7 +251,7 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><li
 	      ><a href="#v:SMEvent"
 		>SMEvent</a
-		> &#8759;  p a &#8594; <a href="SignalVectors.html#t:SMemory"
+		> ::  p a -&gt; <a href="SignalVectors.html#t:SMemory"
 		>SMemory</a
 		> p (<a href="SignalVectors.html#t:SVEvent"
 		>SVEvent</a
@@ -259,11 +259,11 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><li
 	      ><a href="#v:SMBoth"
 		>SMBoth</a
-		> &#8759;  <a href="SignalVectors.html#t:SMemory"
+		> ::  <a href="SignalVectors.html#t:SMemory"
 		>SMemory</a
-		> p svl &#8594; <a href="SignalVectors.html#t:SMemory"
+		> p svl -&gt; <a href="SignalVectors.html#t:SMemory"
 		>SMemory</a
-		> p svr &#8594; <a href="SignalVectors.html#t:SMemory"
+		> p svr -&gt; <a href="SignalVectors.html#t:SMemory"
 		>SMemory</a
 		> p (<a href="SignalVectors.html#t:SVAppend"
 		>SVAppend</a
@@ -273,31 +273,49 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	  ><li class="src short"
 	  ><a href="#v:emptySMemory"
 	    >emptySMemory</a
-	    > &#8759;  <a href="SignalVectors.html#t:SMemory"
+	    > ::  <a href="SignalVectors.html#t:SMemory"
 	    >SMemory</a
 	    > p sv</li
 	  ><li class="src short"
 	  ><a href="#v:updateSMemory"
 	    >updateSMemory</a
-	    > &#8759;  <a href="SignalVectors.html#t:SMemory"
+	    > ::  <a href="SignalVectors.html#t:SMemory"
 	    >SMemory</a
-	    > p sv &#8594; <a href="SignalVectors.html#t:SVIndex"
+	    > p sv -&gt; <a href="SignalVectors.html#t:SVIndex"
 	    >SVIndex</a
-	    > p sv &#8594; <a href="SignalVectors.html#t:SMemory"
+	    > p sv -&gt; <a href="SignalVectors.html#t:SMemory"
 	    >SMemory</a
 	    > p sv</li
 	  ><li class="src short"
+	  ><a href="#v:updateWithSMemory"
+	    >updateWithSMemory</a
+	    > ::  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p v -&gt; <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p v -&gt; <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p v</li
+	  ><li class="src short"
 	  ><a href="#v:combineSignalMemory"
 	    >combineSignalMemory</a
-	    > &#8759;  <a href="SignalVectors.html#t:SMemory"
+	    > ::  <a href="SignalVectors.html#t:SMemory"
 	    >SMemory</a
-	    > p vl &#8594; <a href="SignalVectors.html#t:SMemory"
+	    > p vl -&gt; <a href="SignalVectors.html#t:SMemory"
 	    >SMemory</a
-	    > p vr &#8594; <a href="SignalVectors.html#t:SMemory"
+	    > p vr -&gt; <a href="SignalVectors.html#t:SMemory"
 	    >SMemory</a
 	    > p (<a href="SignalVectors.html#t:SVAppend"
 	    >SVAppend</a
 	    > vl vr)</li
+	  ><li class="src short"
+	  ><a href="#v:toIndices"
+	    >toIndices</a
+	    > ::  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p v -&gt; [<a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p v]</li
 	  ></ul
 	></div
       ><div id="interface"
@@ -427,7 +445,7 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><td class="src"
 		><a name="v:To" class="def"
 		  >To</a
-		  > (a &#8594; b)</td
+		  > (a -&gt; b)</td
 		><td class="doc empty"
 		>&nbsp;</td
 		></tr
@@ -487,7 +505,7 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><td class="src"
 		><a name="v:SVISignal" class="def"
 		  >SVISignal</a
-		  > &#8759;  p a &#8594; <a href="SignalVectors.html#t:SVIndex"
+		  > ::  p a -&gt; <a href="SignalVectors.html#t:SVIndex"
 		  >SVIndex</a
 		  > p (<a href="SignalVectors.html#t:SVSignal"
 		  >SVSignal</a
@@ -499,7 +517,7 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><td class="src"
 		><a name="v:SVIEvent" class="def"
 		  >SVIEvent</a
-		  > &#8759;  p a &#8594; <a href="SignalVectors.html#t:SVIndex"
+		  > ::  p a -&gt; <a href="SignalVectors.html#t:SVIndex"
 		  >SVIndex</a
 		  > p (<a href="SignalVectors.html#t:SVEvent"
 		  >SVEvent</a
@@ -511,9 +529,9 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><td class="src"
 		><a name="v:SVILeft" class="def"
 		  >SVILeft</a
-		  > &#8759;  <a href="SignalVectors.html#t:SVIndex"
+		  > ::  <a href="SignalVectors.html#t:SVIndex"
 		  >SVIndex</a
-		  > p svl &#8594; <a href="SignalVectors.html#t:SVIndex"
+		  > p svl -&gt; <a href="SignalVectors.html#t:SVIndex"
 		  >SVIndex</a
 		  > p (<a href="SignalVectors.html#t:SVAppend"
 		  >SVAppend</a
@@ -525,9 +543,9 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><td class="src"
 		><a name="v:SVIRight" class="def"
 		  >SVIRight</a
-		  > &#8759;  <a href="SignalVectors.html#t:SVIndex"
+		  > ::  <a href="SignalVectors.html#t:SVIndex"
 		  >SVIndex</a
-		  > p svr &#8594; <a href="SignalVectors.html#t:SVIndex"
+		  > p svr -&gt; <a href="SignalVectors.html#t:SVIndex"
 		  >SVIndex</a
 		  > p (<a href="SignalVectors.html#t:SVAppend"
 		  >SVAppend</a
@@ -545,9 +563,9 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	><p class="src"
 	  ><a name="v:indexIsEvent" class="def"
 	    >indexIsEvent</a
-	    > &#8759;  <a href="SignalVectors.html#t:SVIndex"
+	    > ::  <a href="SignalVectors.html#t:SVIndex"
 	    >SVIndex</a
-	    > p sv &#8594; Bool</p
+	    > p sv -&gt; Bool</p
 	  ><div class="doc"
 	  ><p
 	    >Is this particular index to an event?
@@ -558,9 +576,9 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	><p class="src"
 	  ><a name="v:indexIsSignal" class="def"
 	    >indexIsSignal</a
-	    > &#8759;  <a href="SignalVectors.html#t:SVIndex"
+	    > ::  <a href="SignalVectors.html#t:SVIndex"
 	    >SVIndex</a
-	    > p sv &#8594; Bool</p
+	    > p sv -&gt; Bool</p
 	  ><div class="doc"
 	  ><p
 	    >Is this particular index to a signal?
@@ -571,11 +589,11 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	><p class="src"
 	  ><a name="v:splitIndices" class="def"
 	    >splitIndices</a
-	    > &#8759;  [<a href="SignalVectors.html#t:SVIndex"
+	    > ::  [<a href="SignalVectors.html#t:SVIndex"
 	    >SVIndex</a
 	    > p (<a href="SignalVectors.html#t:SVAppend"
 	    >SVAppend</a
-	    > svl svr)] &#8594; ([<a href="SignalVectors.html#t:SVIndex"
+	    > svl svr)] -&gt; ([<a href="SignalVectors.html#t:SVIndex"
 	    >SVIndex</a
 	    > p svl], [<a href="SignalVectors.html#t:SVIndex"
 	    >SVIndex</a
@@ -627,7 +645,7 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><td class="src"
 		><a name="v:SMEmpty" class="def"
 		  >SMEmpty</a
-		  > &#8759;  <a href="SignalVectors.html#t:SMemory"
+		  > ::  <a href="SignalVectors.html#t:SMemory"
 		  >SMemory</a
 		  > p sv</td
 		><td class="doc empty"
@@ -637,7 +655,7 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><td class="src"
 		><a name="v:SMSignal" class="def"
 		  >SMSignal</a
-		  > &#8759;  p a &#8594; <a href="SignalVectors.html#t:SMemory"
+		  > ::  p a -&gt; <a href="SignalVectors.html#t:SMemory"
 		  >SMemory</a
 		  > p (<a href="SignalVectors.html#t:SVSignal"
 		  >SVSignal</a
@@ -649,7 +667,7 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><td class="src"
 		><a name="v:SMEvent" class="def"
 		  >SMEvent</a
-		  > &#8759;  p a &#8594; <a href="SignalVectors.html#t:SMemory"
+		  > ::  p a -&gt; <a href="SignalVectors.html#t:SMemory"
 		  >SMemory</a
 		  > p (<a href="SignalVectors.html#t:SVEvent"
 		  >SVEvent</a
@@ -661,11 +679,11 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	      ><td class="src"
 		><a name="v:SMBoth" class="def"
 		  >SMBoth</a
-		  > &#8759;  <a href="SignalVectors.html#t:SMemory"
+		  > ::  <a href="SignalVectors.html#t:SMemory"
 		  >SMemory</a
-		  > p svl &#8594; <a href="SignalVectors.html#t:SMemory"
+		  > p svl -&gt; <a href="SignalVectors.html#t:SMemory"
 		  >SMemory</a
-		  > p svr &#8594; <a href="SignalVectors.html#t:SMemory"
+		  > p svr -&gt; <a href="SignalVectors.html#t:SMemory"
 		  >SMemory</a
 		  > p (<a href="SignalVectors.html#t:SVAppend"
 		  >SVAppend</a
@@ -683,7 +701,7 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	><p class="src"
 	  ><a name="v:emptySMemory" class="def"
 	    >emptySMemory</a
-	    > &#8759;  <a href="SignalVectors.html#t:SMemory"
+	    > ::  <a href="SignalVectors.html#t:SMemory"
 	    >SMemory</a
 	    > p sv</p
 	  ><div class="doc"
@@ -696,11 +714,11 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	><p class="src"
 	  ><a name="v:updateSMemory" class="def"
 	    >updateSMemory</a
-	    > &#8759;  <a href="SignalVectors.html#t:SMemory"
+	    > ::  <a href="SignalVectors.html#t:SMemory"
 	    >SMemory</a
-	    > p sv &#8594; <a href="SignalVectors.html#t:SVIndex"
+	    > p sv -&gt; <a href="SignalVectors.html#t:SVIndex"
 	    >SVIndex</a
-	    > p sv &#8594; <a href="SignalVectors.html#t:SMemory"
+	    > p sv -&gt; <a href="SignalVectors.html#t:SMemory"
 	    >SMemory</a
 	    > p sv</p
 	  ><div class="doc"
@@ -711,13 +729,30 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	  ></div
 	><div class="top"
 	><p class="src"
+	  ><a name="v:updateWithSMemory" class="def"
+	    >updateWithSMemory</a
+	    > ::  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p v -&gt; <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p v -&gt; <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p v</p
+	  ><div class="doc"
+	  ><p
+	    >Merge two signal memories, given priority 
+</p
+	    ></div
+	  ></div
+	><div class="top"
+	><p class="src"
 	  ><a name="v:combineSignalMemory" class="def"
 	    >combineSignalMemory</a
-	    > &#8759;  <a href="SignalVectors.html#t:SMemory"
+	    > ::  <a href="SignalVectors.html#t:SMemory"
 	    >SMemory</a
-	    > p vl &#8594; <a href="SignalVectors.html#t:SMemory"
+	    > p vl -&gt; <a href="SignalVectors.html#t:SMemory"
 	    >SMemory</a
-	    > p vr &#8594; <a href="SignalVectors.html#t:SMemory"
+	    > p vr -&gt; <a href="SignalVectors.html#t:SMemory"
 	    >SMemory</a
 	    > p (<a href="SignalVectors.html#t:SVAppend"
 	    >SVAppend</a
@@ -725,6 +760,21 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	  ><div class="doc"
 	  ><p
 	    >Combine two signal memories
+</p
+	    ></div
+	  ></div
+	><div class="top"
+	><p class="src"
+	  ><a name="v:toIndices" class="def"
+	    >toIndices</a
+	    > ::  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > p v -&gt; [<a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > p v]</p
+	  ><div class="doc"
+	  ><p
+	    >Create a list of signal vector indices from a signal memory
 </p
 	    ></div
 	  ></div
