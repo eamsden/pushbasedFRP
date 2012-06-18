@@ -316,6 +316,30 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	    > p v -&gt; [<a href="SignalVectors.html#t:SVIndex"
 	    >SVIndex</a
 	    > p v]</li
+	  ><li class="src short"
+	  ><a href="#v:applySMTo"
+	    >applySMTo</a
+	    > ::  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > (<a href="SignalVectors.html#t:To"
+	    >To</a
+	    > a) sv -&gt; [<a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > <a href="SignalVectors.html#t:Id"
+	    >Id</a
+	    > sv] -&gt; [a]</li
+	  ><li class="src short"
+	  ><a href="#v:applySMToSM"
+	    >applySMToSM</a
+	    > ::  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > (<a href="SignalVectors.html#t:To"
+	    >To</a
+	    > a) sv -&gt; <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > <a href="SignalVectors.html#t:Id"
+	    >Id</a
+	    > sv -&gt; [a]</li
 	  ></ul
 	></div
       ><div id="interface"
@@ -775,6 +799,45 @@ window.onload = function () {pageLoad();setSynopsis("mini_SignalVectors.html");}
 	  ><div class="doc"
 	  ><p
 	    >Create a list of signal vector indices from a signal memory
+</p
+	    ></div
+	  ></div
+	><div class="top"
+	><p class="src"
+	  ><a name="v:applySMTo" class="def"
+	    >applySMTo</a
+	    > ::  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > (<a href="SignalVectors.html#t:To"
+	    >To</a
+	    > a) sv -&gt; [<a href="SignalVectors.html#t:SVIndex"
+	    >SVIndex</a
+	    > <a href="SignalVectors.html#t:Id"
+	    >Id</a
+	    > sv] -&gt; [a]</p
+	  ><div class="doc"
+	  ><p
+	    >Apply a signal memory holding functions to signal indices holding values
+</p
+	    ></div
+	  ></div
+	><div class="top"
+	><p class="src"
+	  ><a name="v:applySMToSM" class="def"
+	    >applySMToSM</a
+	    > ::  <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > (<a href="SignalVectors.html#t:To"
+	    >To</a
+	    > a) sv -&gt; <a href="SignalVectors.html#t:SMemory"
+	    >SMemory</a
+	    > <a href="SignalVectors.html#t:Id"
+	    >Id</a
+	    > sv -&gt; [a]</p
+	  ><div class="doc"
+	  ><p
+	    >Apply a signal memory holding functions to a signal memory holding values,
+ producing a list of values.
 </p
 	    ></div
 	  ></div
