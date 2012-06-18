@@ -1,4 +1,4 @@
-{-# LANGUAGE KindSignatures, EmptyDataDecls, GADTs, ScopedTypeVariables, NoMonomorphismRestriction #-}
+{-# LANGUAGE KindSignatures, EmptyDataDecls, GADTs, ScopedTypeVariables, NoMonomorphismRestriction, GeneralizedNewtypeDeriving #-}
 
 -- | Signal functions are stateful, reactive, and time-dependent entities
 -- which respond to inputs by producing outputs. Signal functions are typed
@@ -54,9 +54,37 @@ module SignalFunctions (
   integrate,
   -- * Joining
   union,
-  combineSignals
+  combineSignals,
+  -- * Evaluation
+  SignalDelta,
+  sd,
+  sdLeft,
+  sdRight,
+  sdBoth,
+  EventOccurrence,
+  eo,
+  eoLeft,
+  eoRight,
+  HandlerSet,
+  sdHS,
+  eoHS,
+  hsLeft,
+  hsRight,
+  hsBoth,
+  SFEvalT,
+  SFEvalIO,
+  SFEvalState,
+  runSFEvalT,
+  initSFEval,
+  push,
+  sample
   
 ) where
+
+import Control.Applicative
+import Control.Monad.IO.Class
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.State
 
 import SignalVectors
 
@@ -464,3 +492,103 @@ combineSignalsInit f currentMem =
                   (\_ -> ([], sf))
   in sf
 
+-- | SFEvalState
+data SFEvalState m svIn svOut = SFEvalState { 
+                                esSF :: SF Initialized svIn svOut,
+                                esOutputHandlers :: SMemory (To (m ())) svOut
+                              }
+
+-- | A monad for evaluating signal functions
+newtype SFEvalT svIn svOut m a = SFEvalT (StateT (SFEvalState m svIn svOut) m a) deriving (Functor, Applicative, Monad, MonadIO)
+
+instance MonadTrans (SFEvalT svIn svOut) where
+  lift = SFEvalT . lift
+
+-- | The most likely use case:
+type SFEvalIO svIn svOut a = SFEvalT svIn svOut IO a
+
+-- | Descriptors of signal changes for a time step
+newtype SignalDelta sv = SignalDelta (SMemory Id sv)
+
+-- | Create a signal delta for a singleton input
+sd :: a -> SignalDelta (SVSignal a)
+sd = SignalDelta . SMSignal . Id
+
+-- | Use this signal delta for only the left input
+sdLeft :: SignalDelta svl -> SignalDelta (SVAppend svl svr)
+sdLeft (SignalDelta sml) = SignalDelta $ combineSignalMemory sml SMEmpty 
+
+-- | Use this signal delta for only the right input
+sdRight :: SignalDelta svr -> SignalDelta (SVAppend svl svr)
+sdRight (SignalDelta smr) = SignalDelta $ combineSignalMemory SMEmpty smr
+
+-- | Use these signal deltas for the left and right inputs, respectively
+sdBoth :: SignalDelta svl -> SignalDelta svr -> SignalDelta (SVAppend svl svr)
+sdBoth (SignalDelta sml) (SignalDelta smr) = SignalDelta $ combineSignalMemory sml smr
+
+-- | Descriptors of event occurrences
+newtype EventOccurrence sv = EventOccurrence (SVIndex Id sv)
+
+-- | Create an event occurrence to push
+eo :: a -> EventOccurrence (SVEvent a)
+eo = EventOccurrence . SVIEvent . Id
+
+-- | Route an event occurrence left
+eoLeft :: EventOccurrence svl -> EventOccurrence (SVAppend svl svr)
+eoLeft (EventOccurrence svi) = EventOccurrence (SVILeft svi)
+
+-- | Route an event occurrence right
+eoRight :: EventOccurrence svr -> EventOccurrence (SVAppend svl svr)
+eoRight (EventOccurrence svr) = EventOccurrence (SVIRight svr)
+
+-- | A set of actions to handle SF outputs. These outputs may be
+-- the components of a signal delta or may be event occurrences.
+newtype HandlerSet sv m = HandlerSet (SMemory (To (m ())) sv)
+
+-- | A handler for a signal delta output
+sdHS :: (a -> m ()) -> HandlerSet (SVSignal a) m
+sdHS = HandlerSet . SMSignal . To
+
+-- | A handler for an event occurrence output
+eoHS :: (a -> m()) -> HandlerSet (SVEvent a) m
+eoHS = HandlerSet . SMEvent . To
+
+-- | Use the given handler for the left side of the output, and do not handle
+-- the right.
+hsLeft :: HandlerSet svl m -> HandlerSet (SVAppend svl svr) m
+hsLeft (HandlerSet sm) = HandlerSet $ combineSignalMemory sm SMEmpty
+
+-- | Use the given handler for the right side of the output, and do not handle
+-- left side.
+hsRight :: HandlerSet svr m -> HandlerSet (SVAppend svl svr) m
+hsRight (HandlerSet sm) = HandlerSet $ combineSignalMemory SMEmpty sm
+
+-- | Use the given handlers for the left and right sides of the output,
+-- respectively.
+hsBoth :: HandlerSet svl m -> HandlerSet svr m -> HandlerSet (SVAppend svl svr) m
+hsBoth (HandlerSet sml) (HandlerSet smr) = HandlerSet $ combineSignalMemory sml smr
+
+-- | Initialize the evaluation of a signal function, producing an SFEvalState.
+initSFEval :: HandlerSet svOut m -> SF NonInitialized svIn svOut -> SFEvalState m svIn svOut
+initSFEval (HandlerSet handlerMem) (SF memF) = let (_, sf) = memF SMEmpty in SFEvalState sf handlerMem
+
+-- | Evaluate a signal function, whose current state is stored in an SFEvalState.
+runSFEvalT :: SFEvalT svIn svOut m a -> SFEvalState m svIn svOut -> m (a, SFEvalState m svIn svOut)
+runSFEvalT  (SFEvalT m) sfES = runStateT m sfES
+
+-- | Push an event occurrence into the input of the signal function
+push :: (Monad m) => EventOccurrence svIn -> SFEvalT svIn svOut m ()
+push (EventOccurrence svi) = SFEvalT $ do
+  (SFEvalState (SFInit _ changeCont) handlerMem) <- get
+  let (changes, newSF) = changeCont svi
+  lift $ sequence $ applySMTo handlerMem changes
+  put (SFEvalState newSF handlerMem)
+
+-- | Sample the signal function
+sample :: (Monad m) => Double -> SignalDelta svIn -> SFEvalT svIn svOut m ()
+sample dt (SignalDelta deltaIn) = SFEvalT $ do
+  (SFEvalState (SFInit timeCont _) handlerMem) <- get
+  let (deltaOut, changes, newSF) = timeCont dt deltaIn
+  lift $ sequence $ applySMToSM handlerMem deltaOut
+  lift $ sequence $ applySMTo handlerMem changes
+  put (SFEvalState newSF handlerMem)

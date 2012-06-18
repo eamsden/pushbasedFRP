@@ -62,7 +62,9 @@ module SignalVectors
     updateSMemory,
     updateWithSMemory,
     combineSignalMemory,
-    toIndices
+    toIndices,
+    applySMTo,
+    applySMToSM
   )
   where
 
@@ -150,3 +152,20 @@ splitIndices ((SVILeft x):idxs) = let (xs, ys) = splitIndices idxs
                                 in (x:xs, ys)
 splitIndices ((SVIRight y):idxs) = let (xs, ys) = splitIndices idxs
                                  in (xs, y:ys)
+
+-- | Apply a signal memory holding functions to signal indices holding values
+applySMTo :: SMemory (To a) sv -> [SVIndex Id sv] -> [a]
+applySMTo (SMSignal (To f)) idxs = map (\(SVISignal (Id x)) -> f x) idxs
+applySMTo (SMEvent (To f)) idxs = map (\(SVIEvent (Id x)) -> f x) idxs
+applySMTo (SMBoth sml smr) idxs = let (leftidxs, rightidxs) = splitIndices idxs
+                                  in applySMTo sml leftidxs ++ applySMTo smr rightidxs
+applySMTo SMEmpty _ = []
+
+-- | Apply a signal memory holding functions to a signal memory holding values,
+-- producing a list of values.
+applySMToSM :: SMemory (To a) sv -> SMemory Id sv -> [a]
+applySMToSM _ SMEmpty = []
+applySMToSM SMEmpty _ = []
+applySMToSM (SMSignal (To f)) (SMSignal (Id x)) = [f x]
+applySMToSM (SMEvent (To f)) (SMEvent (Id x)) = [f x]
+applySMToSM (SMBoth sml smr) (SMBoth sml' smr') = applySMToSM sml sml' ++ applySMToSM smr smr'
