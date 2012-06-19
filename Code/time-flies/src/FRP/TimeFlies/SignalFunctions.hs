@@ -22,9 +22,13 @@
 
 module FRP.TimeFlies.SignalFunctions (
   -- * Datatypes
-  SF(),
+  SF,
   NonInitialized,
   Initialized,
+  SVEmpty,
+  SVSignal,
+  SVEvent,
+  SVAppend,
   -- * Basic signal functions
   identity,
   -- * Lifting
