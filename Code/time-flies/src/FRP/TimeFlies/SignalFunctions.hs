@@ -20,7 +20,7 @@
 -- while (in that context) /signal function/ will refer to the signal function
 -- produced by a combinator.
 
-module SignalFunctions (
+module FRP.TimeFlies.SignalFunctions (
   -- * Datatypes
   SF(),
   NonInitialized,
@@ -86,7 +86,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 
-import SignalVectors
+import FRP.TimeFlies.SignalVectors
 
 -- | Signal function running or suspended
 data Initialized :: *

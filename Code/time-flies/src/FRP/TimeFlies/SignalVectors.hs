@@ -3,7 +3,7 @@
 -- of the input and output structure of signal functions, and value
 -- representations typed with signal vectors for use in implementing
 -- signal functions.
-module SignalVectors
+module FRP.TimeFlies.SignalVectors
   (
     -- * Type Representation of Signal Vectors
     -- | A signal vector is a type which describes
