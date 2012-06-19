@@ -68,13 +68,13 @@ module FRP.TimeFlies.SignalVectors
   )
   where
 
--- | Empty signal vector phantom type
+-- | Empty signal vector type
 data SVEmpty  :: *
--- | Singleton signal signal vector phantom type
+-- | Singleton signal signal vector type
 data SVSignal :: * -> *
--- | Singleton event signal vector phantom type
+-- | Singleton event signal vector type
 data SVEvent  :: * -> *
--- | Combine two signal vector phantom types
+-- | Combine two signal vector types
 data SVAppend :: * -> * -> *
 
 -- | \"Identity\" type constructor, for use as a functor on the element
