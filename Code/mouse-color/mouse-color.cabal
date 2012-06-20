@@ -22,4 +22,6 @@ executable mouse-color
   build-depends:       base >= 4.5 && < 4.6,
                        GLUT >= 2.3 && < 2.5,
                        OpenGL >= 2.5 && < 2.6,
-                       time-flies >= 0.1 && < 0.2
+                       time-flies >= 0.1 && < 0.2,
+                       time       >= 1.4 && < 1.5,
+                       transformers
