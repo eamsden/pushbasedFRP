@@ -1,0 +1,12 @@
+\chapter{Introduction}
+\label{chapter:Introduction}
+
+It is common when considering computation to simplify programs to simple
+functions from one input to one output. Alas, this simplication generally does
+not hold for even the simplest applications of programming. Most applications
+demand that a program respond to multiple inputs and produce multiple outputs
+scattered through time. 
+
+The common model for such programs consists of an event loop which maintains a
+queue of input events. These events are then fed to event handlers which perform
+various observable actions and mutate the state of the application.

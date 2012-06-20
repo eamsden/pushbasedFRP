@@ -44,7 +44,7 @@
 
 \author{Edward Amsden}    % Required
 
-\address{305A Perkins Rd \\ Rochester, New York 14623}  % Required
+\address{13567 McCartyville Road \\ Anna, Ohio 45302}  % Required
 
 \title{Push-Based Signal-Function Functional Reactive Programming}
                                                     % Required
@@ -95,20 +95,20 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%\previousdegrees{B.E.}
+\previousdegrees{}
      % The abbreviated form of your previous degree(s).
      % E.g., \previousdegrees{B.S., MBA}.
      %
      % The default value is `B.S., M.S.'
 
-%\graduationmonth{...}
+\graduationmonth{August}
      % Graduation month, either May, August, or December, in the form
      % as `\graduationmonth{May}'. Do not abbreviate.
      %
      % The default value (either May, August, or December) is guessed
      % according to the time of running LaTeX.
 
-%\graduationyear{...}
+\graduationyear{2012}
      % Graduation year, in the form as `\graduationyear{2001}'.
      % Use a 4 digit (not a 2 digit) number.
      %
@@ -251,12 +251,12 @@
 %   If you are writing a masters thesis or report, you MUST REVERSE
 %   the order of the \commcertpage and \titlepage commands below.
 %
+\titlepage              % Produces the title page.
 \commcertpage           % Produces the Committee Certification
             %   of Approved Version page (doctoral)
             %   or Signature page (masters).
             %       20 Mar 2002 cwm
 
-\titlepage              % Produces the title page.
 
 
 
@@ -285,7 +285,7 @@ fail me to tell of \ldots
 \utabstract
 \index{Abstract}%
 \indent
-%\input{abstract}
+\input{abstract}
 
 
 
@@ -311,14 +311,12 @@ fail me to tell of \ldots
 % dissertation).
 %
 
-%\include{abstract}
-%\include{introduction}
-%\include{background}
-%\include{semantics.tex}
-%\include{implementation.tex}
-%\include{comparison.tex}
-%\include{conclustion.tex}
-%\include{furtherwork.tex}
+\input{introduction}
+\input{background}
+\input{semantics}
+\input{implementation}
+\input{comparison}
+\input{conclusions-and-further-work}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -348,7 +346,7 @@ fail me to tell of \ldots
 %   this section.                            %
 %                                    %
 %
-\nocite{*}      % This command causes all items in the           %
+%\nocite{*}      % This command causes all items in the           %
                 % bibliographic database to be added to          %
                 % the bibliography, even if they are not         %
                 % explicitly cited in the text.              %
@@ -380,11 +378,11 @@ fail me to tell of \ldots
 % Vita page.                                 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{vita}
-Edward Amsden was born in Dayton, Ohio on July 21, 1990, to Andrew and
-Vivian Amsden. He is currently pursuing his B.S. and M.S. degrees
-concurrently at the Rochester Institute of Technology. Once his
-M.S. is completed, he plans to begin his Ph. D. at Indiana University.
-His research interests include functional programming languages,
-concurrency and parallelism, computer graphics, and computer audio. 
+Edward Amsden was born in Dayton, Ohio in the year 1990, to Andrew and
+Vivian Amsden. He is pursuing concurrent B.S. and M.S. degrees at the Rochester
+Institute of Technology. Once his M.S. is completed, he plans to begin his
+Ph.~D. at Indiana University. His research interests include functional
+programming languages, concurrency and parallelism, computer graphics, and
+computer audio. 
 \end{vita}
 \end{document}
