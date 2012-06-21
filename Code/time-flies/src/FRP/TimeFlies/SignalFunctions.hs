@@ -81,6 +81,7 @@ module FRP.TimeFlies.SignalFunctions (
   runSFEvalT,
   initSFEval,
   push,
+  update,
   sample
   
 ) where
@@ -498,9 +499,11 @@ combineSignalsInit f currentMem =
 
 -- | SFEvalState
 data SFEvalState m svIn svOut = SFEvalState { 
-                                esSF :: SF Initialized svIn svOut,
-                                esOutputHandlers :: SMemory (To (m ())) svOut
-                              }
+                                  esSF :: SF Initialized svIn svOut,
+                                  esOutputHandlers :: SMemory (To (m ())) svOut,
+                                  esLastTime :: Double,
+                                  esDelta :: SMemory Id svIn
+                                }
 
 -- | A monad for evaluating signal functions
 newtype SFEvalT svIn svOut m a = SFEvalT (StateT (SFEvalState m svIn svOut) m a) deriving (Functor, Applicative, Monad, MonadIO)
@@ -573,8 +576,11 @@ hsBoth :: HandlerSet svl m -> HandlerSet svr m -> HandlerSet (SVAppend svl svr) 
 hsBoth (HandlerSet sml) (HandlerSet smr) = HandlerSet $ combineSignalMemory sml smr
 
 -- | Initialize the evaluation of a signal function, producing an SFEvalState.
-initSFEval :: HandlerSet svOut m -> SF NonInitialized svIn svOut -> SFEvalState m svIn svOut
-initSFEval (HandlerSet handlerMem) (SF memF) = let (_, sf) = memF SMEmpty in SFEvalState sf handlerMem
+initSFEval ::   HandlerSet svOut m -- ^ The set of handlers for the output of the signal function
+             -> Double  -- ^ The initial time of the signal function
+             -> SF NonInitialized svIn svOut -- ^ The signal function to evaluate
+             -> SFEvalState m svIn svOut
+initSFEval (HandlerSet handlerMem) initTime (SF memF) = let (_, sf) = memF SMEmpty in SFEvalState sf handlerMem initTime SMEmpty
 
 -- | Evaluate a signal function, whose current state is stored in an SFEvalState.
 runSFEvalT :: SFEvalT svIn svOut m a -> SFEvalState m svIn svOut -> m (a, SFEvalState m svIn svOut)
@@ -583,16 +589,23 @@ runSFEvalT  (SFEvalT m) sfES = runStateT m sfES
 -- | Push an event occurrence into the input of the signal function
 push :: (Monad m) => EventOccurrence svIn -> SFEvalT svIn svOut m ()
 push (EventOccurrence svi) = SFEvalT $ do
-  (SFEvalState (SFInit _ changeCont) handlerMem) <- get
+  es@(SFEvalState { esSF = (SFInit _ changeCont), esOutputHandlers = handlerMem }) <- get
   let (changes, newSF) = changeCont svi
   lift $ sequence $ applySMTo handlerMem changes
-  put (SFEvalState newSF handlerMem)
+  put $ es { esSF = newSF }
+
+-- | Update the signal function input
+update :: (Monad m) => SignalDelta svIn -> SFEvalT svIn svOut m ()
+update (SignalDelta delta) = SFEvalT $ do
+    es@(SFEvalState { esDelta = oldDelta }) <- get
+    put $ es { esDelta = updateWithSMemory delta oldDelta }
 
 -- | Sample the signal function
-sample :: (Monad m) => Double -> SignalDelta svIn -> SFEvalT svIn svOut m ()
-sample dt (SignalDelta deltaIn) = SFEvalT $ do
-  (SFEvalState (SFInit timeCont _) handlerMem) <- get
-  let (deltaOut, changes, newSF) = timeCont dt deltaIn
+sample ::   (Monad m) => Double -- ^ The latest time (not a time delta)
+         -> SFEvalT svIn svOut m ()
+sample time = SFEvalT $ do
+  (SFEvalState (SFInit timeCont _) handlerMem initTime delta) <- get
+  let (deltaOut, changes, newSF) = timeCont (time - initTime) delta
   lift $ sequence $ applySMToSM handlerMem deltaOut
   lift $ sequence $ applySMTo handlerMem changes
-  put (SFEvalState newSF handlerMem)
+  put (SFEvalState newSF handlerMem time SMEmpty)

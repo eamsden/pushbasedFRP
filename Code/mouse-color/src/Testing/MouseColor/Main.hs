@@ -3,7 +3,7 @@ module Main where
 import Control.Monad.IO.Class
 
 import Data.IORef
-import Data.Time.Clock
+import Data.Time.Clock.POSIX
 
 import FRP.TimeFlies.SignalFunctions
 
@@ -21,32 +21,25 @@ main = do
   createWindow "Hello World"
   displayRef <- newIORef $ return ()
 
-  time <- getCurrentTime
-  timeRef <- newIORef time
+  time <- fmap realToFrac getPOSIXTime
   
-  let mouseApplicationState = initSFEval (sdHS (\act -> writeIORef displayRef act >> postRedisplay Nothing)) mouseApplicationSF
+  let mouseApplicationState = initSFEval (sdHS (\act -> writeIORef displayRef act >> postRedisplay Nothing)) time mouseApplicationSF
   sfRef <- newIORef mouseApplicationState
   
   keyboardMouseCallback $= Just (\key keystate _ pos -> do sfSt <- readIORef sfRef
                                                            ((), sfSt') <- runSFEvalT (do case keystate of
                                                                                            Down -> push $ eoRight $ eo key
                                                                                            Up -> return ()
-                                                                                         time <- liftIO getCurrentTime
-                                                                                         oldTime <- liftIO $ readIORef timeRef
-                                                                                         liftIO $ writeIORef timeRef time
-                                                                                         let dt = realToFrac $ time `diffUTCTime` oldTime
-                                                                                         sample dt $ sdLeft $ sd pos)
+                                                                                         update (sdLeft $ sd pos))
                                                                                      sfSt
                                                            writeIORef sfRef sfSt')
 
   passiveMotionCallback $= Just (\pos -> do sfSt <- readIORef sfRef
-                                            ((), sfSt') <- runSFEvalT (do time <- liftIO getCurrentTime
-                                                                          oldTime <- liftIO $ readIORef timeRef
-                                                                          liftIO $ writeIORef timeRef time
-                                                                          let dt = realToFrac $ time `diffUTCTime` oldTime
-                                                                          sample dt $ sdLeft $ sd pos)
+                                            ((), sfSt') <- runSFEvalT (update (sdLeft $ sd pos))
                                                                       sfSt
                                             writeIORef sfRef sfSt')  
+
+
 
   initialDisplayMode $= [DoubleBuffered]
   displayCallback $= do clear [ColorBuffer]
@@ -54,6 +47,15 @@ main = do
                         act
                         swapBuffers
                         flush
+
+  addTimerCallback 33 $ let tc = do addTimerCallback 33 tc
+                                    sfSt <- readIORef sfRef
+                                    ((), sfSt') <- runSFEvalT (do time <- fmap realToFrac $ liftIO getPOSIXTime
+                                                                  sample time)
+                                                   sfSt
+                                    writeIORef sfRef sfSt'
+                        in tc
+
   mainLoop
 
 
