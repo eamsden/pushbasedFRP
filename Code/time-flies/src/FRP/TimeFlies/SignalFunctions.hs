@@ -237,7 +237,7 @@ copyInit :: SF Initialized sv (SVAppend sv sv)
 copyInit = SFInit (\_ mem -> (combineSignalMemory mem mem, [], copyInit)) 
                   (\change -> ([SVILeft change, SVIRight change], copyInit))
 
--- | Discard the input entirely and produce the left side of the output
+-- | Discard the input entirely and produce an empty output.
 ignore :: SF NonInitialized sv SVEmpty
 ignore = SF (\mem -> (SMEmpty, ignoreInit))
 
