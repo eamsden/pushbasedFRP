@@ -1,12 +1,16 @@
 Edward Amsden - Master's Thesis
 
+Homepage (including downloadable PDFs and HTML API docs):
+http://eamsden.github.com/pushbasedFRP
+
 Code/ - experimental code
-  Code/SignalVectors.hs - Definition of Signal Vectors and related
-                          types
-  Code/SignalFunctions.hs - Definition of Signal Functions and their
-                              evaluation
+  Code/time-flies/src/FRP/TimeFlies/ - TimeFlies FRP library
+  Code/time-flies/src/FRP/TimeFlies/SignalVectors.hs - 
+     Definition of Signal Vectors and related types
+  Code/time-flies/src/FRP/TimeFlies/SignalFunctions.hs - 
+     Definition of Signal Functions and their evaluation
 Docs/ - Thesis documents
   Docs/Preproposal/preproposal.pdf - Preproposal
-  Docs/Proposal/proposal.pdf - Proposal
-  Docs/Thesis/ - Under construction
-  Docs/API/html - API documentation
+  Docs/Proposal/proposal.pdf       - Proposal
+  Docs/Thesis/                     - Under construction
+  Docs/API/html/time-flies/        - API documentation
