@@ -36,7 +36,7 @@ could do is to block when no computation needs to be performed. The computation 
 
 To address both challenges in a FRP implementation, it seems desirable to combine the approaches, creating a push-based
 signal-function FRP system. The current implementation approach for signal-function FRP is inherently pull-based~\cite{Nilsson2002}, but
-recent work on N-ary FRP, a variant of signal-function FRP which enumerates inputs and distinguishes between events and behaviors, provides a representation which suggests
+recent work on N-ary FRP~\cite{Sculthorpe2011}, a variant of signal-function FRP which enumerates inputs and distinguishes between events and behaviors, provides a representation which suggests
 a method of push-based evaluation. In previous implementations of FRP, events were simply
 option-valued signals. This approach has the advantage of being simple to implement in a pull-based setting, but does not have an obvious
 semantics for event merging, and necessitates pull-based evaluation, since there is no way to separate the events which may be pushed from
