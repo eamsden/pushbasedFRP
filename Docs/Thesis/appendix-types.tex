@@ -42,6 +42,22 @@ variable occurring in the type of a data member of a data constructor of a
 Generalized Algebraic Datatype, but not occurring in the type of that
 constructor, is automatically existentially quantified.
 
+\item[Generalized Algebraic Datatype] Similar to an {\em Algebraic Datatype},
+but {\em type variables} in the {\em type constructor} declaration serve merely
+to denote the number of type parameters (and thus may be replaced by a
+{\em kind signature}) and types are given for each {\em data constructor}. These
+types must have the type constructor as their top-level term, but may fill in
+the parameters of the type constructor with arbitrary types. Variables which
+appear in the data member types but on in the data constructor type are
+{\em existentially quantified}, and types appearing in the data constructor
+type but not the data member types may be instantiated arbitrarily.
+
+\item[Kind Signature] A means of specifying the number and kind of types which
+may instantiate type variables. Type variables in Haskell are not restricted to
+types, but may be instantiated by type constructors as well. The kind of a
+variable restricts what it may be instantiated with. A kind signature gives
+kinds to a type constructor, and thus to its parameters. Specifying the kind
+of a type constructor perfectly constrains the number of parameters.
 
 \item[Type Constructor] A type constructor is a type level term which, when
 applied to the proper number of types, produces a type. Type constructors,
