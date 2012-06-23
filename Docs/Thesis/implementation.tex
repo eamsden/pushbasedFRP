@@ -1,6 +1,13 @@
 \chapter{Implementation}
-\label{chapter:Implemenation}
+\label{chapter:Implementation}
 
-Having established our method of modeling reactivity, we proceed to a purely 
-functional implementation of this method. For this implementation, we will make
-significant use of certain advanced extensions to the Haskell type system.
+Having established the semantics of the reactive system, I present a purely 
+functional implementation. For this implementation, I will make significant use
+of extensions to the Haskell type system. Properly used, these extensions allow
+greater expressive flexibility to define our types by permitting us to encode
+additional properties of values in their types.
+
+
+\input{implementation-signalfunctions}
+
+\input{implementation-evalinterface}

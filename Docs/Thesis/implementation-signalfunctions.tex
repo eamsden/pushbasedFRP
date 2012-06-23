@@ -1,0 +1,191 @@
+\section{Signal Functions}
+\label{section:Implementation-Signal_Functions}
+
+To encode signal functions, we must create a compositional way to express
+both the output and replacement responses to inputs. We must also have a means
+of specifying the initial input and output signal of the signal function.
+
+The interface types for signal functions are given in 
+Figure~\ref{figure:signal-function-interface-types}.
+
+\begin{figure}
+\begin{minipage}[b]{0.5\linewidth}
+\begin{code}
+-- Signal memories
+data SMemory p sv
+
+-- Signal vector indices
+data SVIndex p sv
+
+-- Initialization types
+data Initialized
+data NonInitialized
+\end{code}
+\end{minipage}
+\hspace{0.5cm}
+\begin{minipage}[b]{0.5\linewidth}
+\begin{code}
+-- Signal vectors
+data SVEmpty
+data SVSignal a
+data SVEvent a
+data SVAppend svLeft svRight
+
+-- Signal functions
+data SF init svIn svOut
+\end{code}
+\end{minipage}
+\vspace{\parskip}
+\hrule
+\caption{Interface types for signal functions}
+\label{figure:signal-function-interface-types}
+\end{figure}
+
+Our implementation makes use of two value representations of signal vectors.
+A signal memory is typed using a signal vector and carries values for a
+(possibly empty) subset of the points in the signal vector. A signal vector
+index is typed using a signal vector and carries a value for exactly one point
+in the signal vector. In order to define memories and indices over signal
+vectors, we make use of a type extension known as
+Generalized~Algebraic~Datatypes~(GADTs)~\cite{Cheney2003,Xi2003}, which is
+available in recent versions of the
+Glasgow~Haskell~Compiler~(GHC)~\cite{PeytonJones2006}. The key distinction
+of GADTs from standard Algebraic~Datatypes is that GADTs enable 
+{\em type refinement}. A type constructor in a GADT specifies the specific type
+with which each type parameter of the GADT's type constructor is instantiated.
+This type is defined in terms of the types of the constructor's data members.
+Any type variable which occurs in the type of a data member but does not occur
+in the type of the constructor is existentially quantified\footnote{Existential
+quantification, in the context of Algebraic Datatypes, is a means of ``hiding''
+type variables in data member types. A function which pattern matches on a
+constructor with existential quantification may not assume any instantiation of
+the existentially quantified variable, but only typeclass constraints specified
+in the constructor definition, and equality between identical type variables in
+data members of the same constructor.}. GADTs generalize Algebraic Datatypes 
+(ADTs) because an ADT may be translated to a GADT by simply using each unique
+type variable in the types of the data members of a constructor to instantiate
+the type parameter. As with ADTs, a type variable which appears in the type of a
+data constructor but not in any data members may be arbitrarily instantiated.
+
+The ability to specialize types is useful both for creating specialized
+constructors for unique cases of the type parameters (e.g. for
+optimization~\cite{Nilsson2005}) and for encoding properties at the type level
+using empty types. We employ the second use here.% and the first later in Section~\ref{subsection:Implementation-Signal_Functions-Representation} when we describe the representation of signal functions. 
+
+Both signal memories and signal vector indices are GADTs:
+
+\begin{code}
+-- Signal memories
+data SMemory :: (* -> *) -> * -> * where
+  SMEmpty  :: SMemory p sv
+  SMSignal :: p a -> SMemory p (SVSignal a)
+  SMEvent  :: p a -> SMemory p (SVEvent a)
+  SMBoth   :: SMemory p svLeft -> SMemory p svRight 
+           -> SMemory p (SVAppend svLeft svRight)
+
+-- Signal vector indices
+data SVIndex :: (* -> *) -> * -> * where
+  SVISignal :: p a -> SVIndex p (SVSignal a)
+  SVIEvent  :: p a -> SVIndex p (SVEvent a)
+  SVILeft   :: SVIndex p svLeft -> SVIndex p (SVAppend svLeft svRight)
+  SVIRight  :: SVIndex p svRight -> SVIndex p (SVAppend svLeft svRight)
+
+-- ``Identity'' newtype
+newtype Id a = Id a
+\end{code}
+
+The higher-kind type parameter {\tt p} in both type constructors is a
+convenience. It allows us to provide a type constructor which will be mapped
+over the types of signals and events in the signal vector to produce the actual
+type of values stored. This ability is used in
+Section~\ref{section:Implementation-Evaluation_Interface} (Evaluation Interface),
+permitting the memory type, in particular, to carry functions from the types of
+points in the signal vector to the monadic action used to handle the
+corresponding outputs.
+
+Next we consider the type for signal functions. A signal function must be able
+to have an initial signal input specified, and must be able to produce output
+signals, output events, and replace itself, based on time steps and input
+signals or event occurrences.
+
+The definition of the {\tt SF} datatype is:
+
+\begin{code}
+data SF :: * -> * -> * -> * where
+  SF     :: (SMemory Id svIn -> (SMemory Id svOut, SF Initialized svIn svOut))
+         -> SF NonInitialized svIn svOut
+  SFInit :: (Double -> SMemory Id svIn 
+             -> (SMemory Id svOut, 
+                 [SVIndex Id svOut],
+                 SF Initialized svIn svOut))
+         -> (SVIndex Id svIn 
+             -> ([SVIndex Id svOu], SF Initialized svIn svOut))
+         -> SF Initialized svIn svOut
+\end{code}
+
+The first constructor is used in the user-facing combinators to construct
+non-initialized signal functions. It contains a single function from an intial
+signal (which may contain empty values) to an initial output signal and
+an initialized signal function with the same input and output types.
+
+The second constructor is used in the implementation of both the non-initialized
+and initialized signal functions to construct initialized signal functions. It
+takes two functions. The first is a function from a time step and an updated
+signal to an updated output signal, a set of output event occurrences, and a new
+signal function. The second is a function from an event occurrence to a set
+of event occurrences and a new signal function. 
+
+\subsection{Combinators}
+\label{subsection:Implementation-Signal_Functions-Combinators}
+From the perspective of the library user, signal functions are built from a set
+of combinators which produce or modify signal functions. These combinators
+include a set of primitive signal functions, a set of lifting functions to
+produce signal functions from functions, a switching combinator,
+time and integration combinators, and a set of routing combinators. A list
+of the exported combinators is given in
+Figure~\ref{figure:signal_function_combinators}.
+
+\begin{figure}
+\begin{code}
+-- Simple signal functions
+identity :: SignalFunction NonInitialized sv sv
+constant :: a -> SignalFunction NonInitialized SVEmpty (SVSignal a)
+
+-- Composition and routing
+(>>>) :: SignalFunction NonInitialized svIn svBetween
+      -> SignalFunction NonInitialized svBetween svOut
+      -> SignalFunction NonInitialized svIn svOut
+
+first :: SignalFunction NonInitialized svIn svOut
+      -> SignalFunction NonInitialized (SVAppend svIn sv) (SVAppend svOut sv)
+
+second :: SignalFunction NonInitialized svIn svOut
+       -> SignalFunction NonInitialized (SVAppend sv svIn) (SVAppend sv svOut)
+
+swap :: SignalFunction NonInitialized 
+          (SVAppend svLeft svRight) (SVAppend svRight svLeft)
+copy :: SignalFunction NonInitialized sv (SVAppend sv sv)
+drop :: SignalFunction NonInitialized sv SVEmpty
+\end{code}
+\hrule
+\caption{The combinators exported by the signal function interface}
+\label{figure:signal_function_combinators}
+\end{figure}
+
+The simplest combinator is the {\tt identity} signal function. As its name would
+suggest, the identity signal function simply replicates its input on its output.
+It is implemented as:
+
+\begin{code}
+identity :: SF NonInitialized sv sv
+identity = SF (\mem -> (identityInit, mem))
+
+identityInit :: SF Initialized sv sv
+identityInit = let sf = SFInit (\_ mem -> (mem, [], sf))
+                               (\idx -> ([idx], sf))
+               in sf
+\end{code}
+
+Only the first function is exported. In general, we use the convention that
+the initialized version of a signal function is named with the signal function
+name with {\tt Init} appended, and is not exported as part of the interface.
