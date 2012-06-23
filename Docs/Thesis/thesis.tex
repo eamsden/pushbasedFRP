@@ -25,7 +25,8 @@
 \usepackage{amsmath,amsthm,amsfonts,amscd}
                 % Some packages to write mathematics.
 \usepackage{eucal}      % Euler fonts
-\usepackage{verbatim}       % Allows quoting source with commands.
+\usepackage{fancyvrb}                                       % For code environment
+\DefineVerbatimEnvironment{code}{Verbatim}{fontsize=\small} %
 \usepackage{makeidx}        % Package to make an index.
 \usepackage{psfig}          % Allows inclusion of eps files.
 \usepackage{epsfig}             % Allows inclusion of eps files.
@@ -326,10 +327,10 @@ fail me to tell of \ldots
 % If you have only one appendix, use the command \appendix instead
 % of \appendices.
 %
-%\appendices
-%\index{Appendices@\emph{Appendices}}%
+\appendix
+\index{Appendices@\emph{Appendices}}%
 
-%\include{chapter-appendix1}
+\input{appendix-types}
 
 %\include{chapter-appendix2}
 
