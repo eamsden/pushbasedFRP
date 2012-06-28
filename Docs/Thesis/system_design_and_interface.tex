@@ -1,0 +1,14 @@
+\chapter{System Design and Interface}
+\label{chapter:System_Design_and_Interface}
+
+We have explored the current design space of FRP systems, and identified
+strengths and weaknesses with the existing state-of-the-art systems. By
+combining the best characteristics of both state-of-the-art systems, we hope
+to produce an FRP system which combines the efficiency of push-based FRP system
+with the modularity and causality safety of a signal-function FRP system.
+
+The advantage of a push-based system is that it evaluates only those parts
+of the network which are necessary to react to the input. In order to achieve
+this behavior with signal functions, we must have a means of allowing the system
+to distinguish between multiple inputs to a signal function. This is where the
+concept of signal vectors from N-Ary FRP will be useful. 
