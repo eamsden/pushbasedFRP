@@ -69,13 +69,13 @@ module FRP.TimeFlies.SignalVectors
   where
 
 -- | Empty signal vector type
-data SVEmpty  :: *
+data SVEmpty
 -- | Singleton signal signal vector type
-data SVSignal :: * -> *
+data SVSignal a
 -- | Singleton event signal vector type
-data SVEvent  :: * -> *
+data SVEvent a
 -- | Combine two signal vector types
-data SVAppend :: * -> * -> *
+data SVAppend svLeft svRight
 
 -- | \"Identity\" type constructor, for use as a functor on the element
 -- types of a signal vector
@@ -86,14 +86,14 @@ newtype Id a = Id a
 newtype To b a = To (a -> b) 
 
 -- | A single value at an index of a signal vector
-data SVIndex :: (* -> *) -> * -> * where
+data SVIndex p a where
   SVISignal  :: p a -> SVIndex p (SVSignal a)
   SVIEvent   :: p a -> SVIndex p (SVEvent a)
   SVILeft    :: SVIndex p svl -> SVIndex p (SVAppend svl svr)
   SVIRight   :: SVIndex p svr -> SVIndex p (SVAppend svl svr)
 
 -- | A partial collection of values at indices of a signal vector
-data SMemory :: (* -> *) -> * -> * where
+data SMemory p a where
   SMEmpty  :: SMemory p sv
   SMSignal :: p a -> SMemory p (SVSignal a)
   SMEvent  :: p a -> SMemory p (SVEvent a)

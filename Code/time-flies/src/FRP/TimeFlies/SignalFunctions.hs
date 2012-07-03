@@ -96,23 +96,26 @@ import Control.Monad.Trans.State
 import FRP.TimeFlies.SignalVectors
 
 -- | Signal function running or suspended
-data Initialized :: *
+data Initialized
 
 -- | Signal function not yet running
-data NonInitialized :: *
+data NonInitialized
 
 -- | Signal functions: The first type parameter distinguishes between
 -- uninitialized (just specificied) and initialized (ready to respond to input
 -- and time) signal functions. The second and third type parameters
 -- are the input and output signal vectors, respectively. 
-data SF :: * -> * -> * -> * where
+data SF init svIn svOut where
   SF     :: (SMemory Id svIn -> (SMemory Id svOut, SF Initialized svIn svOut)) 
             -> SF NonInitialized svIn svOut
   SFInit :: (Double -> SMemory Id svIn -> (SMemory Id svOut, [SVIndex Id svOut], SF Initialized svIn svOut)) 
             -> (SVIndex Id svIn -> ([SVIndex Id svOut], SF Initialized svIn svOut)) 
             -> SF Initialized svIn svOut
 
+-- | Infix type alias for signal functions
 type svIn :~~: svOut = SF NonInitialized svIn svOut
+
+-- | Infix type alias for signal vectors
 type svLeft :^: svRight = SVAppend svLeft svRight
 
 -- Utility functions
