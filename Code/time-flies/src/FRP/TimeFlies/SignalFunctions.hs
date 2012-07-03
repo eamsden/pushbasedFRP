@@ -1,4 +1,4 @@
-{-# LANGUAGE KindSignatures, EmptyDataDecls, GADTs, ScopedTypeVariables, NoMonomorphismRestriction, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures, EmptyDataDecls, GADTs, ScopedTypeVariables, NoMonomorphismRestriction, GeneralizedNewtypeDeriving, TypeOperators #-}
 
 -- | Signal functions are stateful, reactive, and time-dependent entities
 -- which respond to inputs by producing outputs. Signal functions are typed
@@ -25,6 +25,8 @@ module FRP.TimeFlies.SignalFunctions (
   SF,
   NonInitialized,
   Initialized,
+  (:~~:),
+  (:^:),
   SVEmpty,
   SVSignal,
   SVEvent,
@@ -109,6 +111,9 @@ data SF :: * -> * -> * -> * where
   SFInit :: (Double -> SMemory Id svIn -> (SMemory Id svOut, [SVIndex Id svOut], SF Initialized svIn svOut)) 
             -> (SVIndex Id svIn -> ([SVIndex Id svOut], SF Initialized svIn svOut)) 
             -> SF Initialized svIn svOut
+
+type svIn :~~: svOut = SF NonInitialized svIn svOut
+type svLeft :^: svRight = SVAppend svLeft svRight
 
 -- Utility functions
 -- | Apply a signal function to a list of changes, producing a list of
