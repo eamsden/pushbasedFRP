@@ -33,6 +33,10 @@ module FRP.TimeFlies.SignalFunctions (
   SVAppend,
   -- * Basic signal functions
   identity,
+  constant,
+  asap,
+  after,
+  never,
   -- * Lifting
   pureSignalTransformer,
   pureEventTransformer,
@@ -61,6 +65,7 @@ module FRP.TimeFlies.SignalFunctions (
   -- * Joining
   union,
   combineSignals,
+  capture,
   -- * Evaluation
   SignalDelta,
   sd,
@@ -134,6 +139,40 @@ identity = SF (\mem -> (mem, identityInit))
 identityInit :: SF Initialized sv sv
 identityInit = SFInit (\dt mem -> (mem, [], identityInit)) (\idx -> ([idx], identityInit))
 
+-- | Constant signal function: Produce the signal
+constant :: a -> SF NonInitialized SVEmpty (SVSignal a)
+constant x = SF (\_ -> (SMSignal (Id x), constantInit))
+
+constantInit :: SF Initialized SVEmpty (SVSignal a)
+constantInit = SFInit (\_ _ -> (SMEmpty, [], constantInit))
+                      (\_ -> ([], constantInit))
+
+-- | Produce an event at the first time step after being switched in
+asap :: a -> SF NonInitialized SVEmpty (SVEvent a)
+asap x = SF (\_ -> (SMEmpty, asapInit x))
+
+asapInit :: a -> SF Initialized SVEmpty (SVEvent a)
+asapInit x = SFInit (\_ _ -> (SMEmpty, [SVIEvent (Id x)], neverInit))
+                    (\_ -> ([], asapInit x))
+
+-- | Never produce an event
+never :: SF NonInitialized SVEmpty (SVEvent a)
+never = SF (\_ -> (SMEmpty, neverInit))
+
+neverInit :: SF Initialized SVEmpty (SVEvent a)
+neverInit = SFInit (\_ _ -> (SMEmpty, [], neverInit))
+                   (\_ -> ([], neverInit))
+
+-- | Produce an event after some time
+after :: Double -> a -> SF NonInitialized SVEmpty (SVEvent a)
+after dt x = SF (\_ -> (SMEmpty, afterInit dt x))
+
+afterInit :: Double -> a -> SF Initialized SVEmpty (SVEvent a)
+afterInit dt x = SFInit (\dt' _ -> if dt' >= dt
+                                   then (SMEmpty, [SVIEvent (Id x)], neverInit)
+                                   else (SMEmpty, [], afterInit (dt - dt') x))
+                        (\_ -> ([], afterInit dt x))
+     
 
 -- | Apply the given function to every sample of a signal
 pureSignalTransformer :: (a -> b) -> SF NonInitialized (SVSignal a) (SVSignal b)
@@ -504,6 +543,26 @@ combineSignalsInit f currentMem =
                                    _ -> (SMEmpty, [], combineSignalsInit f newMem))
                   (\_ -> ([], sf))
   in sf
+
+-- | Combine a signal and an event by producing an output event occurrence
+-- for each input event occurrence, but with the value of the signal
+-- at that time interval
+capture :: SF NonInitialized (SVAppend (SVSignal a) (SVEvent b)) (SVEvent a)
+capture = SF (\mem -> case mem of
+                        SMBoth (SMSignal (Id x)) _ -> (SMEmpty, captureInit x)
+                        _ -> (SMEmpty, captureNotInit))
+
+captureInit :: a -> SF Initialized (SVAppend (SVSignal a) (SVEvent b)) (SVEvent a)
+captureInit x = SFInit (\_ mem -> case mem of
+                                    SMBoth (SMSignal (Id y)) _ -> (SMEmpty, [], captureInit y)
+                                    _ -> (SMEmpty, [], captureInit x))
+                       (\_ -> ([SVIEvent (Id x)], captureInit x))
+
+captureNotInit :: SF Initialized (SVAppend (SVSignal a) (SVEvent b)) (SVEvent a)
+captureNotInit = SFInit (\_ mem -> case mem of
+                                     SMBoth (SMSignal (Id y)) _ -> (SMEmpty, [], captureInit y)
+                                     _ -> (SMEmpty, [], captureNotInit))
+                        (\_ -> ([], captureNotInit))
 
 -- | SFEvalState
 data SFEvalState m svIn svOut = SFEvalState { 
