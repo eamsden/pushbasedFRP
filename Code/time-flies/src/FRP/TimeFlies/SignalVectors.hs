@@ -1,4 +1,4 @@
-{-# LANGUAGE KindSignatures, EmptyDataDecls, GADTs #-}
+{-# LANGUAGE KindSignatures, EmptyDataDecls, GADTs, TypeFamilies #-}
 -- | This module defines /signal vectors/, a type-level representation
 -- of the input and output structure of signal functions, and value
 -- representations typed with signal vectors for use in implementing
@@ -84,6 +84,13 @@ newtype Id a = Id a
 -- | Newtype representing a function \"to\" a value of the first type parameter,
 -- from a value of the second parameter. Essentially "flip" for the arrow type.
 newtype To b a = To (a -> b) 
+
+-- | Push a type constructor to the leaves of a signal vector
+type family SVMap sv (p :: * -> *)
+type instance SVMap SVEmpty p = SVEmpty
+type instance SVMap (SVSignal a) p = SVSignal (p a)
+type instance SVMap (SVEvent a) p = SVEvent (p a)
+type instance SVMap (SVAppend svLeft svRight) p = SVAppend (SVMap svLeft p) (SVMap svRight p)
 
 -- | A single value at an index of a signal vector
 data SVIndex p a where
