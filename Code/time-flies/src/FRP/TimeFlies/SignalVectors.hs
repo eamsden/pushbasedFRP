@@ -12,7 +12,7 @@ module FRP.TimeFlies.SignalVectors
     -- but by representing signal functions and other implementation
     -- types using GADTs, we can include signal vectors in the types
     -- of signal functions and their implementations.
-    SVEmpty(), SVSignal(), SVEvent(), SVAppend(),
+    SVEmpty(), SVSignal(), SVEvent(), SVAppend(), SVMap,
 
     -- * Signal Vector Element Functors
     -- | These newtypes are used as higher-kinded type parameters
