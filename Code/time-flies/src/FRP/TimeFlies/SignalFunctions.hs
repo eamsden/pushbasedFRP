@@ -1,4 +1,4 @@
-{-# LANGUAGE KindSignatures, EmptyDataDecls, GADTs, ScopedTypeVariables, NoMonomorphismRestriction, GeneralizedNewtypeDeriving, TypeOperators #-}
+{-# LANGUAGE KindSignatures, EmptyDataDecls, GADTs, ScopedTypeVariables, NoMonomorphismRestriction, GeneralizedNewtypeDeriving, TypeOperators, TupleSections #-}
 
 -- | Signal functions are stateful, reactive, and time-dependent entities
 -- which respond to inputs by producing outputs. Signal functions are typed
@@ -25,7 +25,7 @@ module FRP.TimeFlies.SignalFunctions (
   SF,
   NonInitialized,
   Initialized,
-  (:~~:),
+  (:~>),
   (:^:),
   SVEmpty,
   SVSignal,
@@ -67,21 +67,10 @@ module FRP.TimeFlies.SignalFunctions (
   combineSignals,
   capture,
   -- * Evaluation
-  SignalDelta,
-  sd,
-  sdLeft,
-  sdRight,
-  sdBoth,
-  EventOccurrence,
-  eo,
-  eoLeft,
-  eoRight,
-  HandlerSet,
-  sdHS,
-  eoHS,
-  hsLeft,
-  hsRight,
-  hsBoth,
+  svLeft, svRight, svOcc, svSig,
+  emptyHandler, eventHandler, signalHandler, combineHandlers,
+  sample, sampleEvt, sampleNothing, combineSamples,
+  SVEventInput(), SVSignalUpdate(),
   SFEvalT,
   SFEvalIO,
   SFEvalState,
@@ -89,7 +78,7 @@ module FRP.TimeFlies.SignalFunctions (
   initSFEval,
   push,
   update,
-  sample
+  step
   
 ) where
 
@@ -97,6 +86,11 @@ import Control.Applicative
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
+
+import Data.Either (lefts, rights, either)
+import Data.List (sortBy)
+import Data.Maybe
+import qualified Data.Tuple as T
 
 import FRP.TimeFlies.SignalVectors
 
@@ -111,14 +105,14 @@ data NonInitialized
 -- and time) signal functions. The second and third type parameters
 -- are the input and output signal vectors, respectively. 
 data SF init svIn svOut where
-  SF     :: (SMemory Id svIn -> (SMemory Id svOut, SF Initialized svIn svOut)) 
+  SF     :: (SVSample svIn -> (SVSample svOut, SF Initialized svIn svOut)) 
             -> SF NonInitialized svIn svOut
-  SFInit :: (Double -> SMemory Id svIn -> (SMemory Id svOut, [SVIndex Id svOut], SF Initialized svIn svOut)) 
-            -> (SVIndex Id svIn -> ([SVIndex Id svOut], SF Initialized svIn svOut)) 
+  SFInit :: (Double -> SVDelta svIn -> (SVDelta svOut, [SVOccurrence svOut], SF Initialized svIn svOut)) 
+            -> (SVOccurrence svIn -> ([SVOccurrence svOut], SF Initialized svIn svOut)) 
             -> SF Initialized svIn svOut
 
 -- | Infix type alias for signal functions
-type svIn :~~: svOut = SF NonInitialized svIn svOut
+type svIn :~> svOut = SF NonInitialized svIn svOut
 
 -- | Infix type alias for signal vectors
 type svLeft :^: svRight = SVAppend svLeft svRight
@@ -126,260 +120,228 @@ type svLeft :^: svRight = SVAppend svLeft svRight
 -- Utility functions
 -- | Apply a signal function to a list of changes, producing a list of
 -- output changes and an updated signal function
-applySF :: SF Initialized svIn svOut -> [SVIndex Id svIn] -> ([SVIndex Id svOut], SF Initialized svIn svOut)
-applySF sf indices = foldr (\idx (changes, SFInit _ changeCont) -> let (newChanges, nextSF) = changeCont idx
-                                                                   in (newChanges ++ changes, nextSF))
+applySF :: SF Initialized svIn svOut -> [SVOccurrence svIn] -> ([SVOccurrence svOut], SF Initialized svIn svOut)
+applySF sf indices = foldr (\evtOcc (changes, SFInit _ changeCont) -> let (newChanges, nextSF) = changeCont evtOcc
+                                                                      in (newChanges ++ changes, nextSF))
                      ([], sf)
                      indices
 
 -- | Identity signal function: reproduce the input exactly as the output.
 identity :: SF NonInitialized sv sv
-identity = SF (\mem -> (mem, identityInit))
+identity = SF (\initSample -> (initSample, identityInit))
 
 identityInit :: SF Initialized sv sv
-identityInit = SFInit (\dt mem -> (mem, [], identityInit)) (\idx -> ([idx], identityInit))
+identityInit = SFInit (\dt sigDelta -> (sigDelta, [], identityInit)) (\evtOcc -> ([evtOcc], identityInit))
 
 -- | Constant signal function: Produce the signal
 constant :: a -> SF NonInitialized SVEmpty (SVSignal a)
-constant x = SF (\_ -> (SMSignal (Id x), constantInit))
+constant x = SF (\_ -> (sample x, constantInit))
 
 constantInit :: SF Initialized SVEmpty (SVSignal a)
-constantInit = SFInit (\_ _ -> (SMEmpty, [], constantInit))
+constantInit = SFInit (\_ _ -> (deltaNothing, [], constantInit))
                       (\_ -> ([], constantInit))
 
 -- | Produce an event at the first time step after being switched in
 asap :: a -> SF NonInitialized SVEmpty (SVEvent a)
-asap x = SF (\_ -> (SMEmpty, asapInit x))
+asap x = SF (\_ -> (sampleEvt, asapInit x))
 
 asapInit :: a -> SF Initialized SVEmpty (SVEvent a)
-asapInit x = SFInit (\_ _ -> (SMEmpty, [SVIEvent (Id x)], neverInit))
+asapInit x = SFInit (\_ _ -> (deltaNothing, [occurrence x], neverInit))
                     (\_ -> ([], asapInit x))
 
 -- | Never produce an event
 never :: SF NonInitialized SVEmpty (SVEvent a)
-never = SF (\_ -> (SMEmpty, neverInit))
+never = SF (\_ -> (sampleEvt, neverInit))
 
 neverInit :: SF Initialized SVEmpty (SVEvent a)
-neverInit = SFInit (\_ _ -> (SMEmpty, [], neverInit))
+neverInit = SFInit (\_ _ -> (deltaNothing, [], neverInit))
                    (\_ -> ([], neverInit))
 
 -- | Produce an event after some time
 after :: Double -> a -> SF NonInitialized SVEmpty (SVEvent a)
-after dt x = SF (\_ -> (SMEmpty, afterInit dt x))
+after dt x = SF (\_ -> (sampleEvt, afterInit dt x))
 
 afterInit :: Double -> a -> SF Initialized SVEmpty (SVEvent a)
 afterInit dt x = SFInit (\dt' _ -> if dt' >= dt
-                                   then (SMEmpty, [SVIEvent (Id x)], neverInit)
-                                   else (SMEmpty, [], afterInit (dt - dt') x))
+                                   then (deltaNothing, [occurrence x], neverInit)
+                                   else (deltaNothing, [], afterInit (dt - dt') x))
                         (\_ -> ([], afterInit dt x))
      
 
 -- | Apply the given function to every sample of a signal
 pureSignalTransformer :: (a -> b) -> SF NonInitialized (SVSignal a) (SVSignal b)
-pureSignalTransformer f = SF (\mem -> (case mem of
-                                         (SMSignal (Id x)) -> (SMSignal (Id $ f x))
-                                         SMEmpty -> SMEmpty, pureSignalTransformerInit f))
+pureSignalTransformer f = SF ((, pureSignalTransformerInit f) . sample . f . sampleValue) 
 
 pureSignalTransformerInit :: (a -> b) -> SF Initialized (SVSignal a) (SVSignal b)
-pureSignalTransformerInit f = let psti = SFInit (\dt mem -> (case mem of 
-                                                               SMEmpty -> SMEmpty
-                                                               SMSignal (Id x) -> SMSignal (Id $ f x),
-                                                             [], psti))
-                                                (\_ -> ([], psti))
+pureSignalTransformerInit f = let psti = SFInit (flip (const . (, [], psti) . maybe deltaNothing delta . fmap f . deltaValue))
+                                                (const ([], psti))
                               in psti
 
 -- | Apply the given function to each occurrence of an event
 pureEventTransformer :: (a -> b) -> SF NonInitialized (SVEvent a) (SVEvent b)
-pureEventTransformer f = SF (\mem -> (case mem of
-                                         (SMEvent (Id x)) -> (SMEvent (Id $ f x))
-                                         SMEmpty -> SMEmpty, pureEventTransformerInit f))
+pureEventTransformer f = SF (const (sampleEvt, pureEventTransformerInit f))
 
 pureEventTransformerInit :: (a -> b) -> SF Initialized (SVEvent a) (SVEvent b)
-pureEventTransformerInit f = let peti = SFInit (\dt mem -> (SMEmpty, [], peti)) (\(SVIEvent (Id x)) -> ([SVIEvent (Id $ f x)], peti))
+pureEventTransformerInit f = let peti = SFInit (const $ const (deltaNothing, [], peti))
+                                               ((, peti) . (:[]) . occurrence . f . fromOccurrence)
                              in peti
 
 
 -- | Produce a new signal function where the output of the first signal function is used as the input to the second
 -- signal function
 (>>>) :: SF NonInitialized svIn svBetween -> SF NonInitialized svBetween svOut -> SF NonInitialized svIn svOut
-(SF memF1) >>> (SF memF2) = SF (\mem -> let (mem', sfInit1) = memF1 mem
-                                            (mem'', sfInit2) = memF2 mem'
-                                        in (mem'', composeInit sfInit1 sfInit2))
+(SF sigSampleF1) >>> (SF sigSampleF2) = SF (\sigSample -> let (sigSample', sfInit1) = sigSampleF1 sigSample
+                                                              (sigSample'', sfInit2) = sigSampleF2 sigSample'
+                                                          in (sigSample'', composeInit sfInit1 sfInit2))
 
 composeInit :: SF Initialized svIn svBetween -> SF Initialized svBetween svOut -> SF Initialized svIn svOut
 composeInit (SFInit dtCont1 inputCont1) sf2@(SFInit dtCont2 inputCont2) =
   SFInit
-    (\dt mem -> let (sf1MemOutput, sf1EvtOutputs, sf1New) = dtCont1 dt mem
-                    (sf2MemOutput, sf2EvtOutputs, sf2New) = dtCont2 dt sf1MemOutput
-                    (sf2EvtEvtOutputs, sf2Newest) = applySF sf2New sf1EvtOutputs
-                in (sf2MemOutput, sf2EvtOutputs ++ sf2EvtEvtOutputs, composeInit sf1New sf2Newest)
+    (\dt sigDelta -> let (sf1MemOutput, sf1EvtOutputs, sf1New) = dtCont1 dt sigDelta
+                         (sf2MemOutput, sf2EvtOutputs, sf2New) = dtCont2 dt sf1MemOutput
+                         (sf2EvtEvtOutputs, sf2Newest) = applySF sf2New sf1EvtOutputs
+                     in (sf2MemOutput, sf2EvtOutputs ++ sf2EvtEvtOutputs, composeInit sf1New sf2Newest)
     )
-    (\idx -> let (sf1Outputs, newSf1) = inputCont1 idx
-                 (sf2FoldOutputs, newSf2) = applySF sf2 sf1Outputs
-             in (sf2FoldOutputs, composeInit newSf1 newSf2)   
+    (\evtOcc -> let (sf1Outputs, newSf1) = inputCont1 evtOcc
+                    (sf2FoldOutputs, newSf2) = applySF sf2 sf1Outputs
+                in (sf2FoldOutputs, composeInit newSf1 newSf2)   
     )
 
 -- | Produce a new signal function where the left side of the input is used as
 -- input for the given signal function, and the right side of the input
 -- is combined unchanged with the output of the given signal function
 first :: SF NonInitialized svIn svOut -> SF NonInitialized (SVAppend svIn sv) (SVAppend svOut sv)
-first (SF memF) = SF (\mem -> case mem of
-                                SMEmpty -> let (memOut, sf) = memF SMEmpty in (combineSignalMemory memOut SMEmpty, firstInit sf)
-                                SMBoth x y -> let (memOut, sf) = memF x in (combineSignalMemory memOut y, firstInit sf))
+first (SF sigSampleF) = SF (\sigSample -> let (leftSample, rightSample) = splitSample sigSample
+                                              (leftSampleOut, sf) = sigSampleF leftSample
+                                          in (combineSamples leftSampleOut rightSample, firstInit sf))
 
 firstInit :: SF Initialized svIn svOut -> SF Initialized (SVAppend svIn sv) (SVAppend svOut sv)
 firstInit (SFInit timeCont inputCont) = 
-  let firstInitSF = SFInit (\dt mem -> let (input, rightOutput) = case mem of
-                                                                    SMEmpty -> (SMEmpty, SMEmpty)
-                                                                    SMBoth sml smr -> (sml, smr)
-                                           (memOutput, evtOutput, sf1New) = timeCont dt input
-                                       in (combineSignalMemory memOutput rightOutput, map SVILeft evtOutput, firstInit sf1New))
-                           (\change -> case change of
-                                         SVILeft lChange -> let (changes, sf) = inputCont lChange in (map SVILeft changes, firstInit sf)
-                                         SVIRight rChange -> ([SVIRight rChange], firstInitSF))
+  let firstInitSF = SFInit (\dt sigDelta -> let (input, rightOutput) = splitDelta sigDelta
+                                                (sigDeltaOutput, evtOutput, sf1New) = timeCont dt input
+                                            in (combineDeltas sigDeltaOutput rightOutput, map occLeft evtOutput, firstInit sf1New))
+                           (\evtOcc -> case chooseOccurrence evtOcc of
+                                         Left  lChange -> let (changes, sf) = inputCont lChange in (map occLeft changes, firstInit sf)
+                                         Right rChange -> ([occRight rChange], firstInitSF))
   in firstInitSF
 
 -- | Similar to 'first', except the right side of the signal vector is used
 -- as input for the given signal function, and the left side is combined
 -- unchanged with the output.
 second :: SF NonInitialized svIn svOut -> SF NonInitialized (SVAppend sv svIn) (SVAppend sv svOut)
-second (SF memF) = SF (\mem -> case mem of
-                                SMEmpty -> let (memOut, sf) = memF SMEmpty in (combineSignalMemory SMEmpty memOut, secondInit sf)
-                                SMBoth x y -> let (memOut, sf) = memF y in (combineSignalMemory x memOut, secondInit sf))
+second (SF sigSampleF) = SF (\sigSample -> let (leftSample, rightSample) = splitSample sigSample
+                                               (rightSampleOut, sf) = sigSampleF rightSample
+                                           in (combineSamples leftSample rightSampleOut, secondInit sf))
 
 secondInit :: SF Initialized svIn svOut -> SF Initialized (SVAppend sv svIn) (SVAppend sv svOut)
 secondInit (SFInit timeCont inputCont) = 
-  let secondInitSF = SFInit (\dt mem -> let (leftOutput, input) = case mem of
-                                                                     SMEmpty -> (SMEmpty, SMEmpty)
-                                                                     SMBoth sml smr -> (sml, smr)
-                                            (memOutput, evtOutput, sf1New) = timeCont dt input
-                                        in (combineSignalMemory leftOutput memOutput , map SVIRight evtOutput, secondInit sf1New))
-                            (\change -> case change of
-                                          SVIRight rChange -> let (changes, sf) = inputCont rChange in (map SVIRight changes, secondInit sf)
-                                          SVILeft lChange -> ([SVILeft lChange], secondInitSF))
+  let secondInitSF = SFInit (\dt sigDelta -> let (leftDelta, rightDelta) = splitDelta sigDelta
+                                                 (sigDeltaOutput, evtOutput, sf1New) = timeCont dt rightDelta
+                                             in (combineDeltas leftDelta sigDeltaOutput , map occRight evtOutput, secondInit sf1New))
+                            (\evtOcc -> case chooseOccurrence evtOcc of
+                                          Right rChange -> let (changes, sf) = inputCont rChange in (map occRight changes, secondInit sf)
+                                          Left lChange -> ([occLeft lChange], secondInitSF))
   in secondInitSF
 
 -- | Produce the left side of the input as the right side of the output, 
 -- and vice vers&#226;.
 swap :: SF NonInitialized (SVAppend sv1 sv2) (SVAppend sv2 sv1)
-swap = SF (\mem -> ((case mem of
-                       SMEmpty -> SMEmpty
-                       SMBoth x y -> SMBoth y x), swapInit))
+swap = SF ((, swapInit) . uncurry combineSamples . T.swap . splitSample)
 
 swapInit :: SF Initialized (SVAppend sv1 sv2) (SVAppend sv2 sv1)
-swapInit = SFInit (\dt mem -> (case mem of
-                                 SMEmpty -> SMEmpty
-                                 SMBoth sml smr -> SMBoth smr sml,
-                               [], swapInit)) 
-                  (\change -> ([case change of
-                                  SVILeft lChange -> SVIRight lChange
-                                  SVIRight rChange -> SVILeft rChange
-                               ], swapInit))
-    
+swapInit = SFInit (flip (const . (, [], swapInit) . uncurry combineDeltas . T.swap . splitDelta))
+                  (\evtOcc -> (case chooseOccurrence evtOcc of
+                                 Left lOcc -> [occRight lOcc]
+                                 Right rOcc -> [occLeft rOcc], swapInit))
 
 -- | Produce the input as left and right sides of the output
 copy :: SF NonInitialized sv (SVAppend sv sv)
-copy = SF (\mem -> (combineSignalMemory mem mem, copyInit))
+copy = SF (\sigSample -> (combineSamples sigSample sigSample, copyInit))
 
 copyInit :: SF Initialized sv (SVAppend sv sv)
-copyInit = SFInit (\_ mem -> (combineSignalMemory mem mem, [], copyInit)) 
-                  (\change -> ([SVILeft change, SVIRight change], copyInit))
+copyInit = SFInit (\_ sigDelta -> (combineDeltas sigDelta sigDelta, [], copyInit)) 
+                  (\evtOcc-> ([occLeft evtOcc, occRight evtOcc], copyInit))
 
 -- | Discard the input entirely and produce an empty output.
 ignore :: SF NonInitialized sv SVEmpty
-ignore = SF (\mem -> (SMEmpty, ignoreInit))
+ignore = SF (\_ -> (sampleNothing, ignoreInit))
 
 ignoreInit :: SF Initialized sv SVEmpty 
-ignoreInit = SFInit (const $ const (SMEmpty, [], ignoreInit)) (const ([], ignoreInit))
+ignoreInit = SFInit (const $ const (deltaNothing, [], ignoreInit)) (const ([], ignoreInit))
 
 -- | Discard the empty left side of the input and use the right side as
 -- output.
 cancelLeft :: SF NonInitialized (SVAppend SVEmpty sv) sv
-cancelLeft = SF (\mem -> ((case mem of
-                             SMEmpty -> SMEmpty
-                             SMBoth _ y -> y), cancelLeftInit))
+cancelLeft = SF ((, cancelLeftInit) . snd . splitSample)
 
 cancelLeftInit :: SF Initialized (SVAppend SVEmpty sv) sv
-cancelLeftInit = SFInit (\_ mem -> (case mem of
-                                      SMEmpty -> SMEmpty
-                                      SMBoth sml smr -> smr, [], cancelLeftInit))
-                        (\change -> ([case change of
-                                        SVIRight x -> x], cancelLeftInit))
+cancelLeftInit = SFInit (flip $ const . (, [], cancelLeftInit) . snd . splitDelta)
+                        ((, cancelLeftInit) . rights . (:[]) . chooseOccurrence )
 
 
 -- | Use the input as the right side of the output and leave the left side empty
 uncancelLeft :: SF NonInitialized sv (SVAppend SVEmpty sv)
-uncancelLeft = SF (\mem -> (combineSignalMemory SMEmpty mem, uncancelLeftInit))
+uncancelLeft = SF ((, uncancelLeftInit) . combineSamples sampleNothing)
 
 uncancelLeftInit :: SF Initialized sv (SVAppend SVEmpty sv)
-uncancelLeftInit = SFInit (\_ mem -> (combineSignalMemory SMEmpty mem, [], uncancelLeftInit)) 
-                          (\change -> ([SVIRight change], uncancelLeftInit))
+uncancelLeftInit = SFInit (flip $ const . (, [], uncancelLeftInit) . combineDeltas deltaNothing) 
+                          ((, uncancelLeftInit) . (:[]) . occRight)
 
 -- | Discard the empty right side of the input and use the left side as the
 -- output.
 cancelRight :: SF NonInitialized (SVAppend sv SVEmpty) sv
-cancelRight = SF (\mem -> ((case mem of
-                              SMEmpty -> SMEmpty
-                              SMBoth x y -> x), cancelRightInit))
+cancelRight = SF ((, cancelRightInit) . fst . splitSample )
 
 cancelRightInit :: SF Initialized (SVAppend sv SVEmpty) sv
-cancelRightInit = SFInit (\_ mem -> (case mem of
-                                       SMEmpty -> SMEmpty
-                                       SMBoth sml smr -> sml, [], cancelRightInit))
-                         (\change -> ([case change of
-                                         SVILeft x -> x], cancelRightInit))
+cancelRightInit = SFInit (flip $ const . (, [], cancelRightInit) . fst . splitDelta )
+                         ((, cancelRightInit) . lefts . (:[]) . chooseOccurrence)
 
 -- | Use the input as the left side of the output and leave the right side empty
 uncancelRight :: SF NonInitialized sv (SVAppend sv SVEmpty)
-uncancelRight = SF (\mem -> (combineSignalMemory mem SMEmpty, uncancelRightInit))
+uncancelRight = SF ((, uncancelRightInit) . flip combineSamples sampleNothing)
 
 uncancelRightInit :: SF Initialized sv (SVAppend sv SVEmpty)
-uncancelRightInit = SFInit (\_ mem -> (combineSignalMemory mem SMEmpty, [], uncancelRightInit))
-                           (\change -> ([SVILeft change], uncancelRightInit))
+uncancelRightInit = SFInit (flip $ const . (, [], uncancelRightInit) . flip combineDeltas deltaNothing)
+                           ((, uncancelRightInit) . (:[]) . occLeft)
 
 -- | Take an input where the left two subvectors are associated and 
 -- produce an output with the same subvectors, but where the right
 -- two subvectors are associated.
 associate :: SF NonInitialized (SVAppend (SVAppend sv1 sv2) sv3) (SVAppend sv1 (SVAppend sv2 sv3))
-associate = SF (\mem -> ((case mem of
-                            SMEmpty -> SMEmpty
-                            (SMBoth SMEmpty z) -> combineSignalMemory SMEmpty (combineSignalMemory SMEmpty z)
-                            (SMBoth (SMBoth x y) z) -> combineSignalMemory x (combineSignalMemory y z)), associateInit))
+associate = SF (\sigSample -> let (sigSampleLeft, sigSampleRight) = splitSample sigSample
+                                  (sigSampleLeftLeft, sigSampleLeftRight) = splitSample sigSampleLeft
+                              in (combineSamples sigSampleLeftLeft (combineSamples sigSampleLeftRight sigSampleRight), associateInit))
 
 associateInit :: SF Initialized (SVAppend (SVAppend sv1 sv2) sv3) (SVAppend sv1 (SVAppend sv2 sv3))
-associateInit = SFInit (\_ mem -> (case mem of
-                                     SMEmpty -> SMEmpty
-                                     SMBoth sml smr -> case sml of
-                                                         SMEmpty -> combineSignalMemory SMEmpty (combineSignalMemory SMEmpty smr)
-                                                         SMBoth smll smlr -> combineSignalMemory smll (combineSignalMemory smlr smr),
-                                   [], associateInit)) 
-                       (\change -> ((case change of
-                                       SVILeft (SVILeft x) -> [SVILeft x]
-                                       SVILeft (SVIRight x) -> [SVIRight $ SVILeft x]
-                                       SVIRight x -> [SVIRight $ SVIRight x]), associateInit))
+associateInit = SFInit (\_ sigDelta -> let (sigDeltaLeft, sigDeltaRight) = splitDelta sigDelta
+                                           (sigDeltaLeftLeft, sigDeltaLeftRight) = splitDelta sigDeltaLeft
+                                       in (combineDeltas sigDeltaLeftLeft (combineDeltas sigDeltaLeftRight sigDeltaRight), [], associateInit)) 
+                       (\evtOcc -> (case chooseOccurrence evtOcc of
+                                      Left leftOcc -> case chooseOccurrence leftOcc of
+                                                        Left leftLeftOcc -> [occLeft leftLeftOcc]
+                                                        Right leftRightOcc -> [occRight $ occLeft leftRightOcc]
+                                      Right rightOcc -> [occRight $ occRight $ rightOcc],
+                                    associateInit))
          
 
 -- | Take an input where the right two subvectors are associated and produce an
 -- output with the same subvectors, but where the left two subvectors are
 -- associated.
 unassociate :: SF NonInitialized (SVAppend sv1 (SVAppend sv2 sv3)) (SVAppend (SVAppend sv1 sv2) sv3)
-unassociate = SF (\mem -> ((case mem of
-                              SMEmpty -> SMEmpty
-                              (SMBoth x SMEmpty) -> combineSignalMemory (combineSignalMemory x SMEmpty) SMEmpty
-                              (SMBoth x (SMBoth y z)) -> combineSignalMemory (combineSignalMemory x y) z), unassociateInit))
+unassociate = SF (\sigSample -> let (sigSampleLeft, sigSampleRight) = splitSample sigSample
+                                    (sigSampleRightLeft, sigSampleRightRight) = splitSample sigSampleRight
+                                in (combineSamples (combineSamples sigSampleLeft sigSampleRightLeft) sigSampleRightRight, unassociateInit))
 
 unassociateInit :: SF Initialized (SVAppend sv1 (SVAppend sv2 sv3)) (SVAppend (SVAppend sv1 sv2) sv3)
-unassociateInit = SFInit (\_ mem -> (case mem of
-                                       SMEmpty -> SMEmpty
-                                       SMBoth sml smr -> case smr of
-                                                           SMEmpty -> combineSignalMemory (combineSignalMemory sml SMEmpty) SMEmpty
-                                                           SMBoth smrl smrr -> combineSignalMemory (combineSignalMemory sml smrl) smrr,
-                                     [], unassociateInit)) 
-                         (\change -> ((case change of
-                                         SVILeft x             -> [SVILeft $ SVILeft x]
-                                         SVIRight (SVILeft x)  -> [SVILeft $ SVIRight x]
-                                         SVIRight (SVIRight x) -> [SVIRight x]), unassociateInit))
-
+unassociateInit = SFInit (\_ sigDelta -> let (sigDeltaLeft, sigDeltaRight) = splitDelta sigDelta
+                                             (sigDeltaRightLeft, sigDeltaRightRight) = splitDelta sigDeltaRight
+                                         in (combineDeltas (combineDeltas sigDeltaLeft sigDeltaRightLeft) sigDeltaRightRight, [], unassociateInit))
+                         (\evtOcc -> (case chooseOccurrence evtOcc of
+                                        Left leftOcc -> [occLeft $ occLeft leftOcc]
+                                        Right rightOcc -> case chooseOccurrence rightOcc of
+                                                            Left rightLeftOcc -> [occLeft $ occRight rightLeftOcc]
+                                                            Right rightRightOcc -> [occRight rightRightOcc],
+                                      unassociateInit))
 
 -- | Provide the input as input to the given signal function, producing
 -- the left side of the given signal function's output as output. Upon
@@ -389,37 +351,35 @@ unassociateInit = SFInit (\_ mem -> (case mem of
 -- the switch function will combine the signal deltas produced by the initialization
 -- of the new signal function and by the first time step of the new signal function.
 switch :: SF NonInitialized svIn (SVAppend svOut (SVEvent (SF NonInitialized svIn svOut))) -> SF NonInitialized svIn svOut
-switch (SF memF) = SF (\mem -> let (sfMemOut, sf) = memF mem
-                                   memOut = case sfMemOut of
-                                              SMEmpty -> SMEmpty
-                                              SMBoth sml _ -> sml
-                               in (memOut, switchInit mem sf))
+switch (SF sigSampleF) = SF (\sigSample -> let (sigSampleSF, sf) = sigSampleF sigSample
+                                               (sigSampleOut, _) = splitSample sigSampleSF
+                                           in (sigSampleOut, switchInit sigSample sf))
 
-switchInit :: SMemory Id svIn -> SF Initialized svIn (SVAppend svOut (SVEvent (SF NonInitialized svIn svOut))) -> SF Initialized svIn svOut
-switchInit inputMem sf@(SFInit timeCont changeCont) =
-  SFInit (\dt mem -> let (memOut, changesOut, newSF) = timeCont dt mem
-                         newInputMem = updateWithSMemory mem inputMem
-                         (outputChanges, switchChanges) = splitIndices changesOut
-                         (outputMem, nextSF) = case switchChanges of
-                                                 SVIEvent (Id (SF memF)):_ -> memF newInputMem
-                                                 [] -> (case memOut of
-                                                          SMEmpty -> SMEmpty
-                                                          SMBoth sml _ -> sml,
-                                                        switchInit newInputMem newSF)
-                     in (outputMem, outputChanges, nextSF))
-         (\change -> let (changesOut, newSF) = changeCont change
-                         (outputChanges, switchChanges) = splitIndices changesOut
-                         nextSF = case switchChanges of
-                                    (SVIEvent (Id (SF memF))):_ -> let (memOut, newSF') = memF inputMem
-                                                                   in switchWait memOut newSF'
-                                    [] -> switchInit inputMem newSF
-                     in (outputChanges, nextSF))
+switchInit :: SVSample svIn -> SF Initialized svIn (SVAppend svOut (SVEvent (SF NonInitialized svIn svOut))) -> SF Initialized svIn svOut
+switchInit inputSample sf@(SFInit timeCont changeCont) =
+  SFInit (\dt sigDelta -> let (sigDeltaSF, occsSF, newSF) = timeCont dt sigDelta
+                              newInputSample = updateSample inputSample sigDelta
+                              (sigDeltaOut, _) = splitDelta sigDeltaSF
+                              (occsOut, occsSwitch) = splitOccurrences occsSF
+                              (outputDelta, nextSF) = maybe (sigDeltaOut, switchInit newInputSample newSF)
+                                                            (\(SF sigSampleF) -> let (outputSample, switchSF) = sigSampleF newInputSample
+                                                                                     outputDelta = sampleDelta outputSample
+                                                                                 in (outputDelta, switchSF))
+                                                            $ occurrenceListToMaybe occsSwitch
+                     in (outputDelta, occsOut, nextSF))
+         (\evtOcc -> let (occsSF, newSF) = changeCont evtOcc
+                         (occsOut, occsSwitch) = splitOccurrences occsSF
+                         nextSF = maybe (switchInit inputSample newSF) 
+                                        (\(SF sigSampleF) -> let (sampleOut, switchSF) = sigSampleF inputSample
+                                                             in switchWait sampleOut switchSF)
+                                        $ occurrenceListToMaybe occsSwitch
+                     in (occsOut, nextSF))
 
-switchWait :: SMemory Id svOut -> SF Initialized svIn svOut -> SF Initialized svIn svOut
-switchWait outputMem sf@(SFInit timeCont changeCont) = SFInit (\dt mem -> let (memOutDelta, outputChanges, newSF) = timeCont dt mem
-                                                                          in (updateWithSMemory memOutDelta outputMem, outputChanges, newSF))
-                                                              (\change -> let (outputChanges, newSF) = changeCont change
-                                                                          in (outputChanges, switchWait outputMem newSF))
+switchWait :: SVSample svOut -> SF Initialized svIn svOut -> SF Initialized svIn svOut
+switchWait outputSample sf@(SFInit timeCont changeCont) = SFInit (\dt sigDelta -> let (sigDeltaOut, outOccs, newSF) = timeCont dt sigDelta
+                                                                                  in (sampleDelta $ updateSample outputSample sigDeltaOut, outOccs, newSF))
+                                                                 (\evtOcc -> let (outOccs, newSF) = changeCont evtOcc
+                                                                             in (outOccs, switchWait outputSample newSF))
                                     
 -- | Provide the input as the left input to the given signal function. Produce
 -- the left output of the given signal function as the output. Use the right
@@ -432,27 +392,22 @@ switchWait outputMem sf@(SFInit timeCont changeCont) = SFInit (\dt mem -> let (m
 -- responsibility to ensure that an feedback event does not result in an
 -- infinite set of resulting events.
 loop :: SF NonInitialized (SVAppend svIn svLoop) (SVAppend svOut svLoop) -> SF NonInitialized svIn svOut
-loop (SF memF) = SF (\mem -> let (memOut, sfInit) = memF (combineSignalMemory mem SMEmpty)
-                                 output = 
-                                   case memOut of
-                                     SMEmpty -> SMEmpty
-                                     SMBoth out _ -> out
-                              in (output, loopInit SMEmpty sfInit))
+loop (SF sigSampleF) = SF (\sigSample -> let (sigSampleOut, sfInit) = sigSampleF (combineSamples sigSample sigSampleOutRight)
+                                             (sigSampleOutLeft, sigSampleOutRight) = splitSample sigSampleOut
+                                         in (sigSampleOutLeft, loopInit deltaNothing sfInit))
 
-loopInit :: SMemory Id svLoop -> SF Initialized (SVAppend svIn svLoop) (SVAppend svOut svLoop) -> SF Initialized svIn svOut
-loopInit loopMem (SFInit timeCont changeCont) = SFInit (\dt mem -> let (memOut, changesOut, newSF) = timeCont dt (combineSignalMemory mem loopMem)
-                                                                       (changesOutput, loopChanges) = splitIndices changesOut
-                                                                       (changesOutput', loopChanges') = splitIndices foldChanges
-                                                                       (foldChanges, newSF') = applySF newSF (map SVIRight (loopChanges ++ loopChanges'))
-                                                                       (outputMem, newLoopMem) = case memOut of
-                                                                                                   SMEmpty -> (SMEmpty, SMEmpty)
-                                                                                                   SMBoth sml smr -> (sml, smr)
-                                                                   in (outputMem, changesOutput ++ changesOutput', loopInit newLoopMem newSF'))
-                                                       (\change -> let (changesOut, newSF) = changeCont $ SVILeft change
-                                                                       (changesOutput, loopChanges) = splitIndices changesOut
-                                                                       (changesOutput', loopChanges') = splitIndices foldChanges
-                                                                       (foldChanges, newSF') = applySF newSF (map SVIRight (loopChanges ++ loopChanges'))
-                                                                   in (changesOutput ++ changesOutput', loopInit loopMem newSF'))
+loopInit :: SVDelta svLoop -> SF Initialized (SVAppend svIn svLoop) (SVAppend svOut svLoop) -> SF Initialized svIn svOut
+loopInit loopDelta (SFInit timeCont changeCont) = SFInit (\dt sigDelta -> let (sigDeltaOut, occsOut, newSF) = timeCont dt (combineDeltas sigDelta loopDelta)
+                                                                              (occsOutput, loopOccs) = splitOccurrences occsOut
+                                                                              (occsOutput', loopOccs') = splitOccurrences foldOccs
+                                                                              (foldOccs, newSF') = applySF newSF (map occRight (loopOccs ++ loopOccs'))
+                                                                              (outputDelta, newLoopDelta) = splitDelta sigDeltaOut
+                                                                   in (outputDelta, occsOutput ++ occsOutput', loopInit newLoopDelta newSF'))
+                                                       (\change -> let (occsOut, newSF) = changeCont $ occLeft change
+                                                                       (occsOutput, loopOccs) = splitOccurrences occsOut
+                                                                       (occsOutput', loopOccs') = splitOccurrences foldOccs
+                                                                       (foldOccs, newSF') = applySF newSF (map occRight (loopOccs ++ loopOccs'))
+                                                                   in (occsOutput ++ occsOutput', loopInit loopDelta newSF'))
                                                                        
                                           
 
@@ -460,10 +415,10 @@ loopInit loopMem (SFInit timeCont changeCont) = SFInit (\dt mem -> let (memOut, 
 -- | With an empty input, produce the time since the signal function began
 -- running as a signal output.
 time :: SF NonInitialized SVEmpty (SVSignal Double)
-time = SF (\_ -> (SMSignal (Id 0), timeInit 0))
+time = SF (\_ -> (sample 0, timeInit 0))
 
 timeInit :: Double -> SF Initialized SVEmpty (SVSignal Double)
-timeInit t = SFInit (\dt _ -> (SMSignal (Id (t + dt)), [], timeInit (t + dt)))
+timeInit t = SFInit (\dt _ -> (delta (t + dt), [], timeInit (t + dt)))
                     (\_ -> ([], timeInit t))
 
 -- | Maintain a time delay for events. The initial argument is the initial time
@@ -475,15 +430,15 @@ timeInit t = SFInit (\dt _ -> (SMSignal (Id (t + dt)), [], timeInit (t + dt)))
 -- time.
 
 delay :: Double -> SF NonInitialized (SVAppend (SVEvent a) (SVEvent Double)) (SVEvent a)
-delay delayTime = SF (\_ -> (SMEmpty, delayInit [] delayTime 0))
+delay delayTime = SF (\_ -> (sampleEvt, delayInit [] delayTime 0))
 
-delayInit :: [(Double, SVIndex Id (SVEvent a))] -> Double -> Double -> SF Initialized (SVAppend (SVEvent a) (SVEvent Double)) (SVEvent a)
+delayInit :: [(Double, SVOccurrence (SVEvent a))] -> Double -> Double -> SF Initialized (SVAppend (SVEvent a) (SVEvent Double)) (SVEvent a)
 delayInit eventsBuffer delayTime time = SFInit (\dt _ -> let newTime = time + dt
                                                              (readyEvents, notReadyEvents) = break ((>= newTime) . fst) eventsBuffer
-                                                         in (SMEmpty, map snd readyEvents, delayInit notReadyEvents delayTime newTime))
-                                               (\change -> ([], case change of
-                                                                  SVILeft evt -> delayInit (eventsBuffer ++ [(time + delayTime, evt)]) delayTime time
-                                                                  SVIRight (SVIEvent (Id newDelayTime)) -> delayInit eventsBuffer newDelayTime time))
+                                                         in (deltaNothing, map snd readyEvents, delayInit notReadyEvents delayTime newTime))
+                                               (\evtOcc -> ([], case chooseOccurrence evtOcc of
+                                                                  Left occLeft -> delayInit (sortBy (\(x,_ ) (y, _) -> compare x y) $ eventsBuffer ++ [(time + delayTime, occLeft)]) delayTime time
+                                                                  Right occRight -> delayInit eventsBuffer (fromOccurrence occRight) time))
                                                             
 
 -- | Class of values integrateable with respect to time
@@ -503,73 +458,52 @@ instance TimeIntegrate Double where
 -- | Produce as output the rectangle rule integration of 
 -- the input with respect to time.
 integrate :: (TimeIntegrate i) => SF NonInitialized (SVSignal i) (SVSignal i)
-integrate = SF (\mem -> case mem of
-                          SMEmpty -> (SMEmpty, integrateNonInit)
-                          SMSignal (Id x) -> (SMSignal (Id x), integrateInit iZero x))
-
-integrateNonInit :: (TimeIntegrate i) => SF Initialized (SVSignal i) (SVSignal i)
-integrateNonInit = SFInit (\dt mem -> case mem of 
-                                        SMEmpty -> (SMEmpty, [], integrateNonInit)
-                                        SMSignal (Id x) -> (SMSignal (Id iZero), [], integrateInit iZero x)) 
-                          (\_ -> ([], integrateNonInit))
+integrate = SF (\sigSample -> let sValue = sampleValue sigSample
+                              in (sample iZero, integrateInit iZero sValue))
 
 integrateInit :: (TimeIntegrate i) => i -> i -> SF Initialized (SVSignal i) (SVSignal i)
-integrateInit currentSum currentValue = SFInit (\dt mem -> let (newSum, newVal) = case mem of
-                                                                                    SMEmpty -> ((currentValue `iTimesDouble` dt) `iPlus` currentSum, currentValue)
-                                                                                    SMSignal (Id x)-> ((x `iTimesDouble` dt) `iPlus` currentSum, x)
-                                                           in (SMSignal (Id newSum), [], integrateInit newSum newVal))
+integrateInit currentSum currentValue = SFInit (\dt sigDelta -> let newVal = maybe currentValue id $ deltaValue sigDelta
+                                                                    newSum = currentSum `iPlus` (newVal `iTimesDouble` dt)
+                                                                in (delta newSum, [], integrateInit newSum newVal))
                                                (\_ -> ([], integrateInit currentSum currentValue))
 
 -- | Produce an event occurrence on the output corresponding to an event
 -- occurrence on either input
 union :: SF NonInitialized (SVAppend (SVEvent a) (SVEvent a)) (SVEvent a)
-union = SF (\_ -> (SMEmpty, unionInit))
+union = SF (\_ -> (sampleEvt, unionInit))
 
 unionInit :: SF Initialized (SVAppend (SVEvent a) (SVEvent a)) (SVEvent a)
-unionInit = SFInit (\dt _ -> (SMEmpty, [], unionInit)) (\change -> case change of
-                                                                     SVILeft lchange -> ([lchange], unionInit)
-                                                                     SVIRight rchange -> ([rchange], unionInit))
+unionInit = SFInit (\dt _ -> (deltaNothing, [], unionInit)) 
+                   (\evtOcc -> case chooseOccurrence evtOcc of
+                                 Left lOcc -> ([lOcc], unionInit)
+                                 Right rOcc -> ([rOcc], unionInit))
 
 -- | Combine both inputs at each point in time using the given function.
 combineSignals :: ((a, b) -> c) -> SF NonInitialized (SVAppend (SVSignal a) (SVSignal b)) (SVSignal c)
-combineSignals f = SF (\mem -> ((case mem of
-                                  (SMBoth (SMSignal (Id x)) (SMSignal (Id y))) -> SMSignal (Id (f (x, y)))
-                                  _ -> SMEmpty), combineSignalsInit f mem))
-combineSignalsInit :: ((a, b) -> c) -> SMemory Id (SVAppend (SVSignal a) (SVSignal b)) -> SF Initialized (SVAppend (SVSignal a) (SVSignal b)) (SVSignal c)
-combineSignalsInit f currentMem = 
-  let sf = SFInit (\dt mem -> let newMem = updateWithSMemory mem currentMem
-                              in case newMem of
-                                   SMBoth (SMSignal (Id x)) (SMSignal (Id y)) -> (SMSignal (Id (f (x, y))), [], combineSignalsInit f newMem)
-                                   _ -> (SMEmpty, [], combineSignalsInit f newMem))
-                  (\_ -> ([], sf))
-  in sf
+combineSignals f = SF (\sigSample -> (sample $ f $ (\(l,r) -> (sampleValue l, sampleValue r)) $ splitSample sigSample, combineSignalsInit f sigSample))
+
+combineSignalsInit :: ((a, b) -> c) -> SVSample (SVAppend (SVSignal a) (SVSignal b)) -> SF Initialized (SVAppend (SVSignal a) (SVSignal b)) (SVSignal c)
+combineSignalsInit f currentSample = SFInit (\dt sigDelta -> let newSample = updateSample currentSample sigDelta
+                                                             in (delta $ f $ (\(l,r) -> (sampleValue l, sampleValue r)) $ splitSample newSample, [], combineSignalsInit f newSample))
+                                            (const ([], combineSignalsInit f currentSample))
+
 
 -- | Combine a signal and an event by producing an output event occurrence
 -- for each input event occurrence, but with the value of the signal
 -- at that time interval
 capture :: SF NonInitialized (SVAppend (SVSignal a) (SVEvent b)) (SVEvent a)
-capture = SF (\mem -> case mem of
-                        SMBoth (SMSignal (Id x)) _ -> (SMEmpty, captureInit x)
-                        _ -> (SMEmpty, captureNotInit))
+capture = SF ((sampleEvt,) . captureInit . sampleValue . fst . splitSample)
 
 captureInit :: a -> SF Initialized (SVAppend (SVSignal a) (SVEvent b)) (SVEvent a)
-captureInit x = SFInit (\_ mem -> case mem of
-                                    SMBoth (SMSignal (Id y)) _ -> (SMEmpty, [], captureInit y)
-                                    _ -> (SMEmpty, [], captureInit x))
-                       (\_ -> ([SVIEvent (Id x)], captureInit x))
-
-captureNotInit :: SF Initialized (SVAppend (SVSignal a) (SVEvent b)) (SVEvent a)
-captureNotInit = SFInit (\_ mem -> case mem of
-                                     SMBoth (SMSignal (Id y)) _ -> (SMEmpty, [], captureInit y)
-                                     _ -> (SMEmpty, [], captureNotInit))
-                        (\_ -> ([], captureNotInit))
+captureInit x = SFInit (flip (const . (deltaNothing, [],) . maybe (captureInit x) captureInit . deltaValue . fst . splitDelta))
+                       ((, captureInit x) . const [occurrence x])
 
 -- | SFEvalState
 data SFEvalState m svIn svOut = SFEvalState { 
                                   esSF :: SF Initialized svIn svOut,
-                                  esOutputHandlers :: SMemory (To (m ())) svOut,
+                                  esOutputHandlers :: SVHandler (m ()) svOut,
                                   esLastTime :: Double,
-                                  esDelta :: SMemory Id svIn
+                                  esDelta :: SVDelta svIn
                                 }
 
 -- | A monad for evaluating signal functions
@@ -581,98 +515,42 @@ instance MonadTrans (SFEvalT svIn svOut) where
 -- | The most likely use case:
 type SFEvalIO svIn svOut a = SFEvalT svIn svOut IO a
 
--- | Descriptors of signal changes for a time step
-newtype SignalDelta sv = SignalDelta (SMemory Id sv)
-
--- | Create a signal delta for a singleton input
-sd :: a -> SignalDelta (SVSignal a)
-sd = SignalDelta . SMSignal . Id
-
--- | Use this signal delta for only the left input
-sdLeft :: SignalDelta svl -> SignalDelta (SVAppend svl svr)
-sdLeft (SignalDelta sml) = SignalDelta $ combineSignalMemory sml SMEmpty 
-
--- | Use this signal delta for only the right input
-sdRight :: SignalDelta svr -> SignalDelta (SVAppend svl svr)
-sdRight (SignalDelta smr) = SignalDelta $ combineSignalMemory SMEmpty smr
-
--- | Use these signal deltas for the left and right inputs, respectively
-sdBoth :: SignalDelta svl -> SignalDelta svr -> SignalDelta (SVAppend svl svr)
-sdBoth (SignalDelta sml) (SignalDelta smr) = SignalDelta $ combineSignalMemory sml smr
-
--- | Descriptors of event occurrences
-newtype EventOccurrence sv = EventOccurrence (SVIndex Id sv)
-
--- | Create an event occurrence to push
-eo :: a -> EventOccurrence (SVEvent a)
-eo = EventOccurrence . SVIEvent . Id
-
--- | Route an event occurrence left
-eoLeft :: EventOccurrence svl -> EventOccurrence (SVAppend svl svr)
-eoLeft (EventOccurrence svi) = EventOccurrence (SVILeft svi)
-
--- | Route an event occurrence right
-eoRight :: EventOccurrence svr -> EventOccurrence (SVAppend svl svr)
-eoRight (EventOccurrence svr) = EventOccurrence (SVIRight svr)
-
--- | A set of actions to handle SF outputs. These outputs may be
--- the components of a signal delta or may be event occurrences.
-newtype HandlerSet sv m = HandlerSet (SMemory (To (m ())) sv)
-
--- | A handler for a signal delta output
-sdHS :: (a -> m ()) -> HandlerSet (SVSignal a) m
-sdHS = HandlerSet . SMSignal . To
-
--- | A handler for an event occurrence output
-eoHS :: (a -> m()) -> HandlerSet (SVEvent a) m
-eoHS = HandlerSet . SMEvent . To
-
--- | Use the given handler for the left side of the output, and do not handle
--- the right.
-hsLeft :: HandlerSet svl m -> HandlerSet (SVAppend svl svr) m
-hsLeft (HandlerSet sm) = HandlerSet $ combineSignalMemory sm SMEmpty
-
--- | Use the given handler for the right side of the output, and do not handle
--- left side.
-hsRight :: HandlerSet svr m -> HandlerSet (SVAppend svl svr) m
-hsRight (HandlerSet sm) = HandlerSet $ combineSignalMemory SMEmpty sm
-
--- | Use the given handlers for the left and right sides of the output,
--- respectively.
-hsBoth :: HandlerSet svl m -> HandlerSet svr m -> HandlerSet (SVAppend svl svr) m
-hsBoth (HandlerSet sml) (HandlerSet smr) = HandlerSet $ combineSignalMemory sml smr
-
 -- | Initialize the evaluation of a signal function, producing an SFEvalState.
-initSFEval ::   HandlerSet svOut m -- ^ The set of handlers for the output of the signal function
+initSFEval ::   SVHandler (m ()) svOut -- ^ The set of handlers for the output of the signal function
+             -> SVSample svIn -- ^ The initial signal inputs for the signal function
              -> Double  -- ^ The initial time of the signal function
              -> SF NonInitialized svIn svOut -- ^ The signal function to evaluate
              -> SFEvalState m svIn svOut
-initSFEval (HandlerSet handlerMem) initTime (SF memF) = let (_, sf) = memF SMEmpty in SFEvalState sf handlerMem initTime SMEmpty
+initSFEval handlers initSample initTime (SF sigSampleF) = let (_, sf) = sigSampleF initSample in SFEvalState sf handlers initTime deltaNothing
 
 -- | Evaluate a signal function, whose current state is stored in an SFEvalState.
 runSFEvalT :: SFEvalT svIn svOut m a -> SFEvalState m svIn svOut -> m (a, SFEvalState m svIn svOut)
 runSFEvalT  (SFEvalT m) sfES = runStateT m sfES
 
 -- | Push an event occurrence into the input of the signal function
-push :: (Monad m) => EventOccurrence svIn -> SFEvalT svIn svOut m ()
-push (EventOccurrence svi) = SFEvalT $ do
-  es@(SFEvalState { esSF = (SFInit _ changeCont), esOutputHandlers = handlerMem }) <- get
-  let (changes, newSF) = changeCont svi
-  lift $ sequence $ applySMTo handlerMem changes
-  put $ es { esSF = newSF }
+push :: (Monad m) => SVEventInput svIn -> SFEvalT svIn svOut m ()
+push evtIn = SFEvalT $ do evalState <- get
+                          let evtOcc = inputToOccurrence evtIn
+                              (SFInit _ occCont) = esSF evalState
+                              (occs, newSF) = occCont evtOcc
+                          lift $ mapM_ (applyHandlerOccurrence $ esOutputHandlers evalState) occs
+                          put (evalState { esSF = newSF })
+                        
+           
 
 -- | Update the signal function input
-update :: (Monad m) => SignalDelta svIn -> SFEvalT svIn svOut m ()
-update (SignalDelta delta) = SFEvalT $ do
-    es@(SFEvalState { esDelta = oldDelta }) <- get
-    put $ es { esDelta = updateWithSMemory delta oldDelta }
+update :: (Monad m) => SVSignalUpdate svIn -> SFEvalT svIn svOut m ()
+update sigUpdate = SFEvalT $ do evalState <- get
+                                let newDelta = updateDelta (esDelta evalState) sigUpdate
+                                put (evalState { esDelta = newDelta })
 
 -- | Sample the signal function
-sample ::   (Monad m) => Double -- ^ The latest time (not a time delta)
+step ::   (Monad m) => Double -- ^ The latest time (not a time delta)
          -> SFEvalT svIn svOut m ()
-sample time = SFEvalT $ do
-  (SFEvalState (SFInit timeCont _) handlerMem initTime delta) <- get
-  let (deltaOut, changes, newSF) = timeCont (time - initTime) delta
-  lift $ sequence $ applySMToSM handlerMem deltaOut
-  lift $ sequence $ applySMTo handlerMem changes
-  put (SFEvalState newSF handlerMem time SMEmpty)
+step time = SFEvalT $ do evalState <- get
+                         let dt = time - esLastTime evalState
+                             (SFInit sampleF _) = esSF evalState
+                             (deltaOut, occsOut, newSF) = sampleF dt (esDelta evalState)
+                         lift $ sequence $ applyHandlerDelta (esOutputHandlers evalState) deltaOut
+                         lift $ mapM_ (applyHandlerOccurrence $ esOutputHandlers evalState) occsOut
+                         put (evalState { esLastTime = time, esDelta = deltaNothing, esSF = newSF })
