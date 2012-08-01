@@ -62,6 +62,8 @@ module FRP.TimeFlies.SignalFunctions (
   delay,
   TimeIntegrate,
   integrate,
+  -- * Events
+  filter,
   -- * Joining
   union,
   combineSignals,
@@ -93,6 +95,8 @@ import Data.Maybe
 import qualified Data.Tuple as T
 
 import FRP.TimeFlies.SignalVectors
+
+import Prelude hiding (filter)
 
 -- | Signal function running or suspended
 data Initialized
@@ -342,6 +346,14 @@ unassociateInit = SFInit (\_ sigDelta -> let (sigDeltaLeft, sigDeltaRight) = spl
                                                             Left rightLeftOcc -> [occLeft $ occRight rightLeftOcc]
                                                             Right rightRightOcc -> [occRight rightRightOcc],
                                       unassociateInit))
+
+-- | Filter event occurrences
+filter :: (a -> Maybe b) -> SVEvent a :~> SVEvent b
+filter f = SF (\_ -> (sampleEvt, filterInit f))
+
+filterInit :: (a -> Maybe b) -> SF Initialized (SVEvent a) (SVEvent b)
+filterInit f = SFInit (\_ _ -> (deltaNothing, [], filterInit f))
+                      (\evtOcc -> (maybe [] ((:[]) . occurrence) $ f $ fromOccurrence evtOcc, filterInit f))
 
 -- | Provide the input as input to the given signal function, producing
 -- the left side of the given signal function's output as output. Upon
