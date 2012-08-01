@@ -131,14 +131,14 @@ applySF sf indices = foldr (\evtOcc (changes, SFInit _ changeCont) -> let (newCh
                      indices
 
 -- | Identity signal function: reproduce the input exactly as the output.
-identity :: SF NonInitialized sv sv
+identity :: sv :~> sv
 identity = SF (\initSample -> (initSample, identityInit))
 
 identityInit :: SF Initialized sv sv
 identityInit = SFInit (\dt sigDelta -> (sigDelta, [], identityInit)) (\evtOcc -> ([evtOcc], identityInit))
 
 -- | Constant signal function: Produce the signal
-constant :: a -> SF NonInitialized SVEmpty (SVSignal a)
+constant :: a -> SVEmpty :~> SVSignal a
 constant x = SF (\_ -> (sample x, constantInit))
 
 constantInit :: SF Initialized SVEmpty (SVSignal a)
@@ -146,7 +146,7 @@ constantInit = SFInit (\_ _ -> (deltaNothing, [], constantInit))
                       (\_ -> ([], constantInit))
 
 -- | Produce an event at the first time step after being switched in
-asap :: a -> SF NonInitialized SVEmpty (SVEvent a)
+asap :: a -> SVEmpty :~> SVEvent a
 asap x = SF (\_ -> (sampleEvt, asapInit x))
 
 asapInit :: a -> SF Initialized SVEmpty (SVEvent a)
@@ -154,7 +154,7 @@ asapInit x = SFInit (\_ _ -> (deltaNothing, [occurrence x], neverInit))
                     (\_ -> ([], asapInit x))
 
 -- | Never produce an event
-never :: SF NonInitialized SVEmpty (SVEvent a)
+never :: SVEmpty :~> SVEvent a
 never = SF (\_ -> (sampleEvt, neverInit))
 
 neverInit :: SF Initialized SVEmpty (SVEvent a)
@@ -162,7 +162,7 @@ neverInit = SFInit (\_ _ -> (deltaNothing, [], neverInit))
                    (\_ -> ([], neverInit))
 
 -- | Produce an event after some time
-after :: Double -> a -> SF NonInitialized SVEmpty (SVEvent a)
+after :: Double -> a -> SVEmpty :~> SVEvent a
 after dt x = SF (\_ -> (sampleEvt, afterInit dt x))
 
 afterInit :: Double -> a -> SF Initialized SVEmpty (SVEvent a)
@@ -173,7 +173,7 @@ afterInit dt x = SFInit (\dt' _ -> if dt' >= dt
      
 
 -- | Apply the given function to every sample of a signal
-pureSignalTransformer :: (a -> b) -> SF NonInitialized (SVSignal a) (SVSignal b)
+pureSignalTransformer :: (a -> b) -> SVSignal a :~> SVSignal b
 pureSignalTransformer f = SF ((, pureSignalTransformerInit f) . sample . f . sampleValue) 
 
 pureSignalTransformerInit :: (a -> b) -> SF Initialized (SVSignal a) (SVSignal b)
@@ -182,7 +182,7 @@ pureSignalTransformerInit f = let psti = SFInit (flip (const . (, [], psti) . ma
                               in psti
 
 -- | Apply the given function to each occurrence of an event
-pureEventTransformer :: (a -> b) -> SF NonInitialized (SVEvent a) (SVEvent b)
+pureEventTransformer :: (a -> b) -> SVEvent a :~> SVEvent b
 pureEventTransformer f = SF (const (sampleEvt, pureEventTransformerInit f))
 
 pureEventTransformerInit :: (a -> b) -> SF Initialized (SVEvent a) (SVEvent b)
@@ -193,7 +193,7 @@ pureEventTransformerInit f = let peti = SFInit (const $ const (deltaNothing, [],
 
 -- | Produce a new signal function where the output of the first signal function is used as the input to the second
 -- signal function
-(>>>) :: SF NonInitialized svIn svBetween -> SF NonInitialized svBetween svOut -> SF NonInitialized svIn svOut
+(>>>) :: (svIn :~> svBetween) -> (svBetween :~> svOut) -> (svIn :~> svOut)
 (SF sigSampleF1) >>> (SF sigSampleF2) = SF (\sigSample -> let (sigSample', sfInit1) = sigSampleF1 sigSample
                                                               (sigSample'', sfInit2) = sigSampleF2 sigSample'
                                                           in (sigSample'', composeInit sfInit1 sfInit2))
@@ -214,7 +214,7 @@ composeInit (SFInit dtCont1 inputCont1) sf2@(SFInit dtCont2 inputCont2) =
 -- | Produce a new signal function where the left side of the input is used as
 -- input for the given signal function, and the right side of the input
 -- is combined unchanged with the output of the given signal function
-first :: SF NonInitialized svIn svOut -> SF NonInitialized (SVAppend svIn sv) (SVAppend svOut sv)
+first :: (svIn :~> svOut) -> (svIn :^: sv) :~> (svOut :^: sv)
 first (SF sigSampleF) = SF (\sigSample -> let (leftSample, rightSample) = splitSample sigSample
                                               (leftSampleOut, sf) = sigSampleF leftSample
                                           in (combineSamples leftSampleOut rightSample, firstInit sf))
@@ -232,7 +232,7 @@ firstInit (SFInit timeCont inputCont) =
 -- | Similar to 'first', except the right side of the signal vector is used
 -- as input for the given signal function, and the left side is combined
 -- unchanged with the output.
-second :: SF NonInitialized svIn svOut -> SF NonInitialized (SVAppend sv svIn) (SVAppend sv svOut)
+second :: (svIn :~> svOut) -> (sv :^: svIn) :~> (sv :^: svOut)
 second (SF sigSampleF) = SF (\sigSample -> let (leftSample, rightSample) = splitSample sigSample
                                                (rightSampleOut, sf) = sigSampleF rightSample
                                            in (combineSamples leftSample rightSampleOut, secondInit sf))
@@ -249,7 +249,7 @@ secondInit (SFInit timeCont inputCont) =
 
 -- | Produce the left side of the input as the right side of the output, 
 -- and vice vers&#226;.
-swap :: SF NonInitialized (SVAppend sv1 sv2) (SVAppend sv2 sv1)
+swap :: (sv1 :^: sv2) :~> (sv2 :^: sv1)
 swap = SF ((, swapInit) . uncurry combineSamples . T.swap . splitSample)
 
 swapInit :: SF Initialized (SVAppend sv1 sv2) (SVAppend sv2 sv1)
@@ -259,7 +259,7 @@ swapInit = SFInit (flip (const . (, [], swapInit) . uncurry combineDeltas . T.sw
                                  Right rOcc -> [occLeft rOcc], swapInit))
 
 -- | Produce the input as left and right sides of the output
-copy :: SF NonInitialized sv (SVAppend sv sv)
+copy :: sv :~> (sv :^: sv)
 copy = SF (\sigSample -> (combineSamples sigSample sigSample, copyInit))
 
 copyInit :: SF Initialized sv (SVAppend sv sv)
@@ -267,7 +267,7 @@ copyInit = SFInit (\_ sigDelta -> (combineDeltas sigDelta sigDelta, [], copyInit
                   (\evtOcc-> ([occLeft evtOcc, occRight evtOcc], copyInit))
 
 -- | Discard the input entirely and produce an empty output.
-ignore :: SF NonInitialized sv SVEmpty
+ignore :: sv :~> SVEmpty
 ignore = SF (\_ -> (sampleNothing, ignoreInit))
 
 ignoreInit :: SF Initialized sv SVEmpty 
@@ -275,7 +275,7 @@ ignoreInit = SFInit (const $ const (deltaNothing, [], ignoreInit)) (const ([], i
 
 -- | Discard the empty left side of the input and use the right side as
 -- output.
-cancelLeft :: SF NonInitialized (SVAppend SVEmpty sv) sv
+cancelLeft :: (SVEmpty :^: sv) :~> sv
 cancelLeft = SF ((, cancelLeftInit) . snd . splitSample)
 
 cancelLeftInit :: SF Initialized (SVAppend SVEmpty sv) sv
@@ -284,7 +284,7 @@ cancelLeftInit = SFInit (flip $ const . (, [], cancelLeftInit) . snd . splitDelt
 
 
 -- | Use the input as the right side of the output and leave the left side empty
-uncancelLeft :: SF NonInitialized sv (SVAppend SVEmpty sv)
+uncancelLeft :: sv :~> (SVEmpty :^: sv)
 uncancelLeft = SF ((, uncancelLeftInit) . combineSamples sampleNothing)
 
 uncancelLeftInit :: SF Initialized sv (SVAppend SVEmpty sv)
@@ -293,7 +293,7 @@ uncancelLeftInit = SFInit (flip $ const . (, [], uncancelLeftInit) . combineDelt
 
 -- | Discard the empty right side of the input and use the left side as the
 -- output.
-cancelRight :: SF NonInitialized (SVAppend sv SVEmpty) sv
+cancelRight :: (sv :^: SVEmpty) :~> sv
 cancelRight = SF ((, cancelRightInit) . fst . splitSample )
 
 cancelRightInit :: SF Initialized (SVAppend sv SVEmpty) sv
@@ -301,7 +301,7 @@ cancelRightInit = SFInit (flip $ const . (, [], cancelRightInit) . fst . splitDe
                          ((, cancelRightInit) . lefts . (:[]) . chooseOccurrence)
 
 -- | Use the input as the left side of the output and leave the right side empty
-uncancelRight :: SF NonInitialized sv (SVAppend sv SVEmpty)
+uncancelRight :: sv :~> (sv :^: SVEmpty)
 uncancelRight = SF ((, uncancelRightInit) . flip combineSamples sampleNothing)
 
 uncancelRightInit :: SF Initialized sv (SVAppend sv SVEmpty)
@@ -311,7 +311,7 @@ uncancelRightInit = SFInit (flip $ const . (, [], uncancelRightInit) . flip comb
 -- | Take an input where the left two subvectors are associated and 
 -- produce an output with the same subvectors, but where the right
 -- two subvectors are associated.
-associate :: SF NonInitialized (SVAppend (SVAppend sv1 sv2) sv3) (SVAppend sv1 (SVAppend sv2 sv3))
+associate :: ((sv1 :^: sv2) :^: sv3) :~> (sv1 :^: (sv2 :^: sv3))
 associate = SF (\sigSample -> let (sigSampleLeft, sigSampleRight) = splitSample sigSample
                                   (sigSampleLeftLeft, sigSampleLeftRight) = splitSample sigSampleLeft
                               in (combineSamples sigSampleLeftLeft (combineSamples sigSampleLeftRight sigSampleRight), associateInit))
@@ -331,7 +331,7 @@ associateInit = SFInit (\_ sigDelta -> let (sigDeltaLeft, sigDeltaRight) = split
 -- | Take an input where the right two subvectors are associated and produce an
 -- output with the same subvectors, but where the left two subvectors are
 -- associated.
-unassociate :: SF NonInitialized (SVAppend sv1 (SVAppend sv2 sv3)) (SVAppend (SVAppend sv1 sv2) sv3)
+unassociate :: (sv1 :^: (sv2 :^: sv3)) :~> ((sv1 :^: sv2) :^: sv3)
 unassociate = SF (\sigSample -> let (sigSampleLeft, sigSampleRight) = splitSample sigSample
                                     (sigSampleRightLeft, sigSampleRightRight) = splitSample sigSampleRight
                                 in (combineSamples (combineSamples sigSampleLeft sigSampleRightLeft) sigSampleRightRight, unassociateInit))
@@ -362,7 +362,7 @@ filterInit f = SFInit (\_ _ -> (deltaNothing, [], filterInit f))
 -- Note that the if a switch event occurs in between time samples,
 -- the switch function will combine the signal deltas produced by the initialization
 -- of the new signal function and by the first time step of the new signal function.
-switch :: SF NonInitialized svIn (SVAppend svOut (SVEvent (SF NonInitialized svIn svOut))) -> SF NonInitialized svIn svOut
+switch :: (svIn :~> (svOut :^: SVEvent (SF NonInitialized svIn svOut))) -> svIn :~> svOut
 switch (SF sigSampleF) = SF (\sigSample -> let (sigSampleSF, sf) = sigSampleF sigSample
                                                (sigSampleOut, _) = splitSample sigSampleSF
                                            in (sigSampleOut, switchInit sigSample sf))
@@ -403,7 +403,7 @@ switchWait outputSample sf@(SFInit timeCont changeCont) = SFInit (\dt sigDelta -
 -- that feedback events will have an immediate effect. It is the programmer's
 -- responsibility to ensure that an feedback event does not result in an
 -- infinite set of resulting events.
-loop :: SF NonInitialized (SVAppend svIn svLoop) (SVAppend svOut svLoop) -> SF NonInitialized svIn svOut
+loop :: (svIn :^: svLoop) :~> (svOut :^: svLoop) -> svIn :~> svOut
 loop (SF sigSampleF) = SF (\sigSample -> let (sigSampleOut, sfInit) = sigSampleF (combineSamples sigSample sigSampleOutRight)
                                              (sigSampleOutLeft, sigSampleOutRight) = splitSample sigSampleOut
                                          in (sigSampleOutLeft, loopInit deltaNothing sfInit))
@@ -426,7 +426,7 @@ loopInit loopDelta (SFInit timeCont changeCont) = SFInit (\dt sigDelta -> let (s
 
 -- | With an empty input, produce the time since the signal function began
 -- running as a signal output.
-time :: SF NonInitialized SVEmpty (SVSignal Double)
+time :: SVEmpty :~> SVSignal Double
 time = SF (\_ -> (sample 0, timeInit 0))
 
 timeInit :: Double -> SF Initialized SVEmpty (SVSignal Double)
@@ -441,7 +441,7 @@ timeInit t = SFInit (\dt _ -> (delta (t + dt), [], timeInit (t + dt)))
 -- before prior input events if the delay time is shortened in the intervening
 -- time.
 
-delay :: Double -> SF NonInitialized (SVAppend (SVEvent a) (SVEvent Double)) (SVEvent a)
+delay :: Double -> (SVEvent a :^: SVEvent Double) :~> SVEvent a
 delay delayTime = SF (\_ -> (sampleEvt, delayInit [] delayTime 0))
 
 delayInit :: [(Double, SVOccurrence (SVEvent a))] -> Double -> Double -> SF Initialized (SVAppend (SVEvent a) (SVEvent Double)) (SVEvent a)
@@ -469,7 +469,7 @@ instance TimeIntegrate Double where
 
 -- | Produce as output the rectangle rule integration of 
 -- the input with respect to time.
-integrate :: (TimeIntegrate i) => SF NonInitialized (SVSignal i) (SVSignal i)
+integrate :: (TimeIntegrate i) => SVSignal i :~> SVSignal i
 integrate = SF (\sigSample -> let sValue = sampleValue sigSample
                               in (sample iZero, integrateInit iZero sValue))
 
@@ -481,7 +481,7 @@ integrateInit currentSum currentValue = SFInit (\dt sigDelta -> let newVal = may
 
 -- | Produce an event occurrence on the output corresponding to an event
 -- occurrence on either input
-union :: SF NonInitialized (SVAppend (SVEvent a) (SVEvent a)) (SVEvent a)
+union :: (SVEvent a :^: SVEvent a) :~> SVEvent a
 union = SF (\_ -> (sampleEvt, unionInit))
 
 unionInit :: SF Initialized (SVAppend (SVEvent a) (SVEvent a)) (SVEvent a)
@@ -491,7 +491,7 @@ unionInit = SFInit (\dt _ -> (deltaNothing, [], unionInit))
                                  Right rOcc -> ([rOcc], unionInit))
 
 -- | Combine both inputs at each point in time using the given function.
-combineSignals :: ((a, b) -> c) -> SF NonInitialized (SVAppend (SVSignal a) (SVSignal b)) (SVSignal c)
+combineSignals :: ((a, b) -> c) -> (SVSignal a :^: SVSignal b) :~> SVSignal c
 combineSignals f = SF (\sigSample -> (sample $ f $ (\(l,r) -> (sampleValue l, sampleValue r)) $ splitSample sigSample, combineSignalsInit f sigSample))
 
 combineSignalsInit :: ((a, b) -> c) -> SVSample (SVAppend (SVSignal a) (SVSignal b)) -> SF Initialized (SVAppend (SVSignal a) (SVSignal b)) (SVSignal c)
@@ -503,7 +503,7 @@ combineSignalsInit f currentSample = SFInit (\dt sigDelta -> let newSample = upd
 -- | Combine a signal and an event by producing an output event occurrence
 -- for each input event occurrence, but with the value of the signal
 -- at that time interval
-capture :: SF NonInitialized (SVAppend (SVSignal a) (SVEvent b)) (SVEvent a)
+capture :: (SVSignal a :^: SVEvent b) :~> SVEvent a
 capture = SF ((sampleEvt,) . captureInit . sampleValue . fst . splitSample)
 
 captureInit :: a -> SF Initialized (SVAppend (SVSignal a) (SVEvent b)) (SVEvent a)
