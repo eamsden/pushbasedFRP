@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                time-flies
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            A push-based signal-function FRP library.
 description:         Time-flies is a push-based signal-function FRP library.
                      The name is from the old philosophical demonstration of
