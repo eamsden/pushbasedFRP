@@ -1,0 +1,342 @@
+\documentclass{beamer}
+\usetheme{JuanLesPins}
+\usecolortheme{seahorse}
+
+\usepackage{fancyvrb}
+\usepackage{graphicx}
+\usepackage[style=authortitle-icomp]{biblatex}
+
+
+
+%gets rid of bottom navigation bars
+\setbeamertemplate{footline}[]{}
+
+%gets rid of navigation symbols
+\setbeamertemplate{navigation symbols}{}
+
+\bibliography{thesis}
+
+\title{Push-Pull Signal-Function Functional Reactive Programming}
+\author{Edward Amsden}
+\institute{Rochester Institute of Technology}
+
+\begin{document}
+
+\AtBeginSection[]
+{
+\begin{frame}
+\frametitle{\insertsection}
+\end{frame}
+}
+
+\begin{frame}[plain]
+\titlepage
+\includegraphics[width=9em]{RIT_GCCIS1}
+\end{frame}
+
+
+\section{Introduction}
+
+\begin{frame}
+\frametitle{Functional Reactive Programming (FRP)}
+    \begin{itemize}
+        \item {\em Functional} First-class and higher-order functions.
+        \item {\em Reactive} Behavior changes in response to temporal inputs.
+        \item Basic abstractions
+        \begin{itemize}
+            \item Signals - Functions of time\footnote{Often also called behaviors.}.
+            \item Events - Sequences of temporally ordered and labeled discrete values.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Signal-Function FRP}
+    \begin{itemize}
+        \item Signal functions are transformers of events and signals.
+        \item Signal functions are first class in Signal-Function FRP.
+        \item Signals and events are not first-class in Signal Function FRP.
+        \item This approach is more composable than first-class signals and events (since input may be transformed)\footcite{Courtney2001-1}.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Push vs. Pull Evaluation}
+    \begin{itemize}
+        \item When to evaluate what?
+        \item Pull evaluation: (``demand-driven'') Evaluate when output is needed.
+        \item Push evaluation: (``data-driven'') Evaluate when input is available.
+        \item Ideally, FRP uses both: pull for signals and push for events.
+    \end{itemize}
+\end{frame}
+
+\section{Problem}
+
+\begin{frame}[fragile]
+\frametitle{Separating Events and Signals}
+    \begin{itemize}
+        \item[] 
+\begin{Verbatim}
+class (Category a) => Arrow a where
+  arr :: (b -> c) -> a b c
+  ...
+\end{Verbatim}
+        \item Traditional Signal-Function FRP encodes signal functions as a Haskell Arrow.
+\begin{Verbatim}
+data SF a b = ...
+
+instance Arrow SF where
+  ...
+\end{Verbatim}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Separating Events and Signals}
+    \begin{itemize}
+        \item Necessary to lift any function to a corresponding signal function, without input/output type annotation
+        \item Events encoded as optional signals:
+\begin{Verbatim}
+type Event a = Maybe a
+\end{Verbatim}
+        \item Combined signals and events encoded as one signal with pair type:
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Separating Events and Signals}
+    \begin{itemize}
+        \item[]
+\begin{Verbatim}
+class (Category a) => Arrow a where
+  ...
+  first :: a b c -> a (b, d) (c, d)
+  ...
+
+capture :: SF (a, Event b) (Event a)
+
+ghci> :t first . arr
+first . arr
+    :: (Arrow a) => (b -> c) -> a (b, d) (c, d)
+\end{Verbatim}
+    \end{itemize}
+\end{frame}
+
+\section{Approach}
+
+\begin{frame}[fragile]
+\frametitle{Type Signal Functions with Signal Vectors}
+
+    \begin{itemize}
+        \item Described by Sculthorpe\footcite{Sculthorpe2011}
+        \item Describe separation of individual signals and events
+        \item In Haskell (with {\tt -XEmptyDataDecls}):
+\begin{Verbatim}
+data SVEmpty
+data SVSignal a
+data SVEvent a
+data SVAppend svl svr
+type :^: svl svr = SVAppend svl svr
+\end{Verbatim}
+        \item Would like to use {\tt -XDataKinds} but it's not working well yet.
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Type Signal Functions with Signal Vectors}
+
+    \begin{itemize}
+        \item Two combinator examples:
+        \item Lifting a pure function to transform a signal:
+\begin{Verbatim}
+pureSignal ::     (a -> b)
+               -> SF (SVSignal a) (SVSignal b)
+\end{Verbatim}
+        \item Passing through input on the right:
+\begin{Verbatim}
+first ::    SF svIn svOut
+         -> SF (svIn :^: svRight) (svOut :^: svRight)
+\end{Verbatim}
+        \item Composing these leads to:
+\begin{Verbatim}
+ghci> :t first . pureSignal
+first . pureSignal
+    :: (a -> b) -> SF (SVSignal a :^: sv)
+                      (SVSignal b :^: sv)
+\end{Verbatim}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Partial Representations of Signal Vectors}
+    \begin{itemize}
+        \item To evaluate signals and events differently we must represent them separately.
+        \item Signal vectors enable this by distinguishing them in the types.
+        \item We can construct several representations of a signal vector.
+        \begin{itemize}
+          \item Represent signal leaves, event leaves, or both.
+          \item Represent one leaf, a subset of leaves, or all applicable leaves.
+          \item Transform the type at the leaf, or don't.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\section{Implementation}
+
+\begin{frame}[fragile]
+\frametitle{Signal Representation}
+    \begin{itemize} 
+        \item Represent an entire signal sample\\ (for initializing a signal function at time zero):
+\begin{Verbatim}
+data SVSample where
+    SVSample      ::    a -> SVSample (SVSignal a)
+    SVSampleEvent ::    SVSample (SVEvent a)
+    SVSampleEmpty ::    SVSample SVEmpty
+    SVSampleBoth  ::    SVSample svLeft 
+                     -> SVSample svRight
+                     -> SVSample (svLeft :^: svRight) 
+\end{Verbatim}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Signal Representation}
+    \begin{itemize} 
+        \item Represent a signal delta\\ (replacement values for a subset of signals):
+\begin{Verbatim}
+data SVDelta where
+     SVDelta        ::   a -> SVDelta (SVSignal a)
+     SVDeltaNothing ::   SVDelta sv
+     SVDeltaBoth    ::   SVDelta svLeft 
+                      -> SVDelta svRight
+                      -> SVDelta (svLeft :^: svRight) 
+\end{Verbatim}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Event Representation}
+    \begin{itemize} 
+        \item Represent an event occurrence:
+\begin{Verbatim}
+data SVOccurrence where
+     SVOccurrence ::   a -> SVOccurrence (SVEvent a)
+     SVOccLeft    ::   SVOccurrence svLeft
+                    -> SVOccurrence
+                         (svLeft :^: svRight)
+     SVOccRight   ::   SVOccurrence svRight
+                    -> SVOccurrence
+                         (svLeft :^: svRight)
+\end{Verbatim}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Signal Function Representation}
+    \begin{itemize}
+        \item Separate continuations for time advancement and event occurrences:
+\begin{Verbatim}
+data Initialized
+data NonInitialized
+
+data SF init svIn svOut where
+  SF ::   (SVSample svIn
+           -> (SVSample svOut,
+               SF Initialized svIn svOut))
+       -> SF NonInitialized svIn svOut
+...
+\end{Verbatim}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Signal Function Representation}
+    \begin{itemize}
+    \item Separate continuations for time advancement and event occurrences.
+\begin{Verbatim}
+...
+  SFInit ::   (Double 
+               -> SVDelta svIn
+               -> (SVDelta svOut,
+                   [SVOccurrence svOut],
+                   SF Initialized svIn svOut))
+           -> (SVOccurrence svIn
+               -> ([SVOccurrence svOut],
+                   SF Initialized svIn svOut)
+           -> SF Initialized svIn svOut
+\end{Verbatim}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Evaluation}
+    \begin{itemize}
+        \item Yampa/AFRP: Supply SF and input/output actions to an evaluation loop ({\tt reactimate}).
+        \item Here: initialize an evaluation state with:
+        \begin{itemize}
+            \item A signal function.
+            \item Initial values for all input signals.
+            \item Handlers for all outputs.
+        \end{itemize}
+        \item Then, the evaluation monad carries this state and provides the actions:
+            \begin{itemize}
+                \item {\tt push} Push an event (which will be immediately reacted to).
+                \item {\tt update} Update the value of an input signal (with no immediate effect).
+                \item {\tt step} Update the time and evaluate new values of signals.
+            \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\section{Conclusion}
+
+% Add conclusion
+
+\begin{frame}
+\frametitle{Further Work}
+\begin{itemize}
+  \item Dynamic collections: Dynamically switch between collections of signal functions.
+  \item Semantics/correctness proof (especially for event merging).
+  \item Time-independence optimization.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Questions?}
+\end{frame}
+
+\section{In Detail}
+
+\begin{frame}
+\frametitle{Combinator Implementations: Serial Composition ({\tt >>>})}
+    \begin{itemize}
+        \item Initialization:
+        \item Running:
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Combinator Implementations: Parallel Composition ({\tt first})}
+    \begin{itemize}
+        \item Initialization:
+        \item Running:
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Combinator Implementations: Parallel Composition ({\tt second})}
+    \begin{itemize}
+        \item Initialization:
+        \item Running:
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Time-independence optimization}
+\end{frame}
+
+\begin{frame}
+\frametitle{Event Merging}
+\end{frame}
+
+\end{document}
