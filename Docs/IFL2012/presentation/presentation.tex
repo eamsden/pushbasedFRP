@@ -19,13 +19,13 @@
 \title{Push-Pull Signal-Function Functional Reactive Programming}
 \author{Edward Amsden}
 \institute{Rochester Institute of Technology}
+\date{IFL 2012\\ \today}
 
 \begin{document}
 
 \AtBeginSection[]
 {
 \begin{frame}
-\frametitle{\insertsection}
 \end{frame}
 }
 
@@ -42,7 +42,7 @@
     \begin{itemize}
         \item {\em Functional} First-class and higher-order functions.
         \item {\em Reactive} Behavior changes in response to temporal inputs.
-        \item Basic abstractions
+        \item Basic abstractions:
         \begin{itemize}
             \item Signals - Functions of time\footnote{Often also called behaviors.}.
             \item Events - Sequences of temporally ordered and labeled discrete values.
@@ -64,9 +64,9 @@
 \frametitle{Push vs. Pull Evaluation}
     \begin{itemize}
         \item When to evaluate what?
-        \item Pull evaluation: (``demand-driven'') Evaluate when output is needed.
-        \item Push evaluation: (``data-driven'') Evaluate when input is available.
-        \item Ideally, FRP uses both: pull for signals and push for events.
+        \item Pull evaluation (``demand-driven''):\\ Evaluate when output is needed.
+        \item Push evaluation (``data-driven''):\\ Evaluate when input is available.
+        \item Ideally, an FRP system uses push for events and pull for signals\footcite{Elliott2009}.
     \end{itemize}
 \end{frame}
 
@@ -308,35 +308,31 @@ data SF init svIn svOut where
 \section{In Detail}
 
 \begin{frame}
-\frametitle{Combinator Implementations: Serial Composition ({\tt >>>})}
-    \begin{itemize}
-        \item Initialization:
-        \item Running:
-    \end{itemize}
-\end{frame}
-
-\begin{frame}
-\frametitle{Combinator Implementations: Parallel Composition ({\tt first})}
-    \begin{itemize}
-        \item Initialization:
-        \item Running:
-    \end{itemize}
-\end{frame}
-
-\begin{frame}
-\frametitle{Combinator Implementations: Parallel Composition ({\tt second})}
-    \begin{itemize}
-        \item Initialization:
-        \item Running:
-    \end{itemize}
-\end{frame}
-
-\begin{frame}
 \frametitle{Time-independence optimization}
+    \begin{itemize}
+        \item Inefficiency: running every time continuation every sample step.
+        \item This happens even if the signal delta is empty (no change)
+        \item Currently this is necessary because the {\em time} delta might
+              cause some output.
+        \item Optimization:
+        \begin{itemize}
+            \item Mark time-independent SFs using a separate constructor.
+            \item "Smart" composition-routing to make a composite SF time-independent
+                  if all of its components are.
+            \item Time-independent time continuation has no time input, only delta.
+            \item Only called if non-empty delta. 
+        \end{itemize}
+    \end{itemize}
 \end{frame}
 
 \begin{frame}
-\frametitle{Event Merging}
+\frametitle{Event Merging (Semantics Idea)}
+    \begin{itemize}
+        \item Push-based events are not tied to samples.
+        \item We thus know only what the last sample time was for an event,
+              not the actual time.
+        \item Can we hide event merging in this loss of precision?
+    \end{itemize}
 \end{frame}
 
 \end{document}
