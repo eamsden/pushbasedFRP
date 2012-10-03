@@ -64,6 +64,9 @@ module FRP.TimeFlies.SignalFunctions (
   integrate,
   -- * Events
   filter,
+  filterList,
+  accumulate,
+  accumulateList,
   -- * Joining
   union,
   combineSignals,
@@ -354,6 +357,30 @@ filter f = SF (\_ -> (sampleEvt, filterInit f))
 filterInit :: (a -> Maybe b) -> SF Initialized (SVEvent a) (SVEvent b)
 filterInit f = SFInit (\_ _ -> (deltaNothing, [], filterInit f))
                       (\evtOcc -> (maybe [] ((:[]) . occurrence) $ f $ fromOccurrence evtOcc, filterInit f))
+                      
+-- | Filter event occurrences with a list-producing function, producing each element of the list as an event.
+filterList :: (a -> [b]) -> SVEvent a :~> SVEvent b
+filterList f = SF (\_ -> (sampleEvt, filterListInit f))
+
+filterListInit f = let fli = SFInit (\_ _ -> (deltaNothing, [], fli))
+                                    (\evtOcc -> (map occurrence $ f $ fromOccurrence evtOcc, fli))
+                   in fli
+                                    
+-- | Accumulate over event occurrences
+accumulate :: (a -> b -> (Maybe c, a)) -> a -> SVEvent b :~> SVEvent c
+accumulate f a = acc a
+  where acc a = switch (pureEventTransformer (f a) >>>
+                        copy >>>
+                        first (pureEventTransformer fst >>> filter id) >>>
+                        second (pureEventTransformer (acc . snd)))
+
+-- | Accumulate over event occurrences, with lists of event outputs
+accumulateList :: (a -> b -> ([c], a)) -> a -> SVEvent b :~> SVEvent c
+accumulateList f a = acc a
+  where acc a = switch (pureEventTransformer (f a) >>>
+                        copy >>>
+                        first (pureEventTransformer fst >>> filterList id) >>>
+                        second (pureEventTransformer (acc . snd)))
 
 -- | Provide the input as input to the given signal function, producing
 -- the left side of the given signal function's output as output. Upon
