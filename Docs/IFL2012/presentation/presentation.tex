@@ -19,13 +19,13 @@
 \title{Push-Pull Signal-Function Functional Reactive Programming}
 \author{Edward Amsden}
 \institute{Rochester Institute of Technology}
+\date{IFL 2012\\ \today}
 
 \begin{document}
 
 \AtBeginSection[]
 {
 \begin{frame}
-\frametitle{\insertsection}
 \end{frame}
 }
 
@@ -40,23 +40,26 @@
 \begin{frame}
 \frametitle{Functional Reactive Programming (FRP)}
     \begin{itemize}
-        \item {\em Functional} First-class and higher-order functions.
-        \item {\em Reactive} Behavior changes in response to temporal inputs.
-        \item Basic abstractions
+        \item {\em Functional}: First-class and higher-order functions.
+        \item {\em Reactive}: Behavior changes in response to temporal inputs.
+        \item Basic abstractions:
         \begin{itemize}
             \item Signals - Functions of time\footnote{Often also called behaviors.}.
-            \item Events - Sequences of temporally ordered and labeled discrete values.
+            \item Events - Sequences of temporally ordered and labeled\\
+                  discrete values.
         \end{itemize}
+    \item ``Classic'' FRP - Signals and events are first-class.
     \end{itemize}
 \end{frame}
 
 \begin{frame}
-\frametitle{Signal-Function FRP}
+\frametitle{Signal-Function FRP (SF-FRP)}
     \begin{itemize}
         \item Signal functions are transformers of events and signals.
-        \item Signal functions are first class in Signal-Function FRP.
-        \item Signals and events are not first-class in Signal Function FRP.
-        \item This approach is more composable than first-class signals and events (since input may be transformed)\footcite{Courtney2001-1}.
+        \item Signal functions are first-class in Signal-Function FRP.
+        \item Signals and events are not first-class in Signal-Function FRP.
+        \item This approach is more composable than first-class\\
+              signals and events (since input may be transformed)\footcite{Courtney2001-1}.
     \end{itemize}
 \end{frame}
 
@@ -64,9 +67,12 @@
 \frametitle{Push vs. Pull Evaluation}
     \begin{itemize}
         \item When to evaluate what?
-        \item Pull evaluation: (``demand-driven'') Evaluate when output is needed.
-        \item Push evaluation: (``data-driven'') Evaluate when input is available.
-        \item Ideally, FRP uses both: pull for signals and push for events.
+        \item Pull evaluation (``demand-driven''):\\ Evaluate when output is needed.
+        \item Push evaluation (``data-driven''):\\ Evaluate when input is available.
+        \item Ideally, an FRP system uses push for events and\\
+              pull for signals\footcite{Elliott2009}.
+        \item This has been achieved for ``classic'' FRP
+              (first class signals and events) but not SF-FRP\footcite{Elliott2009}.
     \end{itemize}
 \end{frame}
 
@@ -94,12 +100,13 @@ instance Arrow SF where
 \begin{frame}[fragile]
 \frametitle{Separating Events and Signals}
     \begin{itemize}
-        \item Necessary to lift any function to a corresponding signal function, without input/output type annotation
+        \item The abstraction must lift any function to a corresponding signal function, without input/output type annotation.
         \item Events encoded as optional signals:
 \begin{Verbatim}
 type Event a = Maybe a
 \end{Verbatim}
-        \item Combined signals and events encoded as one signal with pair type:
+        \item Combined signals and events encoded as one signal with\\
+              a pair type:
     \end{itemize}
 \end{frame}
 
@@ -128,8 +135,8 @@ first . arr
 \frametitle{Type Signal Functions with Signal Vectors}
 
     \begin{itemize}
-        \item Described by Sculthorpe\footcite{Sculthorpe2011}
-        \item Describe separation of individual signals and events
+        \item Described by Sculthorpe\footcite{Sculthorpe2011}.
+        \item Describe separation of individual signals and events.
         \item In Haskell (with {\tt -XEmptyDataDecls}):
 \begin{Verbatim}
 data SVEmpty
@@ -290,15 +297,23 @@ data SF init svIn svOut where
 
 \section{Conclusion}
 
-% Add conclusion
+\begin{frame}
+\frametitle{Conclusion}
+    \begin{itemize}
+        \item Signal vectors fix an abstraction leak in Signal-Function FRP.
+        \item Representing events distinctly from signals in the type permits
+              heterogeneous (push-pull) evaluation of signal functions.
+    \end{itemize}
+\end{frame}
 
 \begin{frame}
 \frametitle{Further Work}
-\begin{itemize}
-  \item Dynamic collections: Dynamically switch between collections of signal functions.
-  \item Semantics/correctness proof (especially for event merging).
-  \item Time-independence optimization.
-\end{itemize}
+    \begin{itemize}
+        \item Dynamic collections: Dynamically switch between collections of signal functions.
+        \item Demonstrations and performance comparisons.
+        \item Semantics/correctness proof (especially for event merging).
+        \item Time-independence optimization.
+    \end{itemize}
 \end{frame}
 
 \begin{frame}
@@ -308,35 +323,31 @@ data SF init svIn svOut where
 \section{In Detail}
 
 \begin{frame}
-\frametitle{Combinator Implementations: Serial Composition ({\tt >>>})}
-    \begin{itemize}
-        \item Initialization:
-        \item Running:
-    \end{itemize}
-\end{frame}
-
-\begin{frame}
-\frametitle{Combinator Implementations: Parallel Composition ({\tt first})}
-    \begin{itemize}
-        \item Initialization:
-        \item Running:
-    \end{itemize}
-\end{frame}
-
-\begin{frame}
-\frametitle{Combinator Implementations: Parallel Composition ({\tt second})}
-    \begin{itemize}
-        \item Initialization:
-        \item Running:
-    \end{itemize}
-\end{frame}
-
-\begin{frame}
 \frametitle{Time-independence optimization}
+    \begin{itemize}
+        \item Inefficiency: running every time continuation every sample step.
+        \item This happens even if the signal delta is empty (no change)
+        \item Currently this is necessary because the {\em time} delta might
+              cause some output.
+        \item Optimization:
+        \begin{itemize}
+            \item Mark time-independent SFs using a separate constructor.
+            \item "Smart" composition-routing to make a composite SF time-independent
+                  if all of its components are.
+            \item Time-independent time continuation has no time input, only delta.
+            \item Only called if non-empty delta. 
+        \end{itemize}
+    \end{itemize}
 \end{frame}
 
 \begin{frame}
-\frametitle{Event Merging}
+\frametitle{Event Merging (Semantics Idea)}
+    \begin{itemize}
+        \item Push-based events are not tied to samples.
+        \item We thus know only what the last sample time was for an event,
+              not the actual time.
+        \item Can we hide event merging in this loss of precision?
+    \end{itemize}
 \end{frame}
 
 \end{document}
