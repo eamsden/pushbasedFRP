@@ -1,13 +1,13 @@
 \chapter{Background}
 \label{chapter:Background}
 
-The key abstraction of functional programming is the function, which takes an input and produces an output. Functions may produces functions
+The key abstraction of functional programming is the function, which takes an input and produces an output. Functions may produce functions
 as output and/or take functions as input. We say that functions are {\em first-class values} in a language.
 
-Most reactive programs are written in an imperative style, using low-level and non-composable abstractions including callbacks
+Even in functional languages, reactive programs are generally written in an imperative style, using low-level and non-composable abstractions including callbacks
 or object-based event handlers, called by event loops. This ties the model of interactivity to low-level implementation details such as timing and event handling models. 
 
-FRP implies that a model should keep the characteristics of functional programming (i.e. that the basic constructs of the language
+{\em Functional} Reactive Programming implies that a model should keep the characteristics of functional programming (i.e. that the basic constructs of the language
 should remain first-class) while incorporating reactivity into the language model. In particular, functions should be lifted to operate on reactive values,
 and functions themselves ought to be reactive.
 
@@ -16,8 +16,8 @@ abstractions of FRP are behaviors or signals\footnote{Behaviors are generally re
 function may operate on events, signals, or some combination of the two.}, which are time-dependent values defined at every point in continuous time, and events, which are 
 values defined at countably many points in time. An FRP system will provide functions to manipulate events and signals and to react
 to events by replacing a portion of the running program in response to an event. Behaviors and events, or some abstraction
-based on them, will be first class, in keeping with the spirit of functional programming. Programs implemented in functional reactive
-models should of course be efficiently executable. This has proven to be the main challenge in implementing Functional Reactive Programming.
+based on them, will be first class, in keeping with the spirit of functional programming. Programs implemented in FRP languages
+should of course be efficiently executable. This has proven to be the main challenge in implementing FRP.
 
 The two general approaches to FRP are ``classic'' FRP, where behaviors and signals are first-class and reactive objects, and ``signal-function'' FRP,
 where transformers of signals and events are first-class and reactive objects.
@@ -25,10 +25,10 @@ where transformers of signals and events are first-class and reactive objects.
 \section{Classic FRP}
 \label{section:Background-Classic_FRP}
 
-The earliest and still standard formulation of FRP is two primitive type
+The earliest and still standard formulation of FRP provides two primitive type
 constructors: {\tt Behavior} and {\tt Event}, together with combinators that
-produce values of this type. The easiest semantic definition for these types
-is given in Figure~\ref{figure:classic_frp_semantic_types}
+produce values of these types. The easiest semantic definition for these types
+is given in Figure~\ref{figure:classic_frp_semantic_types}\footnote{The list constructor {\tt []} should be considered to contain infinite as well as finite lists.}.
 
 \begin{figure}
 \begin{code}
@@ -101,13 +101,13 @@ Classic FRP was originally described as the basis of Fran~\cite{Elliott1997}
 interactive animations. Fran represented behaviors as two sampling functions,
 one from a time to a value and a new behavior (so that history may be discared),
 and the other from a time interval (a lower and upper time bound) to a value
-interval and a new behavior. Events are represented as {\tt improving values},
+interval and a new behavior. Events are represented as ``improving values'',
 which, when sampled with a time, produce a lower bound on the time to the next
 occurrence, or the next occurrence if it has indeed occurred.
 
 The first implementation of FRP outside the Haskell language was Frapp\'{e}, an
 FRP implementation for the Java Beans framework. Frapp\'{e} built on the notion
-of events and {\em bound properties} in the Beans framework, providing abstract
+of events and ``bound properties'' in the Beans framework, providing abstract
 interfaces for FRP events and behaviors, and combinators as concrete classes
 implementing these interfaces. The evaluation of Frapp\'{e} used Bean components
 as sources and sinks, and the implementation of Bean events and bound properties
@@ -123,7 +123,7 @@ FrTime does not provide a distinct concept of events, and chooses branches of
 the dependency graph by conditional evaluation of signals, rather than by the
 substitution of signals used by FRP systems.
 
-The Reactive~\cite{Elliott2009} system is a push-based FRP system with
+The Reactive~\cite{Elliott2009} system is a push-pull FRP system with
 first-class behaviors and events. The primary insight of Reactive is the
 separation of reactivity (or changes in response to events whose occurrence time
 could not be known beforehand) from time-dependence. This gives rise to {\em
@@ -168,9 +168,8 @@ An alternative approach to FRP was first proposed in work on
 Fruit~\cite{Courtney2001-1}, a library for declarative specification of GUIs.
 This library utilized the abstraction of Arrows~\cite{Hughes2000} to structure
 {\em signal functions}. Arrows are abstract type constructors with input and
-output type parameters, together with sequential ({\tt >>>}) and parallel
-({\tt first} and {\tt second}) composition, branching ({\tt ***}), and lifting
-({\tt arr}) functions to the Arrow type. Signal functions are the first-class
+output type parameters, together with a set of routing combinators (see Figure~\ref{figure:arrow_combinators}).
+Signal functions are the first-class
 abstraction in this approach, they represent time-dependent and reactive
 transformers of events and signals,  which are themselves not first class,
 since such values cannot be directly manipulated by the programmer. This
@@ -179,6 +178,20 @@ output of signal functions may be transformed, as opposed to signals or events
 which may only be transformed in their output, and it avoids a large class of
 time and space leaks which have emerged when implementing FRP with first-class
 signals and events.
+
+\begin{figure}
+\begin{code}
+(>>>)  :: (Arrow a) => a b c -> a c d -> a b d
+arr    :: (Arrow a) => (b -> c) -> a b c
+first  :: (Arrow a) => a b c -> a (b, d) (c, d)
+second :: (Arrow a) => a b c -> a (d, b) (d, c)
+(***)  :: (Arrow a) => a b c -> a b d -> a b (c, d)
+loop   :: (Arrow a) => a (b, d) (c, d) => a b c
+\end{code}
+\hrule
+\caption{Arrow combinators.}
+\label{figure:arrow_combinators}
+\end{figure}
 
 Similarly to FrTime, the netwire~\cite{Soylemez} library eschews dynamic
 switching, in this case in favor of {\em signal inhibition}. Netwire is written
