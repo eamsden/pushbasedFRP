@@ -8,14 +8,14 @@ The (not yet fully realized) goal of FRP is to provide an efficient, declarative
 abstraction for creating reactive programs. Towards this overall goal, there are
 three goals which this system is intended to meet.
 
-\subsection{Efficient and Push-Based Evaluation}
+\subsection{Efficient Evaluation}
 \label{subsection:System_Design_and_Interface-Goals-Efficient_and_Push_based_Evaluation}
 
-Efficient evaluation is the for push-based evaluation. Since FRP programs are
-expected to  interact with an outside world in real time, efficiency cannot be
-measured by runtime. Thus, when speaking of efficiency, we are expressing a
-desire that the system utilize as few system resources as possible for the task
-at hand, while responding as quickly as possible to external inputs and
+Efficient evaluation is the motivation for push-based evaluation of events.
+Since FRP programs are expected to  interact with an outside world in real time,
+efficiency cannot be measured by the runtime of a program. Thus, when speaking of efficiency,
+we are expressing a desire that the system utilize as few system resources as possible
+for the task at hand, while responding as quickly as possible to external inputs and
 producing output at a consistently high sample rate.
 
 \subsection{Composability}
@@ -44,7 +44,7 @@ with the system, and then a command is issued to run a loop which detects events
 and runs the handlers, and uses the results of the handlers to render the
 appropriate output. 
 
-We would like for the FRP system to be easily to integrate with such IO systems,
+We would like for the FRP system to be easy to integrate with such IO systems,
 while being flexible enough to enable its use with other forms of IO systems,
 such as simple imperative systems, threaded systems, or network servers.
 
@@ -274,8 +274,105 @@ swap        ::    SF NonInitialized (SVAppend svLeft svRight)
 \section{Evaluation}
 \label{section:System_Design_and_Interface-Evaluator}
 
-\subsection{Initialization and Running}
+The evaluation interface provides a modified state monad which holds a signal
+function, together with some additional information, as its state. Rather than
+monadic instructions to put and get the state, the monad provides instructions
+to trigger an input event, update an input signal, and trigger sampling of
+signals in the signal function. Additional state includes the current set of
+modifications to the input signals (since the last sample) and a set of
+handlers which actuate effects based on output events or changes to the output
+signal. The interface combinators are shown in Figure \ref{figure:evaluation_combinators}.
 
-\subsection{Input and Output}
+\begin{figure}
+\begin{code}
+data SVSample sv
+
+data SVEventInput sv
+instance SVRoutable SVEventInput sv
+
+data SVSignalUpdate sv
+instance SVRoutable SVSignalUpdate sv
+
+data SVHandler out sv
+
+svLeft          :: SVRoutable r =>
+                   r svLeft -> r (svLeft :^: svRight)
+svRight         :: SVRoutable r =>
+                   r svRight -> r (svLeft :^: svRight)
+
+svOcc           :: a -> SVEventInput (SVEvent a)
+svSig           :: a -> SVSignalUpdate (SVSignal a)
+ 
+emptyHandler    :: SVHandler out SVEmpty
+signalHandler   :: (a -> out) -> SVHandler out (SVSignal a)
+eventHandler    :: (a -> out) -> SVHandler out (SVEvent a)
+combineHandlers ::    SVHandler out svLeft
+                   -> SVHandler out svRight
+                   -> SVHandler out (svLeft :^: svRight)
+
+sample          :: a -> SVSample (SVSignal a)
+sampleEvt       :: SVSample (SVEvent a)
+sampleNothing   :: SVSample SVEmpty
+combineSamples  ::    SVSample svLeft
+                   -> SVSample svRight
+                   -> SVSample (svLeft :^: svRight)
+
+data SFEvalState m svIn svOut
+initSFEval ::    SVHandler (m ()) svOut
+              -> SVSample svIn
+              -> Double
+              -> (svIn :~> svOut)
+              -> SFEvalState m svIn svOut
+
+data SFEvalT svIn svOut m a
+instance MonadTrans (SFEvalT svIn svOut)
+instance (Monad m) => Monad (SFEvalT svIn svOut m)
+instance (Functor m) => Functor (SFEvalT svIn svOut m)
+instance (Monad m, Functor m) => Applicative (SFEvalT svIn svOut m)
+instance (MonadIO m) => MonadIO (SVEvalT svIn svOut m)
+
+runSFEvalT ::    SFEvalT svIn svOut m a
+              -> SFEvalState m svIn svOut
+              -> m (a, SFEvalState m svIn svOut)
+              
+push :: (Monad m) => SVEventInput svIn -> SFEvalT svIn svOut m ()
+update :: (Monad m) => SVEventInput svIn -> SFEvalT svIn svOut m ()
+step :: (Monad m) => Double -> SFEvalT svIn svOut m ()
+\end{code}
+\hrule
+\caption{Evaluation combinators.}
+\label{figure:evaluation_combinators}
+\end{figure}
+
+\subsection{Initialization and Running}
+To evaluate a signal function, one first constructs an initial state
+with the {\tt initSFEval} function. This function takes a set of
+handlers, a set of initial samples for the signal inputs, the original
+time (as a {\tt Double}) and the signal function to evaluate.
+
+The signal function replaces itself after each event occurrence or time
+step. The current signal function is maintained in the state. Calling
+{\tt push} causes the signal function to react to the supplied event 
+occurrence, and events which subsequently occur on the signal function's
+output are passed to the supplied handlers. Calling {\tt update} updates
+a set of new signal inputs. This set is nullified after it is passed in
+along with a new time by calling {\tt step}. This allows various
+components of a system to update individual signal inputs in a manner which is
+decoupled from the sample timer.
+
+When a monadic evaluation action is passed to the {\tt runSFEvalT} function,
+along with a state, the result is an action in the underlying monad. This
+action, when run in the underlying monad ({\tt IO}, for example) produces
+a pair of an output value and a new state. This new state is what should be 
+supplied to the next invocation of {\tt runSFEvalT}.
 
 \subsection{Monad Lifting}
+
+{\tt SFEvalT} is not only a monad, but a monad transformer. This means that
+it is parameterized by another monad, and that "running" an {\tt SFEvalT}
+action produces an action in this underlying monad. It means also that actions
+from this underlying monad may be ``lifted'' into actions of {\tt SFEvalT}.
+So if the {\tt IO} monad is the underlying monad, {\tt IO} actions can be 
+used to obtain input and arrange for timing. The underlying monad is also the
+monad whose actions the output handlers produce, which provides the means of
+actuating the output of the signal function.
