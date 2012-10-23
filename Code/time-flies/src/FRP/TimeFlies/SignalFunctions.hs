@@ -530,12 +530,15 @@ combineSignalsInit f currentSample = SFInit (\dt sigDelta -> let newSample = upd
 -- | Combine a signal and an event by producing an output event occurrence
 -- for each input event occurrence, but with the value of the signal
 -- at that time interval
-capture :: (SVSignal a :^: SVEvent b) :~> SVEvent a
+capture :: (SVSignal a :^: SVEvent b) :~> SVEvent (b, a)
 capture = SF ((sampleEvt,) . captureInit . sampleValue . fst . splitSample)
 
-captureInit :: a -> SF Initialized (SVAppend (SVSignal a) (SVEvent b)) (SVEvent a)
-captureInit x = SFInit (flip (const . (deltaNothing, [],) . maybe (captureInit x) captureInit . deltaValue . fst . splitDelta))
-                       ((, captureInit x) . const [occurrence x])
+captureInit :: a -> SF Initialized (SVAppend (SVSignal a) (SVEvent b)) (SVEvent (b, a))
+captureInit x = let cap = SFInit (flip (const . (deltaNothing, [],) . maybe (captureInit x) captureInit . deltaValue . fst . splitDelta))
+                                 (\evtOcc -> ([case chooseOccurrence evtOcc of
+                                                 Right evtOccRight -> occurrence (fromOccurrence evtOccRight, x)
+                                              ], cap))
+                in cap
 
 -- | SFEvalState
 data SFEvalState m svIn svOut = SFEvalState { 
