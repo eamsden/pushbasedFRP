@@ -48,6 +48,53 @@ We would like for the FRP system to be easy to integrate with such IO systems,
 while being flexible enough to enable its use with other forms of IO systems,
 such as simple imperative systems, threaded systems, or network servers.
 
+\section{Semantics}
+\label{section:System_Design_and_Interface-Semantics}
+
+A rigorous and formal elucidation of the semantics of signal-function FRP remains
+unattempted, but there is a sufficient change to the practical semantics of
+signal-function FRP between previous signal-function systems and TimeFlies to warrant
+some description.
+
+In previous systems such as Yampa, events were understood (and typed) as option-valued
+signals. This approach is undesirable for several reasons. The most pressing reason is
+that it prohibits push-based evaluation of events, because events are embedded in the
+samples of a signal and must be searched for.
+
+Another concern is that this approach limits the event rate to the sampling rate.
+The rate of sampling should, at some level, not matter to the FRP system. Events which
+occur between sampling intervals are never observed by the system.
+
+This concern drives the next concern. Events are not instantaneous in this formulation.
+If a signal is option valued, the sampling instant must fall within the interval where
+there is an event occurrence present for that event to be observed. If events are
+instantaneous, the probability of observing an event occurrence is zero.
+
+Therefore, TimeFlies employs the N-Ary FRP type formulation to represent signals and
+events as distinct entities in the inputs and outputs of signal functions. This means
+we are now free to choose our representation of events, and to separate it from the
+representation and evaluation of signals.
+
+This freedom yields the additional ability to make events independent of the sampling
+interval altogether. The semantics of event handling in TimeFlies is that an event occurrence
+is responded to immediately, and does not wait for the next sampling instant. This allows events
+to be instantaneous, and further, allows multiple events to occur within a single sampling interval.
+
+There are two tradeoffs intrinsic to this approach. The first is that events are only partially ordered
+temporally. There is no way to guarantee the order of observation of event occurrences occurring in the
+same sampling interval. Further, the precise time of an event occurrence cannot be observed, only the 
+time of the last sample prior to the occurrence.
+
+In return for giving up total ordering and precise observation of the timing of events, we obtain the
+ability to employ push-based evaluation for event occurrences, and the ability to non-deterministically
+merge event occurrences. When events being input to a non-deterministic merge have simultaneous occurrences,
+we simply select one arbitrarly to occur first. This does not violate any guarantee about time values, since
+they will both have the same time value in either case, and does not violate any guarantee about ordering,
+since no guarantee of their order is given.
+
+A formal semantic description of signal function FRP would clarify the consequences of this decision somewhat,
+but is outside the scope of this thesis.
+
 \section{Types}
 \label{section:System_Design_and_Interface-Types}
 
