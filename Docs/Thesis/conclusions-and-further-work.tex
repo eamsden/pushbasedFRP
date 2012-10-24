@@ -3,3 +3,45 @@
 I have presented TimeFlies, a push-based signal-function FRP system. I have
 demonstrated that TimeFlies does realize the theoretical benefits of a
 push-based signal-function system.
+
+The TimeFlies system is a full-fledged and documented FRP library which may
+be extended with utility functions and further optimized. Its performance in
+responding to events is demonstrated to be superior to that of the predominant
+pull-based signal-function FRP library.
+
+Further, the model of events used by TimeFlies subverts problematic semantic
+questions about the evaluation of events in a system. By using the N-Ary FRP
+type model and separating the evaluation of events from the time steps used
+for signals, TimeFlies fully supports non-deterministic merging of events,
+and provides a semantic guarantee that events are not ''lost'' during evaluation.
+
+The TimeFlies system would benefit from attentive microbenchmarking and performance
+tuning, as well as optimizations to avoid evaluating irrelevant parts of the network
+during the the evaluation of time steps. A formal semantic justification for the
+formulation of event evaluation (which would require a full formal semantics of FRP)
+would enable a far more robust correctness argument, as well as providing a basis for
+semantic extensions to signal-function FRP.
+
+FRP is not yet mature, and has not been the subject of focused application development.
+Thus, there is a dearth of design patterns for FRP applications. Such design patterns
+would yield necessary feedback as to which generalizations and restrictions of FRP would
+be appropriate and useful, and clarify the necessity of various utility combinators to
+be included in the standard libraries of FRP systems.
+
+In order to improve the performance of FRP yet further, it may be productive to attempt
+to introduce parallel evaluation into FRP, taking advantage of the functional purity in
+the implementation of the signal function combinators. This may involve, for instance,
+evaluating several time-steps at once in a data-parallel manner,task parallelism
+between different branches of a signal function, or speculative evaluation of switch
+combinators.
+
+Many classes of reactive application would benefit from a ``dynamic collections'' combinator
+similar to {\tt pSwitch} in Yampa. Such a combinator allows a collection of signal functions
+to be evaluated as one signal function, with addition or removal of signal functions instead
+of the total replacement given by the {\tt switch} combinator. This is useful, for instance,
+when simulating objects for games or computer models, as the behavior of each object can be
+modeled as a signal function, and these signal functions can be added to and removed from the
+collection.
+
+The TimeFlies system provides a principled and performant system for future experimentation
+on FRP, as well as implementation of FRP applications.
