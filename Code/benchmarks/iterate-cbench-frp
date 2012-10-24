@@ -1,0 +1,26 @@
+#!/bin/bash
+
+function cbench-frp {
+$1 $2 &
+pid=$!
+
+sleep 10s
+
+echo PID $pid
+
+cbench > $1-$2-cbench.out 2> $1-$2-cbench.err
+
+kill $pid
+sleep 10s
+}
+
+# The list of intervening pause values, from 3ms to 50ms
+declare -a pts=(3000 5000 7000 10000 12000 15000 20000 25000 30000 40000 50000)
+
+for pt in "${pts[@]}"
+do
+  echo "Running $1 with pause value $pt."
+  cbench-frp $1 $pt
+done
+
+
