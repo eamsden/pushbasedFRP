@@ -10,6 +10,7 @@ import           Data.Word                            -- Representation-specific
 import           FRP.TimeFlies.SignalFunctions        -- FRP
                    hiding (loop)
 import           GHC.Event hiding (step)              -- GHC event loop
+import           Nettle.Servers.Server (handshake)
 import           Nettle.OpenFlow                      -- OpenFlow API
 import           Nettle.Servers.EventServer           -- OpenFlow event-based server
 import           System.Clock (getTime,               -- A monotonic clock
