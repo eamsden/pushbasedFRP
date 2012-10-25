@@ -1,7 +1,7 @@
 %!PS-Adobe-2.0
-%%Title: graph2.eps
-%%Creator: gnuplot 4.2 patchlevel 6 
-%%CreationDate: Wed Oct 24 14:09:30 2012
+%%Title: graph.eps
+%%Creator: gnuplot 4.4 patchlevel 3
+%%CreationDate: Thu Oct 25 09:59:41 2012
 %%DocumentFonts: (atend)
 %%BoundingBox: 50 50 554 770
 %%Orientation: Landscape
@@ -11,8 +11,8 @@
 /gnudict 256 dict def
 gnudict begin
 %
-% The following 6 true/false flags may be edited by hand if required
-% The unit line width may also be changed
+% The following true/false flags may be edited by hand if desired.
+% The unit line width and grayscale image gamma correction may also be changed.
 %
 /Color true def
 /Blacktext false def
@@ -21,9 +21,11 @@ gnudict begin
 /Landscape true def
 /Level1 false def
 /Rounded false def
+/ClipToBoundingBox false def
 /TransparentPatterns false def
 /gnulinewidth 5.000 def
 /userlinewidth gnulinewidth def
+/Gamma 1.0 def
 %
 /vshift -46 def
 /dl1 {
@@ -44,18 +46,26 @@ systemdict /pdfmark known not {
   userdict /pdfmark systemdict /cleartomark get put
 } if
 SDict begin [
-  /Title (graph2.eps)
+  /Title (graph.eps)
   /Subject (gnuplot plot)
-  /Creator (gnuplot 4.2 patchlevel 6 )
-  /Author (Edward Chadwick Amsden,,,)
+  /Creator (gnuplot 4.4 patchlevel 3)
+  /Author (edward)
 %  /Producer (gnuplot)
 %  /Keywords ()
-  /CreationDate (Wed Oct 24 14:09:30 2012)
+  /CreationDate (Thu Oct 25 09:59:41 2012)
   /DOCINFO pdfmark
 end
 } ifelse
+/doclip {
+  ClipToBoundingBox {
+    newpath 50 50 moveto 554 50 lineto 554 770 lineto 50 770 lineto closepath
+    clip
+  } if
+} def
 %
-% Gnuplot Prolog Version 4.2 (August 2006)
+% Gnuplot Prolog Version 4.4 (August 2010)
+%
+%/SuppressPDFMark true def
 %
 /M {moveto} bind def
 /L {lineto} bind def
@@ -65,6 +75,8 @@ end
 /Z {closepath} bind def
 /C {setrgbcolor} bind def
 /f {rlineto fill} bind def
+/g {setgray} bind def
+/Gshow {show} def   % May be redefined later in the file to support UTF-8
 /vpt2 vpt 2 mul def
 /hpt2 hpt 2 mul def
 /Lshow {currentpoint stroke M 0 vshift R 
@@ -85,6 +97,7 @@ end
 	dup 1 lt {pop 1} if 10 mul /udl exch def} def
 /PL {stroke userlinewidth setlinewidth
 	Rounded {1 setlinejoin 1 setlinecap} if} def
+3.8 setmiterlimit
 % Default Line colors
 /LCw {1 1 1} def
 /LCb {0 0 0} def
@@ -427,6 +440,7 @@ end
 %%Page: 1 1
 gnudict begin
 gsave
+doclip
 50 50 translate
 0.100 0.100 scale
 90 rotate
@@ -436,329 +450,425 @@ newpath
 (Helvetica) findfont 140 scalefont setfont
 1.000 UL
 LTb
-1022 523 M
+854 448 M
 63 0 V
-5905 0 R
+6030 0 R
 -63 0 V
-938 523 M
-( 0) Rshow
+770 448 M
+( 10) Rshow
 1.000 UL
 LTb
-1022 1268 M
+854 808 M
+31 0 V
+6062 0 R
+-31 0 V
+854 1019 M
+31 0 V
+6062 0 R
+-31 0 V
+854 1168 M
+31 0 V
+6062 0 R
+-31 0 V
+854 1284 M
+31 0 V
+6062 0 R
+-31 0 V
+854 1378 M
+31 0 V
+6062 0 R
+-31 0 V
+854 1459 M
+31 0 V
+6062 0 R
+-31 0 V
+854 1528 M
+31 0 V
+6062 0 R
+-31 0 V
+854 1589 M
+31 0 V
+6062 0 R
+-31 0 V
+854 1644 M
 63 0 V
-5905 0 R
+6030 0 R
 -63 0 V
--5989 0 R
+-6114 0 R
+( 100) Rshow
+1.000 UL
+LTb
+854 2004 M
+31 0 V
+6062 0 R
+-31 0 V
+854 2214 M
+31 0 V
+6062 0 R
+-31 0 V
+854 2364 M
+31 0 V
+6062 0 R
+-31 0 V
+854 2480 M
+31 0 V
+6062 0 R
+-31 0 V
+854 2574 M
+31 0 V
+6062 0 R
+-31 0 V
+854 2654 M
+31 0 V
+6062 0 R
+-31 0 V
+854 2724 M
+31 0 V
+6062 0 R
+-31 0 V
+854 2785 M
+31 0 V
+6062 0 R
+-31 0 V
+854 2839 M
+63 0 V
+6030 0 R
+-63 0 V
+-6114 0 R
+( 1000) Rshow
+1.000 UL
+LTb
+854 3199 M
+31 0 V
+6062 0 R
+-31 0 V
+854 3410 M
+31 0 V
+6062 0 R
+-31 0 V
+854 3559 M
+31 0 V
+6062 0 R
+-31 0 V
+854 3675 M
+31 0 V
+6062 0 R
+-31 0 V
+854 3770 M
+31 0 V
+6062 0 R
+-31 0 V
+854 3850 M
+31 0 V
+6062 0 R
+-31 0 V
+854 3919 M
+31 0 V
+6062 0 R
+-31 0 V
+854 3981 M
+31 0 V
+6062 0 R
+-31 0 V
+854 4035 M
+63 0 V
+6030 0 R
+-63 0 V
+-6114 0 R
 ( 10000) Rshow
 1.000 UL
 LTb
-1022 2013 M
-63 0 V
-5905 0 R
--63 0 V
--5989 0 R
-( 20000) Rshow
-1.000 UL
-LTb
-1022 2758 M
-63 0 V
-5905 0 R
--63 0 V
--5989 0 R
-( 30000) Rshow
-1.000 UL
-LTb
-1022 3503 M
-63 0 V
-5905 0 R
--63 0 V
--5989 0 R
-( 40000) Rshow
-1.000 UL
-LTb
-1022 4248 M
-63 0 V
-5905 0 R
--63 0 V
--5989 0 R
-( 50000) Rshow
-1.000 UL
-LTb
-1022 448 M
+854 4395 M
+31 0 V
+6062 0 R
+-31 0 V
+854 4606 M
+31 0 V
+6062 0 R
+-31 0 V
+854 4755 M
+31 0 V
+6062 0 R
+-31 0 V
+854 4871 M
+31 0 V
+6062 0 R
+-31 0 V
+854 448 M
 0 63 V
-0 4109 R
+0 4360 R
 0 -63 V
-0 -4249 R
+854 308 M
 ( 0) Cshow
 1.000 UL
 LTb
-2107 448 M
+1962 448 M
 0 63 V
-0 4109 R
+0 4360 R
 0 -63 V
-0 -4249 R
+0 -4500 R
 ( 10000) Cshow
 1.000 UL
 LTb
-3192 448 M
+3070 448 M
 0 63 V
-0 4109 R
+0 4360 R
 0 -63 V
-0 -4249 R
+0 -4500 R
 ( 20000) Cshow
 1.000 UL
 LTb
-4277 448 M
+4177 448 M
 0 63 V
-0 4109 R
+0 4360 R
 0 -63 V
-0 -4249 R
+0 -4500 R
 ( 30000) Cshow
 1.000 UL
 LTb
-5362 448 M
+5285 448 M
 0 63 V
-0 4109 R
+0 4360 R
 0 -63 V
-0 -4249 R
+0 -4500 R
 ( 40000) Cshow
 1.000 UL
 LTb
-6447 448 M
+6393 448 M
 0 63 V
-0 4109 R
+0 4360 R
 0 -63 V
-0 -4249 R
+0 -4500 R
 ( 50000) Cshow
 1.000 UL
 LTb
 1.000 UL
 LTb
-1022 4620 N
-0 -4172 V
-5968 0 V
-0 4172 V
--5968 0 V
+854 4871 N
+854 448 L
+6093 0 V
+0 4423 V
+-6093 0 V
 Z stroke
 LCb setrgbcolor
-280 2534 M
-currentpoint gsave translate 90 rotate 0 0 M
-(FlowMods/sec \(cbench\)) Cshow
+112 2659 M
+currentpoint gsave translate -270 rotate 0 0 M
+(FlowMods/sec \(measured by cbench\)) Cshow
 grestore
 LTb
 LCb setrgbcolor
-4006 98 M
-(Pause between signal samples \(microseconds\)) Cshow
-LTb
-4006 4830 M
-(Comparison of sampling rate vs. controller performance) Cshow
-1.000 UP
-1.000 UL
+3900 98 M
+(Pause time \(microseconds\)) Cshow
 LTb
 1.000 UP
 1.000 UL
+LTb
+% Begin plot #1
+1.000 UP
+1.000 UL
 LT0
-0.00 0.00 1.00 C LTb
-6339 4487 M
-(timeflies) Rshow
-LT0
-0.00 0.00 1.00 C 6423 4487 M
-399 0 V
--399 31 R
-0 -62 V
-399 62 R
-0 -62 V
-1348 2990 M
-0 891 V
--31 -891 R
+0.00 0.00 1.00 C 1186 4657 M
+0 160 V
+-31 -160 R
 62 0 V
--62 891 R
+-62 160 R
 62 0 V
-1565 2875 M
-0 774 V
--31 -774 R
+191 -185 R
+0 148 V
+-31 -148 R
 62 0 V
--62 774 R
+-62 148 R
 62 0 V
-186 -893 R
-0 694 V
--31 -694 R
+190 -175 R
+0 141 V
+-31 -141 R
 62 0 V
--62 694 R
+-62 141 R
 62 0 V
-294 -829 R
-0 621 V
--31 -621 R
+302 -173 R
+0 135 V
+-31 -135 R
 62 0 V
--62 621 R
+-62 135 R
 62 0 V
-186 -711 R
-0 596 V
--31 -596 R
+190 -158 R
+0 135 V
+-31 -135 R
 62 0 V
--62 596 R
+-62 135 R
 62 0 V
-295 -665 R
-0 507 V
--31 -507 R
+302 -153 R
+0 121 V
+-31 -121 R
 62 0 V
--62 507 R
+-62 121 R
 62 0 V
-511 -648 R
-0 428 V
--31 -428 R
+523 -160 R
+0 111 V
+-31 -111 R
 62 0 V
--62 428 R
+-62 111 R
 62 0 V
-512 -530 R
-0 380 V
--31 -380 R
+523 -142 R
+0 105 V
+-31 -105 R
 62 0 V
--62 380 R
+-62 105 R
 62 0 V
-511 -475 R
-0 344 V
--31 -344 R
+522 -134 R
+0 101 V
+-31 -101 R
 62 0 V
--62 344 R
+-62 101 R
 62 0 V
-5362 1974 M
-0 310 V
--31 -310 R
+5285 4382 M
+0 100 V
+-31 -100 R
 62 0 V
--62 310 R
+-62 100 R
 62 0 V
-6447 1901 M
-0 212 V
--31 -212 R
+6393 4355 M
+0 74 V
+-31 -74 R
 62 0 V
--62 212 R
+-62 74 R
 62 0 V
-1348 3435 Pls
-1565 3262 Pls
-1782 3103 Pls
-2107 2931 Pls
-2324 2829 Pls
-2650 2715 Pls
-3192 2535 Pls
-3735 2409 Pls
-4277 2296 Pls
-5362 2129 Pls
-6447 2007 Pls
-6622 4487 Pls
+1186 4743 Pls
+1408 4711 Pls
+1629 4680 Pls
+1962 4645 Pls
+2183 4622 Pls
+2516 4596 Pls
+3070 4551 Pls
+3624 4518 Pls
+4177 4486 Pls
+5285 4434 Pls
+6393 4393 Pls
+% End plot #1
+% Begin plot #2
 1.000 UL
 LT1
-0.00 0.00 1.00 C 1348 3435 M
-217 -173 V
-217 -159 V
-325 -172 V
-217 -102 V
-326 -114 V
-542 -180 V
-543 -126 V
-542 -113 V
-5362 2129 L
-6447 2007 L
+0.00 0.00 1.00 C LCb setrgbcolor
+6296 4738 M
+(timeflies) Rshow
+LT1
+0.00 0.00 1.00 C 6380 4738 M
+399 0 V
+-5593 5 R
+222 -32 V
+221 -31 V
+333 -35 V
+221 -23 V
+333 -26 V
+554 -45 V
+554 -33 V
+553 -32 V
+1108 -52 V
+1108 -41 V
+% End plot #2
+% Begin plot #3
 1.000 UP
 stroke
 LT2
-1.00 0.00 0.00 C LTb
-6339 4347 M
-(yampa) Rshow
-LT2
-1.00 0.00 0.00 C 6423 4347 M
-399 0 V
--399 31 R
-0 -62 V
-399 62 R
-0 -62 V
-1348 526 M
+1.00 0.00 0.00 C 1186 1284 M
 -31 0 R
 62 0 V
 -62 0 R
 62 0 V
-186 0 R
+191 0 R
 -31 0 R
 62 0 V
 -62 0 R
 62 0 V
-186 0 R
+190 0 R
 -31 0 R
 62 0 V
 -62 0 R
 62 0 V
-294 0 R
+302 0 R
 -31 0 R
 62 0 V
 -62 0 R
 62 0 V
-186 -1 R
+190 -218 R
+0 14 V
+-31 -14 R
+62 0 V
+-62 14 R
+62 0 V
+302 -14 R
+0 14 V
+-31 -14 R
+62 0 V
+-62 14 R
+62 0 V
+523 -14 R
+0 14 V
+-31 -14 R
+62 0 V
+-62 14 R
+62 0 V
+3624 924 M
 -31 0 R
 62 0 V
 -62 0 R
 62 0 V
-295 0 R
+522 0 R
 -31 0 R
 62 0 V
 -62 0 R
 62 0 V
-511 0 R
+5285 808 M
 -31 0 R
 62 0 V
 -62 0 R
 62 0 V
-512 -1 R
--31 0 R
+6393 699 M
+0 29 V
+-31 -29 R
 62 0 V
--62 0 R
+-62 29 R
 62 0 V
-511 0 R
--31 0 R
-62 0 V
--62 0 R
-62 0 V
-1054 0 R
--31 0 R
-62 0 V
--62 0 R
-62 0 V
-1054 0 R
--31 0 R
-62 0 V
--62 0 R
-62 0 V
-1348 526 Crs
-1565 526 Crs
-1782 526 Crs
-2107 526 Crs
-2324 525 Crs
-2650 525 Crs
-3192 525 Crs
-3735 524 Crs
-4277 524 Crs
-5362 524 Crs
-6447 524 Crs
-6622 4347 Crs
+1186 1284 Crs
+1408 1284 Crs
+1629 1284 Crs
+1962 1284 Crs
+2183 1073 Crs
+2516 1073 Crs
+3070 1073 Crs
+3624 924 Crs
+4177 924 Crs
+5285 808 Crs
+6393 713 Crs
+% End plot #3
+% Begin plot #4
 1.000 UL
 LT3
-1.00 0.00 0.00 C 1348 526 M
-217 0 V
-217 0 V
-325 0 V
-217 -1 V
-326 0 V
-542 0 V
-543 -1 V
-542 0 V
-1085 0 V
-1085 0 V
+1.00 0.00 0.00 C LCb setrgbcolor
+6296 4598 M
+(yampa) Rshow
+LT3
+1.00 0.00 0.00 C 6380 4598 M
+399 0 V
+1186 1284 M
+222 0 V
+221 0 V
+333 0 V
+221 -211 V
+333 0 V
+554 0 V
+3624 924 L
+553 0 V
+5285 808 L
+6393 713 L
+% End plot #4
 stroke
 LTb
-1022 4620 N
-0 -4172 V
-5968 0 V
-0 4172 V
--5968 0 V
+854 4871 N
+854 448 L
+6093 0 V
+0 4423 V
+-6093 0 V
 Z stroke
 1.000 UP
 1.000 UL
