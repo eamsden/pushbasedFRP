@@ -154,12 +154,18 @@ along with another instantation which is hidden from users of the library,
 is discussed in the section on implementation of signal functions
 (Section~\ref{section:Implementation-Signal_Functions}).
 
-The representation of signal functions is also discussed in
+Signal functions with signal vectors as input and output types form a
+Haskell {\tt GArrow}~\cite{Megacz2011}. Specifically, the signal function
+type constructor (with the initialization parameter fixed) forms the arrow
+type, the {\tt SVAppend} type constructor forms the product type, and the
+{\tt SVEmpty} type constructor forms the unit type.
+
+The representation of signal functions is discussed in
 Section~\ref{section:Implementation-Signal_Functions}. Here it suffices to say
 that the use of GADTs permits the construction of values which make use of
 uninhabited types as instantiations of type parameters.
 
-The type synonyms {\tt :~>} and {\tt :\textasciicircum:} are included for readability and are
+The type synonyms {\tt :\textasciitilde>} and {\tt :\textasciicircum:} are included for readability and are
 not crucial to the FRP system.
 
 \begin{figure}
@@ -265,11 +271,21 @@ having to route those values from an input.
 
 \begin{figure}
 \begin{code}
-identity :: SF NonInitialized sv sv
-constant :: a -> SF NonInitialized SVEmpty (SVSignal a)
-never    :: SF NonInitialized SVEmpty (SVEvent a)
-asap     :: a -> SF NonInitialized SVEmpty (SVEvent a)
-after    :: Double -> a -> SF NonInitialized SVEmpty (SVEvent a)
+-- Pass the input unmodified to the output
+identity :: sv :~> sv
+
+-- Produce a signal which is at all times the supplied value
+constant :: a -> SVEmpty :~> SVSignal a
+
+-- An event with no occurrences
+never    :: SVEmpty :~> SVEvent a
+
+-- An event with one occurrence, as soon as possible after
+-- the signal function is initialized
+asap     :: a -> SVEmpty :~> SVEvent a
+
+-- An event after the specified amount of time has elapsed.
+after    :: Double -> a -> SVEmpty :~> SVEvent a
 \end{code}
 \hrule
 \caption{Basic signal functions.}
@@ -286,10 +302,11 @@ occurrence of an input event.
 
 \begin{figure}
 \begin{code}
-pureSignal ::    (a -> b) 
-              -> SF NonInitialized (SVSignal a) (SVSignal b)
-pureEvent  ::    (a -> b)
-              -> SF NonInitialized (SVSignal a) (SVSignal b)
+-- Apply the given function to a signal at all points in time
+pureSignalTransformer :: (a -> b) -> SVSignal a :~> SVSignal b
+
+-- Apply the given function to each event occurrence
+pureEventTransformer  :: (a -> b) -> SVEvent a :~> SVEvent b
 \end{code}
 \hrule
 \caption{Lifting pure functions.}
@@ -299,78 +316,229 @@ pureEvent  ::    (a -> b)
 \subsection{Routing}
 \label{subsection:System_Design_and_Interface-Combinators-Routing}
 
+The routing combinators are used to combine signal functions, and
+to re-arrange signal vectors in order to connect signal functions.
+The routing combinators are shown in Figure~\ref{figure:routing_combinators}.
+
+Only those combinators which modify or combine signal functions
+({\tt (>>>)}, {\tt first}, {\tt second}) are reactive, and then
+only if they inherit their reactivity from the signal function(s)
+they modify. The rest do not react to or modify the input in any
+way, except to re-arrange it, copy it, or discard it altogether.
+
 \begin{figure}
 \begin{code}
-(>>>)       ::    SF NonInitialized svIn svBetween
-               -> SF NonInitialized svBetween svOut
-               -> SF NonInitialized svIn svOut
-first       ::    SF NonInitialized svIn svOut
-               -> SF NonInitialized (SVAppend svIn sv)
-                                    (SVAppend svOut sv)
-second      ::    SF NonInitialized svIn svOut
-               -> SF NonInitialized (SVAppend sv svIn)
-                                    (SVAppend sv svOut)
-swap        ::    SF NonInitialized (SVAppend svLeft svRight) 
-                                    (SVAppend svRight svLeft)
+-- Use the output of one signal function as the input for another
+(>>>) :: (svIn :~> svBetween) -> (svBetween :~> svOut) -> svIn :~> svOut
+
+-- Pass through the right side of the input unchanged
+first :: (svIn :~> svOut) -> (svIn :^: sv) :~> (svOut :^: sv)
+
+-- Pass through the left side of the input unchanged
+second :: (svIn :~> svOut) -> (sv :^: svIn) :~> (sv :^: svOut)
+
+-- Swap the left and right sides
+swap :: (svLeft :^: svRight) :~> (svRight :^: svLeft)
+
+-- Duplicate the input
+copy :: sv :~> (sv :^: sv)
+
+-- Ignore the input
+ignore :: sv :~> svEmpty
+
+-- Remove an empty vector on the left
+cancelLeft :: (SVEmpty :^: sv) :~> sv
+
+-- Add an empty vector on the left
+uncancelLeft :: sv :~> (SVEmpty :^: sv)
+
+-- Remove an empty vector on the right
+cancelRight :: (sv :^: SVEmpty) :~> sv
+
+-- Add an empty vector on the right
+uncancelRight :: sv :~> (sv :^: SVEmpty)
+
+-- Make right-associative
+associate :: ((sv1 :^: sv2) :^: sv3) :~> (sv1 :^: (sv2 :^: sv3))
+
+-- Make left-associative
+unassociate :: (sv1 :^: (sv2 :^: sv3)) :~> ((sv1 :^: sv2) :^: sv3)
 \end{code}
 \hrule
 \caption{Routing combinators.}
 \label{figure:routing_combinators}
 \end{figure}
 
+\subsection{Reactivity}
+\label{subsection:System_Design_and_Interface-Combinators-Reactivity}
+
+Reactivity is introduced by means of the {\tt switch} combinator
+(Figure~\ref{figure:switch_combinator}). The design of this combinator
+allows modular packaging of reactivity. A signal function can determine
+autonomously when to replace itself, based only on its input and state,
+by emitting an event occurrence carrying its replacement. The combinator
+consumes and hides the event carrying the replacement signal function, 
+so the reactivity is not exposed by the resulting reactive signal function.
+
+\begin{figure}
+\begin{code}
+switch ::    (svIn :~> (svOut :^: SVEvent (svIn :~> svOut)))
+          -> svIn :~> svOut
+\end{code}
+\hrule
+\caption{Combinator for reactivity.}
+\label{figure:switch_combinator}
+\end{figure}
+
+There are other formulations of a reactive combinator which may be implemented
+using the one supplied. These are shown in Figure~\ref{figure:alternate_switching_combinators}
+and may be provided in a future version of the TimeFlies library.
+
+\begin{figure}
+\begin{code}
+-- Alternate version of switch,
+-- implemented in terms of supplied version
+switch_gen ::    (svIn :~> (svOut :^: SVEvent a))
+              -> (a -> svIn :~> svOut)
+              -> svIn :~> svOut
+switch_gen sf f =
+  switch (sf >>> second (pureEventTransformer f))
+
+-- Supplied version in terms of alternate version
+switch ::    (svIn :~> (svOut :^: SVEvent (svIn :~> svOut)))
+          -> svIn :~> svOut
+switch sf = switch_gen sf id
+
+-- Repeated switch, which takes replacement signal functions
+-- externally.
+rswitch ::    (svIn :~> svOut)
+           -> (svIn :^: SVEvent (svIn :~> svOut)) :~> svOut
+rswitch sf =
+  switch (first sf >>> second (pureEventTransformer rswitch))
+\end{code}
+\hrule
+\caption{Alternate combinators for reactivity.}
+\label{figure:alternate_switching_combinators}
+\end{figure}
+
 \section{Evaluation}
 \label{section:System_Design_and_Interface-Evaluator}
 
 The evaluation interface provides a modified state monad which holds a signal
-function, together with some additional information, as its state. Rather than
-monadic instructions to put and get the state, the monad provides instructions
+function, together with some additional information, as its state (shown in Figure~\ref{figure:evaluation_state}.
+Rather than monadic instructions to put and get the state, the monad provides instructions
 to trigger an input event, update an input signal, and trigger sampling of
 signals in the signal function. Additional state includes the current set of
 modifications to the input signals (since the last sample) and a set of
 handlers which actuate effects based on output events or changes to the output
-signal. The interface combinators are shown in Figure \ref{figure:evaluation_combinators}.
+signal.
 
 \begin{figure}
 \begin{code}
-data SVSample sv
-
-data SVEventInput sv
-instance SVRoutable SVEventInput sv
-
-data SVSignalUpdate sv
-instance SVRoutable SVSignalUpdate sv
-
+-- A vector of handlers for outputs
 data SVHandler out sv
 
-svLeft          :: SVRoutable r =>
-                   r svLeft -> r (svLeft :^: svRight)
-svRight         :: SVRoutable r =>
-                   r svRight -> r (svLeft :^: svRight)
-
-svOcc           :: a -> SVEventInput (SVEvent a)
-svSig           :: a -> SVSignalUpdate (SVSignal a)
- 
+-- A dummy handler for an empty output
 emptyHandler    :: SVHandler out SVEmpty
+
+-- A handler for an updated signal sample
 signalHandler   :: (a -> out) -> SVHandler out (SVSignal a)
+
+-- A handler for an event occurrence
 eventHandler    :: (a -> out) -> SVHandler out (SVEvent a)
+
+-- Combine handlers for a vector
 combineHandlers ::    SVHandler out svLeft
                    -> SVHandler out svRight
                    -> SVHandler out (svLeft :^: svRight)
 
-sample          :: a -> SVSample (SVSignal a)
-sampleEvt       :: SVSample (SVEvent a)
-sampleNothing   :: SVSample SVEmpty
-combineSamples  ::    SVSample svLeft
-                   -> SVSample svRight
-                   -> SVSample (svLeft :^: svRight)
-
+-- The state maintained when evaluating a signal function
 data SFEvalState m svIn svOut
+
+-- Create the initial state for evaluating a signal function
 initSFEval ::    SVHandler (m ()) svOut
               -> SVSample svIn
               -> Double
               -> (svIn :~> svOut)
               -> SFEvalState m svIn svOut
+\end{code}
+\hrule
+\caption{State maintained when evaluating a signal function}
+\label{figure:evaluation_state}
+\end{figure}
 
+In order to initialize the state, the user must supply a set of handlers, the
+signal function to evaluate, and initial values for all of the signal inputs
+(Figure~\ref{figure:initial_input}).
+
+\begin{figure}
+\begin{code}
+-- A sample for all leaves of a signal vector
+data SVSample sv
+
+-- Create a sample for a signal leaf
+sample          :: a -> SVSample (SVSignal a)
+
+-- A dummy sample for an event leaf
+sampleEvt       :: SVSample (SVEvent a)
+
+-- A dummy sample for an empty leaf
+sampleNothing   :: SVSample SVEmpty
+
+-- Combine two samples
+combineSamples  ::    SVSample svLeft
+                   -> SVSample svRight
+                   -> SVSample (svLeft :^: svRight)
+\end{code}
+\hrule
+\caption{Data type for initial input}
+\label{figure:initial_input}
+\end{figure}
+
+This state can then be passed to a monadic action which will supply input to
+the signal function. Inputs are constructed using a simple interface with
+functions to construct sample updates and event occurrences, and to specify
+their place in the vector (Figure~\ref{figure:ongoing_input}).
+
+\begin{figure}
+\begin{code}
+-- Class to overload left and right functions
+class SVRoutable r where
+  svLeft          :: r svLeft -> r (svLeft :^: svRight)
+  svRight         :: r svRight -> r (svLeft :^: svRight)
+
+-- An input event occurrence
+data SVEventInput sv
+instance SVRoutable SVEventInput sv
+
+-- An updated sample for a signal
+data SVSignalUpdate sv
+instance SVRoutable SVSignalUpdate sv
+
+-- Create an event occurrence
+svOcc           :: a -> SVEventInput (SVEvent a)
+
+-- Create an updated sample
+svSig           :: a -> SVSignalUpdate (SVSignal a)
+\end{code}
+\hrule
+\caption{Data types for ongoing input.}
+\label{figure:ongoing_input}
+\end{figure}
+
+The {\tt SFEvalT} monad is actually a monad transformer, that is, it is
+parameterized over an underlying monad whose actions may be lifted to
+{\tt SFEvalT}. In the usual case, this will be the {\tt IO} monad.
+
+{\tt SFEvalT} actions are constructed using combinators to push events,
+update inputs, and step time, as well as actions lifted from the underlying
+monad (used to obtain these inputs). An action in the underlying monad
+which produces the result and a new state is obtained with the {\tt runSFEvalT}
+function. These combinators are shown in Figure~\ref{figure:evaluation_combinators}.
+
+\begin{figure}
+\begin{code}
+-- The evaluation monad
 data SFEvalT svIn svOut m a
 instance MonadTrans (SFEvalT svIn svOut)
 instance (Monad m) => Monad (SFEvalT svIn svOut m)
@@ -378,48 +546,24 @@ instance (Functor m) => Functor (SFEvalT svIn svOut m)
 instance (Monad m, Functor m) => Applicative (SFEvalT svIn svOut m)
 instance (MonadIO m) => MonadIO (SVEvalT svIn svOut m)
 
+-- Obtain an action in the underlying monad
+-- from an SFEvalT and a new state.
 runSFEvalT ::    SFEvalT svIn svOut m a
               -> SFEvalState m svIn svOut
               -> m (a, SFEvalState m svIn svOut)
-              
+
+-- Push an event occurrence.
 push :: (Monad m) => SVEventInput svIn -> SFEvalT svIn svOut m ()
+
+-- Update the value of an input signal sample
+-- (not immediately observed)
 update :: (Monad m) => SVEventInput svIn -> SFEvalT svIn svOut m ()
+
+-- Step forward in time, observing the updated signal values
 step :: (Monad m) => Double -> SFEvalT svIn svOut m ()
 \end{code}
 \hrule
-\caption{Evaluation combinators.}
+\caption{Evaluation combinators}
 \label{figure:evaluation_combinators}
 \end{figure}
 
-\subsection{Initialization and Running}
-To evaluate a signal function, one first constructs an initial state
-with the {\tt initSFEval} function. This function takes a set of
-handlers, a set of initial samples for the signal inputs, the original
-time (as a {\tt Double}) and the signal function to evaluate.
-
-The signal function replaces itself after each event occurrence or time
-step. The current signal function is maintained in the state. Calling
-{\tt push} causes the signal function to react to the supplied event 
-occurrence, and events which subsequently occur on the signal function's
-output are passed to the supplied handlers. Calling {\tt update} updates
-a set of new signal inputs. This set is nullified after it is passed in
-along with a new time by calling {\tt step}. This allows various
-components of a system to update individual signal inputs in a manner which is
-decoupled from the sample timer.
-
-When a monadic evaluation action is passed to the {\tt runSFEvalT} function,
-along with a state, the result is an action in the underlying monad. This
-action, when run in the underlying monad ({\tt IO}, for example) produces
-a pair of an output value and a new state. This new state is what should be 
-supplied to the next invocation of {\tt runSFEvalT}.
-
-\subsection{Monad Lifting}
-
-{\tt SFEvalT} is not only a monad, but a monad transformer. This means that
-it is parameterized by another monad, and that "running" an {\tt SFEvalT}
-action produces an action in this underlying monad. It means also that actions
-from this underlying monad may be ``lifted'' into actions of {\tt SFEvalT}.
-So if the {\tt IO} monad is the underlying monad, {\tt IO} actions can be 
-used to obtain input and arrange for timing. The underlying monad is also the
-monad whose actions the output handlers produce, which provides the means of
-actuating the output of the signal function.
