@@ -421,6 +421,139 @@ rswitch sf =
 \label{figure:alternate_switching_combinators}
 \end{figure}
 
+\subsection{Feedback}
+\label{subsection:System_Design_and_Interface-Combinators-Feedback}
+
+It is often useful for a signal function to receive a portion of its
+own output as input. This is especially useful when we have two
+signal functions which we would like to mutually interact. We cannot
+just serially compose them, we must also bring the output of the second
+back around to the first. Many signal-processing algorithms also depend
+on feedback. The combinator which provides this ability is shown
+in Figure~\ref{figure:feedback_combinator}. 
+
+\begin{figure}
+\begin{code}
+loop ::    ((svIn :^: svLoop) :~> (svOut :^: svLoop))
+        -> svIn :~> svOut
+\end{code}
+\hrule
+\caption{Feedback combinator.}
+\label{figure:feedback_combinator}
+\end{figure}
+
+This combinator provides decoupling for signals
+(the input signal is the output signal at the previous time-step)
+but not events (event occurrences are supplied to the combinator immediately).
+This means that the programmer has the responsibility to ensure that feedback
+does not generate an infinite sequence of events in a single time-step.
+
+\subsection{Event-Specific Combinators}
+\label{subsection:System_Design_and_Interface-Combinators-Event_specific_combinators}
+
+Several combinators are provided for manipulating, suppressing, and generating events.
+Output events, in these combinators, are triggered by input events.
+
+Each of the combinators has an option variant and a list variant. The option variant
+produces an output event occurrence whenever the application of the supplied function
+to the input event produces a value. The list version produces an event occurrence for
+each of the elements of the output list. The combinators are shown in Figure~\ref{figure:event_specific_combinators}.
+
+\begin{figure}
+\begin{code}
+-- Apply the function to each input occurrence,
+-- and produce an occurrence for each Just.
+filter :: (a -> Maybe b) -> SVEvent a :~> SVEvent b
+
+-- Apply the function to each input occurrence,
+-- and produce an occurrence for each list element
+filterList :: (a -> [b]) -> SVEvent a :~> SVEvent b
+
+-- Apply the function to the stored accumulator
+-- and the event occurrence, replacing the accumulator
+-- and possibly outputting an occurrence
+accumulate ::    (a -> b -> (Maybe c, a))
+              -> a
+              -> SVEvent b :~> SVEvent c
+
+-- Apply the function to the stored accumulator
+-- and the event occurrence, replacing the
+-- accumulator and outputting an event occurrence
+-- for each element of the list
+accumulateList ::    (a -> b -> ([c]))
+                  -> a
+                  -> SVEvent b :~> SVEvent c
+\end{code}
+\hrule
+\caption{Event-specific combinators.}
+\label{figure:event_specific_combinators}
+\end{figure}
+
+The filter combinators are stateless, and thus apply the function to only the new
+input value. They are useful for suppressing events, as well as for extracting one
+of multiple cases of a datatype. For instance, a splitter for events carrying
+{\tt Either}-valued occurrences could be written as:
+
+\begin{code}
+getLeft :: Either a b -> Maybe a
+getLeft (Left x) = Just x
+getLeft _ = Nothing
+
+getRight :: Either a b -> Maybe b
+getRight (Right x) = Just x
+getRight _ = Nothing
+
+split :: SVEvent (Either a b) :~> (SVEvent a :^: SVEvent b)
+split = copy >>> first (filter getLeft) >>> second (filter getRight)
+\end{code}
+
+The accumulate combinators are stateful, applying the supplied function
+to both the input value and an accumulator. This function has two results:
+the option or list of output event occurrence values, and the new value
+for the accumulator.
+
+The accumulator is useful when responses to multiple event occurrences
+(from one or more sources) must be coordinated. For instance, in the
+benchmark application (see Chapter~\ref{chapter:Evaluation_and_Comparisons},
+a table is maintained that allows knowledge from previous event occurrences
+(packets from a network switch) to be used in deciding where the present
+packet ought to go.
+
+\subsection{Joining}
+\label{subsection:System_Design_and_Interface-Combinators-Joining}
+
+The joining combinators provide the ability to combine two event
+streams, two signals, or a signal and an event stream. These
+combinators are shown in Figure~\ref{figure:joining_combinators}
+
+The {\tt union} combinator is a non-deterministic merge of event
+streams. Any event which occurs on either input will occur
+on the output. For simultaneous event occurrences, the order of occurrence
+is not guaranteed, but the occurrence itself is. This construct
+is also guaranteed to respect the relationship of event occurrences to sampling
+intervals.
+
+The {\tt combineSignals} combinator applies a binary function pointwise to two
+signals, and produces the result of this application as a third signal.
+
+The {\tt capture} combinator adds the last-sampled value of a signal at the time
+of an event occurrence to that event occurrence.
+
+These three combinators together provide the ability to combine elements of
+signal vectors. By combining these combinators, arbitrary signal vectors can
+be reduced.
+
+\begin{figure}
+\begin{code}
+union          :: (SVEvent a :^: SVEvent a) :~> SVEvent a
+combineSignals :: (a -> b -> c) -> (SVEvent a :^: SVEvent b) :~> SVEvent c
+capture        :: (SVSignal a :^: SVEvent b) :~> SVEvent (b, a)
+\end{code}
+\hrule
+\caption{Joining combinators.}
+\label{figure:joining_combinators}
+\end{figure}
+
 \section{Evaluation}
 \label{section:System_Design_and_Interface-Evaluator}
 
