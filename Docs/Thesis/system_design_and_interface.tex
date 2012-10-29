@@ -140,7 +140,7 @@ data SVAppend svLeft svRight -- The combination of the signal vectors
                              -- svLeft and svRight
 \end{code}
 \hrule
-\caption{Signal vector types}
+\caption{Signal vector types.}
 \label{figure:signal_vector_types}
 \end{figure}
 
@@ -288,7 +288,7 @@ asap     :: a -> SVEmpty :~> SVEvent a
 after    :: Double -> a -> SVEmpty :~> SVEvent a
 \end{code}
 \hrule
-\caption{Basic signal functions.}
+\caption{Basic signal function combinators.}
 \label{figure:basic_signal_functions}
 \end{figure}
 
@@ -386,7 +386,7 @@ switch ::    (svIn :~> (svOut :^: SVEvent (svIn :~> svOut)))
           -> svIn :~> svOut
 \end{code}
 \hrule
-\caption{Combinator for reactivity.}
+\caption{Reactivity combinator.}
 \label{figure:switch_combinator}
 \end{figure}
 
@@ -417,7 +417,7 @@ rswitch sf =
   switch (first sf >>> second (pureEventTransformer rswitch))
 \end{code}
 \hrule
-\caption{Alternate combinators for reactivity.}
+\caption{Alternate reactivity combinators.}
 \label{figure:alternate_switching_combinators}
 \end{figure}
 
@@ -596,7 +596,7 @@ initSFEval ::    SVHandler (m ()) svOut
               -> SFEvalState m svIn svOut
 \end{code}
 \hrule
-\caption{State maintained when evaluating a signal function}
+\caption{State maintained when evaluating a signal function.}
 \label{figure:evaluation_state}
 \end{figure}
 
