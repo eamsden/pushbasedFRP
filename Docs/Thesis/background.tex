@@ -4,6 +4,12 @@
 The key abstraction of functional programming is the function, which takes an input and produces an output. Functions may produce functions
 as output and/or take functions as input. We say that functions are {\em first-class values} in a language.
 
+In contrast, the more popular imperative model of programming takes statements,
+or actions which modify the state of the world, as the primary building blocks
+of programs. Such programs have inherently sequential control flow, and require
+reasoning about side-effects. They are thus inherently resistant to
+compositional reasoning.
+
 Even in functional languages, reactive programs are generally written in an imperative style, using low-level and non-composable abstractions including callbacks
 or object-based event handlers, called by event loops. This ties the model of interactivity to low-level implementation details such as timing and event handling models. 
 
@@ -14,10 +20,10 @@ and functions themselves ought to be reactive.
 The goal of FRP is to provide compositional and high-level abstractions for creating reactive programs. The key
 abstractions of FRP are behaviors or signals\footnote{Behaviors are generally referred to as {\em signals} in signal function literature. This is unfortunate, since a signal
 function may operate on events, signals, or some combination of the two.}, which are time-dependent values defined at every point in continuous time, and events, which are 
-values defined at countably many points in time. An FRP system will provide functions to manipulate events and signals and to react
+values defined at countably many points in time. An FRP system will provide combinators to manipulate events and signals and to react
 to events by replacing a portion of the running program in response to an event. Behaviors and events, or some abstraction
 based on them, will be first class, in keeping with the spirit of functional programming. Programs implemented in FRP languages
-should of course be efficiently executable. This has proven to be the main challenge in implementing FRP.
+should of course be efficiently executable, but this has proven to be the main challenge in implementing FRP.
 
 The two general approaches to FRP are ``classic'' FRP, where behaviors and signals are first-class and reactive objects, and ``signal-function'' FRP,
 where transformers of signals and events are first-class and reactive objects.
@@ -28,7 +34,7 @@ where transformers of signals and events are first-class and reactive objects.
 The earliest and still standard formulation of FRP provides two primitive type
 constructors: {\tt Behavior} and {\tt Event}, together with combinators that
 produce values of these types. The easiest semantic definition for these types
-is given in Figure~\ref{figure:classic_frp_semantic_types}\footnote{The list constructor {\tt []} should be considered to contain infinite as well as finite lists.}.
+is given in Figure~\ref{figure:classic_frp_semantic_types}\footnote{The list type constructor {\tt []} should be considered to contain infinite as well as finite lists.}.
 
 \begin{figure}
 \begin{code}
@@ -90,9 +96,12 @@ Classic FRP.}
 \label{figure:classic_frp_simple_implementation}
 \end{figure}
 
-Obvious problems include the lack of ordering enforcement on event occurrences,
-the necessity of waiting for the first event occurrence in a switch, and the
-necessity of maintaining the full history of a behavior for evaluation.
+There are several obvious problems with this implementation of course, but it
+suffices to show the intuition behind the classic FRP model. Problems in this
+implementation which are addressed by real implementations include the necessity
+of waiting for event occurrences, the necessity of maintaining the full history
+of a behavior in memory, and the lack of an enforced order for event
+occurrences.
 
 \subsection{History of Classic FRP}
 \label{subsection:Background-Classic_FRP-History_of_Classic_FRP}
@@ -107,11 +116,13 @@ occurrence, or the next occurrence if it has indeed occurred.
 
 The first implementation of FRP outside the Haskell language was Frapp\'{e}, an
 FRP implementation for the Java Beans framework. Frapp\'{e} built on the notion
-of events and ``bound properties'' in the Beans framework, providing abstract
-interfaces for FRP events and behaviors, and combinators as concrete classes
-implementing these interfaces. The evaluation of Frapp\'{e} used Bean components
-as sources and sinks, and the implementation of Bean events and bound properties
-to propagate changes to the network~\cite{Courtney2001-2}. 
+of events\footnote{These are semantic objects to which callbacks may be added,
+and not events in the FRP sense, though they are related.} and ``bound
+properties'' in the Beans framework, providing abstract interfaces for FRP
+events and behaviors, and combinators as concrete classes implementing these
+interfaces. The evaluation of Frapp\'{e} used Bean components as sources and
+sinks, and the implementation of Bean events and bound properties to propagate
+changes to the network~\cite{Courtney2001-2}. 
 
 \subsection{Current Classic FRP Systems}
 \label{subsection:Background-Classic_FRP-Current_Classic_FRP_Systems}
