@@ -1,9 +1,9 @@
 \chapter{Evaluation and Comparisons}
 \label{chapter:Evaluation_and_Comparisons}
 
-We have described the implementation of a push-based signal-function FRP system.
-A push-based system should theoretically have advantages in event latency and
-overall performance over a pull-based system. Further, we would like to compare
+We have described the implementation of a push-pull signal-function FRP system.
+Push-based event evaluation should have advantages in event latency and overall
+performance over pull-based event evaluation. We would also like to compare
 the evaluation interface in the current widely-used system with the one proposed
 here, again in order to verify that the theoretical benefits do appear in
 practice.
@@ -13,10 +13,14 @@ these systems for comparison. In order to compare TimeFlies with Yampa, the most
 recently released pull-based signal-function FRP system, we decided to implement
 a suitable application in both.
 
-The application of choice is a learning switch controller for OpenFlow switches.
-this application must handle input events triggered by switches signalling that
-they have received a packet for which they have no handling rules, and produce
-output events which install handling rules for dealing with these packets.
+\section{Evaluation Application}
+\label{section:Evaluation_and_Comparisons-Evaluation_Application}
+
+The application of choice is a learning switch controller for OpenFlow~\cite{OpenflowSpec}
+switches. this application must handle input events triggered by switches
+signalling that they have received a packet for which they have no handling
+rules, and produce output events which install handling rules for dealing with
+these packets.
 
 The reactive algorithm is simple. A table from machine addresses to switch ports
 is maintained. This table is updated in two ways. When a packet is sent to the
@@ -41,6 +45,9 @@ switch signal function (using the {\tt after} combinator in TimeFlies and the {\
 function in Yampa) to delete expired rules, and externally, by transforming messages
 from the switch to the controller into accumulator functions.
 
+\section{Methodology and Results}
+\label{section:Evaluation_and_Comparisons-Methodology_and_Results}
+
 The controllers were benchmarked using the {\tt cbench} program~\cite{cbench}. The
 amount to time to pause between time and signal updates was passed as a parameter to
 both programs. The {\tt cbench} benchmark operates by sending a simulated packet in
@@ -59,12 +66,15 @@ y-axis is a higher rate of responses (higher numbers are preferred).
 \label{fig:timeflies-yampa-comparison}
 \end{figure}
 
-There is some unexpected correlation between the sampling rate and the response rate
-for TimeFlies, which is likely due to the more frequent size reductions in the table.
+There is some correlation between the sampling rate and the response rate
+for TimeFlies, which is due to the continued wrapping of a replacement signal
+function by {\tt switch} until the next time step (see Section~\ref{subsection:Implementation-Signal_Functions-Implementation_of_Signal_Function_Combinators}).
 Nevertheless, TimeFlies outperforms Yampa in event response by several orders of magnitude,
 even at a very high sampling rate. This is due to two factors. First, TimeFlies can react
 to individual events without evaluating the whole signal function. Second, the
 interface of time-flies permits us to connect its evaluation directly to GHC's event
-manager, while the design of Yampa requires us to use threads and synchronized communication\footnote{Yampa does include a step-wise evaluation function, but it still couples event
-evaluation firmly to time steps, and is not well documented.}.
+manager, while the design of Yampa requires us to use threads and synchronized
+communication\footnote{Yampa does include a step-wise evaluation function, but
+it still couples event evaluation firmly to time steps, and is not well
+documented.}.
 

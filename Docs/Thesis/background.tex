@@ -6,9 +6,9 @@ as output and/or take functions as input. We say that functions are {\em first-c
 
 In contrast, the more popular imperative model of programming takes statements,
 or actions which modify the state of the world, as the primary building blocks
-of programs. Such programs have inherently sequential control flow, and require
-reasoning about side-effects. They are thus inherently resistant to
-compositional reasoning.
+of programs. Such programs have sequential control flow, and require reasoning
+about side-effects. They are thus inherently resistant to compositional
+reasoning.
 
 Even in functional languages, reactive programs are generally written in an imperative style, using low-level and non-composable abstractions including callbacks
 or object-based event handlers, called by event loops. This ties the model of interactivity to low-level implementation details such as timing and event handling models. 
@@ -108,14 +108,14 @@ occurrences.
 Classic FRP was originally described as the basis of Fran~\cite{Elliott1997}
 (Functional Reactive ANimation), a framework for declaratively specifying
 interactive animations. Fran represented behaviors as two sampling functions,
-one from a time to a value and a new behavior (so that history may be discared),
+one from a time to a value and a new behavior (so that history may be discarded),
 and the other from a time interval (a lower and upper time bound) to a value
 interval and a new behavior. Events are represented as ``improving values'',
 which, when sampled with a time, produce a lower bound on the time to the next
 occurrence, or the next occurrence if it has indeed occurred.
 
-The first implementation of FRP outside the Haskell language was Frapp\'{e}, an
-FRP implementation for the Java Beans framework. Frapp\'{e} built on the notion
+The first implementation of FRP outside the Haskell language was Frapp\'{e}, 
+implemented in the Java Beans framework. Frapp\'{e} built on the notion
 of events\footnote{These are semantic objects to which callbacks may be added,
 and not events in the FRP sense, though they are related.} and ``bound
 properties'' in the Beans framework, providing abstract interfaces for FRP
@@ -138,14 +138,14 @@ The Reactive~\cite{Elliott2009} system is a push-pull FRP system with
 first-class behaviors and events. The primary insight of Reactive is the
 separation of reactivity (or changes in response to events whose occurrence time
 could not be known beforehand) from time-dependence. This gives rise to {\em
-reactive normal form}, which represents a behavior as a constant or simple
-time-varying value, together with an event stream carrying values which are also
+reactive normal form}, which represents a behavior as a constant or simply
+time-dependent value, together with an event stream carrying values which are also
 behaviors in reactive normal form. Push-based evaluation is achieved by forking
 a Haskell thread to evaluate the head behavior, while waiting on the evaluation
 of the event stream. Upon an event occurrence, the current behavior thread is
 killed and a new thread spawned to evaluate the new behavior. Unfortunately, the
-implmentation of Reactive uses a tenuous technique which depends on also forking
-threads to evaluate two haskell values concurrently in order to implement event
+implementation of Reactive uses a tenuous technique which depends on forking
+threads to evaluate two Haskell values concurrently, in order to implement event
 merging. This relies on the library author to ensure consistency when this
 technique is used, and leads to thread leakage when one of the merged events is
 itself the merging of other events.
@@ -153,11 +153,16 @@ itself the merging of other events.
 A recent thesis~\cite{Czaplicki2012} described Elm, a stand-alone language for
 reactivity. Elm provides combinators for manipulating discrete events, and
 compiles to Javascript, making it useful for client-side web programming.
-However, Elm does not provide a notion of switching or of continuous time
+However, Elm does not provide a notion of switching or continuous time
 behaviors, though an approximation is given using discrete-time events which are
 actuated at repeated intervals specified during the event definition. The thesis
 asserts that Arrowized FRP (signal-function FRP, Section~\ref{section:Background-signal_function_frp})
-can be embedded in Elm, but provides no support for this assertion.
+can be embedded in Elm, but provides little support for this assertion\footnote{
+A form of Arrowized FRP employing applicative functors is presented, and
+justified by the assertion that applicative functors are just arrows with the
+input type parameter fixed. While this is true, it ignores the compositional
+benefits of the general Arrow framework, and it is not clear that it provides
+the same enforcement of causality.}
 
 The reactive-banana~\cite{Apfelmus} library is a push-based FRP system designed
 for use with Haskell GUI frameworks. In particular, it features a monad for
@@ -180,15 +185,14 @@ Fruit~\cite{Courtney2001-1}, a library for declarative specification of GUIs.
 This library utilized the abstraction of Arrows~\cite{Hughes2000} to structure
 {\em signal functions}. Arrows are abstract type constructors with input and
 output type parameters, together with a set of routing combinators (see Figure~\ref{figure:arrow_combinators}).
-Signal functions are the first-class
-abstraction in this approach, they represent time-dependent and reactive
-transformers of events and signals,  which are themselves not first class,
-since such values cannot be directly manipulated by the programmer. This
-approach has two motivations: it increases modularity since both the input and
-output of signal functions may be transformed, as opposed to signals or events
-which may only be transformed in their output, and it avoids a large class of
-time and space leaks which have emerged when implementing FRP with first-class
-signals and events.
+Signal functions are the first-class abstraction in this approach. They
+represent time-dependent and reactive transformers of events and signals, which
+are themselves not first class, since such values cannot be directly manipulated
+by the programmer. This approach has two motivations: it increases modularity
+since both the input and output of signal functions may be transformed (as
+opposed to signals or events which may only be transformed in their output) and
+it avoids a large class of time and space leaks which have emerged when
+implementing FRP with first-class signals and events.
 
 \begin{figure}
 \begin{code}

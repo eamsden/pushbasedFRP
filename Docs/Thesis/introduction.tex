@@ -38,18 +38,18 @@ push-pull FRP system~\cite{Elliott2009}. This system relied on the distinction
 between reactivity and time dependence to decompose behaviors into phases of
 constant or simply time-dependent values, with new phases initiated by event
 occurrences. However, this implementation did not address concerns of causality
-or compositionality. Further, the existence of events as first-class values in
+or composability. Further, the existence of events as first-class values in
 classic FRP forced the use of an impure and resource-leaking technique to
-compare events when merging, to determine which had the first occurrence after
-the current time. This technique made use of the Haskell {\tt unsafePerformIO}
-function to fork two threads to compare the improving values of the next
-occurrence time for two events being merged. Further, since the classic FRP
-interface permits access to only the output of a behavior or event, and is
-always bound to its implicit inputs, the best the push-based implementation
-could do is to block when no computation needs to be performed. The computation
-cannot be suspended entirely as a value representation.
+compare events when merging, in order to determine which event had the first
+occurrence after the current time. This technique made use of the Haskell
+{\tt unsafePerformIO} function to fork two threads to compare the improving
+values of the next occurrence time for two events being merged. Further, since
+the classic FRP interface permits access to only the output of a behavior or
+event, and is always bound to its implicit inputs, the best the push-based
+implementation could do is to block when no computation needs to be performed.
+The computation cannot be suspended entirely as a value representation.
 
-To address both challenges in a FRP implementation, we to combine the approaches
+To address both challenges in a FRP implementation, we combine the approaches
 and demonstrate a push-based signal-function FRP system. The current
 implementation approach for signal-function FRP is inherently
 pull-based~\cite{Nilsson2002}, but recent work on N-ary
@@ -57,10 +57,10 @@ FRP~\cite{Sculthorpe2011}, a variant of signal-function FRP which enumerates
 inputs and distinguishes between events and behaviors, provides a representation
 which suggests a method of push-based evaluation. In previous implementations of
 FRP, events were simply option-valued signals. This approach has the advantage
-of being simple to implement in a pull-based setting. However, it does not have
-an obvious semantics for event merging. Further, it necessitates pull-based
-evaluation, since there is no way to separate the events which may be pushed
-from the truly continuous values which must be repeatedly sampled.
+of being simple to implement. However, it does not have obvious semantics for
+event merging. Further, it necessitates pull-based evaluation, since there is no
+way to separate the events which may be pushed from the truly continuous values
+which must be repeatedly sampled.
 
 This thesis describes the design and implementation of TimeFlies, a push-pull signal-function FRP system. This system is presented as a library
 of combinators for constructing and evaluating FRP programs.

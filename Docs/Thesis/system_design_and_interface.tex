@@ -4,9 +4,9 @@
 \section{Goals}
 \label{section:System_Design_and_Interface-Goals}
 
-The (not yet fully realized) goal of FRP is to provide an efficient, declarative
-abstraction for creating reactive programs. Towards this overall goal, there are
-three goals which this system is intended to meet.
+The goal of FRP is to provide an efficient, declarative abstraction for creating
+reactive programs. Towards this overall goal, there are three goals which this
+system is intended to meet.
 
 \subsection{Efficient Evaluation}
 \label{subsection:System_Design_and_Interface-Goals-Efficient_and_Push_based_Evaluation}
@@ -28,7 +28,7 @@ system, the only interaction between composed signal functions ought to be that
 the output of one is the input of another. Composability permits a particularly
 attractive form of software engineering in which successively larger systems are
 created from by combining smaller systems, without having to reason about the 
-components of the systems being combined.
+implementation of the components of the systems being combined.
 
 \subsection{Ease of Integration}
 \label{subsection:System_Design_and_Interface-Goals-Ease_of_Integration}
@@ -59,7 +59,7 @@ some description.
 In previous systems such as Yampa, events were understood (and typed) as option-valued
 signals. This approach is undesirable for several reasons. The most pressing reason is
 that it prohibits push-based evaluation of events, because events are embedded in the
-samples of a signal and must be searched for.
+samples of a signal and must be searched for when sampling.
 
 Another concern is that this approach limits the event rate to the sampling rate.
 The rate of sampling should, at some level, not matter to the FRP system. Events which
@@ -88,7 +88,7 @@ time of the last sample prior to the occurrence.
 In return for giving up total ordering and precise observation of the timing of events, we obtain the
 ability to employ push-based evaluation for event occurrences, and the ability to non-deterministically
 merge event occurrences. When events being input to a non-deterministic merge have simultaneous occurrences,
-we simply select one arbitrarly to occur first. This does not violate any guarantee about time values, since
+we arbitrarily select one to occur first. This does not violate any guarantee about time values, since
 they will both have the same time value in either case, and does not violate any guarantee about ordering,
 since no guarantee of their order is given.
 
@@ -161,12 +161,9 @@ type, the {\tt SVAppend} type constructor forms the product type, and the
 {\tt SVEmpty} type constructor forms the unit type.
 
 The representation of signal functions is discussed in
-Section~\ref{section:Implementation-Signal_Functions}. Here it suffices to say
-that the use of GADTs permits the construction of values which make use of
-uninhabited types as instantiations of type parameters.
-
-The type synonyms {\tt :\textasciitilde>} and {\tt :\textasciicircum:} are included for readability and are
-not crucial to the FRP system.
+Section~\ref{section:Implementation-Signal_Functions}. The type synonyms
+{\tt :\textasciitilde>} and {\tt :\textasciicircum:} are included for
+readability and are not crucial to the FRP system.
 
 \begin{figure}
 \begin{code}
@@ -224,13 +221,12 @@ monadic value describing evaluation to a value in the underlying monad. This
 means, for instance, that we can obtain an action in the {\tt IO} monad to
 evaluate a signal function.
 
-The type of the evaluation monad must track the input type of the signal
-function. The monad's context stores a mapping from outputs to handling actions.
-An existential type can thus be used to ``hide'' the output type of the signal
-function. However, inputs must come from external values, so the input type
-cannot be hidden. There are thus three type parameters to the monad's type
-constructor: the input signal vector, the type of the underlying monad, and the
-monadic type parameter. The type is shown in Figure~\ref{figure:evaluation_monad_types}.
+The type of the evaluation monad must track the input and output type of the
+signal function. The monad's context stores a mapping from outputs to handling
+actions. There are thus four type parameters to the monad's type
+constructor: the input signal vector, the output signal vector, the type of the
+underlying monad, and the monadic type parameter. The type is shown in
+Figure~\ref{figure:evaluation_monad_types}.
 
 \begin{figure}
 \begin{code}
@@ -250,7 +246,7 @@ data SFEvalT svIn m a
 Signal functions are constructed from combinators, which are primitive signal
 functions and operations to combine these primitives. These combinators are
 grouped as basic signal functions, lifting operations for pure functions,
-routing, reactivity, feedback, and time dependence.
+routing, reactivity, feedback, event processing, joining, and time dependence.
 
 \subsection{Basic Signal Functions}
 \label{subsection:System_Design_and_Interface-Combinators-Basic_Signal_Functions}
@@ -452,8 +448,6 @@ does not generate an infinite sequence of events in a single time-step.
 \label{subsection:System_Design_and_Interface-Combinators-Event_specific_combinators}
 
 Several combinators are provided for manipulating, suppressing, and generating events.
-Output events, in these combinators, are triggered by input events.
-
 Each of the combinators has an option variant and a list variant. The option variant
 produces an output event occurrence whenever the application of the supplied function
 to the input event produces a value. The list version produces an event occurrence for
@@ -514,7 +508,7 @@ for the accumulator.
 
 The accumulator is useful when responses to multiple event occurrences
 (from one or more sources) must be coordinated. For instance, in the
-benchmark application (see Chapter~\ref{chapter:Evaluation_and_Comparisons},
+benchmark application (see Chapter~\ref{chapter:Evaluation_and_Comparisons}),
 a table is maintained that allows knowledge from previous event occurrences
 (packets from a network switch) to be used in deciding where the present
 packet ought to go.
@@ -540,8 +534,9 @@ The {\tt capture} combinator adds the last-sampled value of a signal at the time
 of an event occurrence to that event occurrence.
 
 These three combinators together provide the ability to combine elements of
-signal vectors. By combining these combinators, arbitrary signal vectors can
-be reduced.
+signal vectors. By combining these combinators, along with the {\tt cancelLeft}
+and {\tt cancelRight} routing combinators, arbitrary signal vectors can be
+reduced.
 
 \begin{figure}
 \begin{code}
@@ -553,6 +548,39 @@ capture        :: (SVSignal a :^: SVEvent b) :~> SVEvent (b, a)
 \caption{Joining combinators.}
 \label{figure:joining_combinators}
 \end{figure}
+
+\subsection{Time Dependence}
+\label{subsection:System_Design_and_Interface-Signal_Functions-Time_Dependence}
+
+A set of combinators are provided for making use of time-dependence in a signal
+function. These combinators allow the modification of signals and events with
+respect to time, and the observation of the current time value. The combinators
+are shown in Figure~\ref{figure:time_combinators}
+
+\begin{figure}
+\begin{code}
+time      :: SVEmpty :~> SVSignal Double
+delay     :: Double -> (SVEvent a :^: SVEvent Double) :~> SVEvent a
+integrate :: TimeIntegrate i => SVSignal i :~> SVSignal i
+\end{code}
+\hrule
+\caption{Time-dependent combinators.}
+\label{figure:time_combinators}
+\end{figure}
+
+The simplest time-dependent combinator is {\tt time}, which simply outputs
+the time since it began to be evaluated. This does not necessarily correspond to
+the time since the global signal function began to be evaluated, since the
+{\tt time} combinator may have been introduced through {\tt switch}.
+
+The {\tt delay} signal function allows events to be delayed. An initial delay
+time is given, and event occurrences on the right input can carry a new delay
+time. Event occurrences on the left input are stored and output when their delay
+time has passed. Changing the delay time does not affect occurrences already
+waiting.
+
+The {\tt integrate} combinator outputs the rectangle-rule approximation of the
+integral of its input signal with respect to time.
 
 \section{Evaluation}
 \label{section:System_Design_and_Interface-Evaluator}

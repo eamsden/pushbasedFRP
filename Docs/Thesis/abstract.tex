@@ -1,11 +1,12 @@
-Functional Reactive Programming (FRP)is a promising class of abstractions for
+Functional Reactive Programming (FRP) is a promising class of abstractions for
 interactive programs. FRP systems provide values defined at all points in time
 ({\em behaviors} or {\em signals}) and values defined at countably many points
 in time ({\em events}) as abstractions.
 
 Signal-function FRP is a subclass of FRP which does not provide direct access to
-the time-varying values to the programmer, but rather provides signal functions,
-which are reactive transformers of signals and events, as first-class objects in the program. 
+time-varying values to the programmer, but instead provides signal functions,
+which are reactive transformers of signals and events, as first-class objects in
+the program. 
 
 All signal-function implementations of FRP to date have utilized demand-driven
 or ``pull-based''  evaluation for both events and signals, producing output from
@@ -17,11 +18,12 @@ employed to evaluate events.
 In contrast, an input-driven or ``push-based'' system evaluates the network
 whenever new input is available. This frees the system from evaluating the
 network when nothing has changed, and then only components necessary to react to
-the input are reevaluated. This form of evaluation has been applied to events in
-standard FRP systems~\cite{Elliott2009} but not in signal-function FRP systems.
+the input are re-evaluated. This form of evaluation has been applied to events
+in standard FRP systems~\cite{Elliott2009} but not in signal-function FRP
+systems.
 
-I describe the implementation of a signal-function FRP system which applies
-pull-based evaluation to signals and push-based evaluation to events (a
+I describe the design and implementation of a signal-function FRP system which
+applies pull-based evaluation to signals and push-based evaluation to events (a
 "push-pull" system). The semantics of the system are discussed, and its
 performance and expressiveness for practical examples of interactive programs
 are compared to existing signal-function FRP systems through the implementation

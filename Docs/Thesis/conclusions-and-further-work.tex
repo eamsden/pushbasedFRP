@@ -4,17 +4,25 @@ I have presented TimeFlies, a push-based signal-function FRP system. I have
 demonstrated that TimeFlies does realize the theoretical benefits of a
 push-based signal-function system.
 
-The TimeFlies system is a full-fledged and documented FRP library which may
-be extended with utility functions and further optimized. Its performance in
+\section{Conclusions}
+\label{section:Conclusions_and_Further_Work-Conclusions}
+The TimeFlies system is a fully-implemented and -documented FRP library which
+may be extended with utility functions and further optimized. Its performance in
 responding to events is demonstrated to be superior to that of the predominant
 pull-based signal-function FRP library.
 
 Further, the model of events used by TimeFlies subverts problematic semantic
-questions about the evaluation of events in a system. By using the N-Ary FRP
-type model and separating the evaluation of events from the time steps used
+questions about the evaluation of events in an FRP system. By using the N-Ary
+FRP type model and separating the evaluation of events from the time steps used
 for signals, TimeFlies fully supports non-deterministic merging of events,
 and provides a semantic guarantee that events are not ''lost'' during evaluation.
 
+TimeFlies includes a fully-documented evaluation interface which clarifies and
+simplifies the task of integrating the TimeFlies system with the many IO systems
+available to Haskell programmers.
+
+\section{Further Work}
+\label{section:Conclusions_and_Further_Work-Further_Work}
 The TimeFlies system would benefit from attentive microbenchmarking and performance
 tuning, as well as optimizations to avoid evaluating irrelevant parts of the network
 during the the evaluation of time steps. A formal semantic justification for the

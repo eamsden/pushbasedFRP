@@ -86,7 +86,7 @@ maybe _ (Just x) = x
 
 GADTs permit us to specify what types fill in the type parameters for specific
 constructors. For instance, if we wish to build a tiny expression language,
-we can write:
+we can use a standard ADT:
 
 \begin{code}
 data Exp a = Const a | Plus (Exp a) (Exp a)
@@ -119,8 +119,8 @@ Let's try a slightly modified ADT:
 data Exp a = Const a | Plus (Exp Int) (Exp Int)
 \end{code}
 
-The code for our our evaluator is the same. Now the input types match, but
-the output type still does not.
+The code for our our evaluator is the same. Now the input types to {\tt (+)}
+match, but the output type still does not.
 
 Here is our expression type as a GADT:
 \begin{code}
@@ -268,12 +268,15 @@ sample. On the other hand, events can be responded to even if the time has not
 yet come for another sample, and multiple events can be responded to in a single
 sampling interval.
 
-We represent signal functions as a datatype with two constructors.
-The signal functions that a user will compose are non-initialized signal
-functions. They must be provided with an initial set of input signals
-(corresponding to time zero). When provided with this input, they produce their
-time-zero output, and an initialized signal function. The datatype is shown in
-Figure~\ref{figure:signal_function_datatype}
+We represent signal functions as a GADT with three type parameters and two 
+constructors. The first type parameter represents the initialization state,
+and is specialized to {\tt Initialized} or {\tt NonInitialized} depending on the
+constructor. The other two type parameters are the input and output signal
+vectors, respectively. The signal functions that a user will compose are\
+non-initialized signal functions. They must be provided with an initial set of
+input signals (corresponding to time zero). When provided with this input, they
+produce their time-zero output, and an initialized signal function. The datatype
+is shown in Figure~\ref{figure:signal_function_datatype}.
 
 \begin{figure}
 \begin{code}
@@ -669,4 +672,4 @@ portions of a signal function to forgo evaluation during time steps unless they
 had signal updates. Optimizations in the style of Yampa, observed by keeping
 an updated for the signal function and pattern-matching on it when switching,
 might further improve performance. Nevertheless, this implementation performs
-quite well as it currently exists, as we demonstrate in Chapter~\ref{chapter:Evaluation_and_Comparison}.
+quite well as it currently exists, as we demonstrate in Chapter~\ref{chapter:Evaluation_and_Comparisons}.
