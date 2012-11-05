@@ -13,7 +13,7 @@ system is intended to meet.
 
 Efficient evaluation is the motivation for push-based evaluation of events.
 Since FRP programs are expected to  interact with an outside world in real time,
-efficiency cannot be measured by the runtime of a program. Thus, when speaking of efficiency,
+efficiency cannot simply be measured by the runtime of a program. Thus, when speaking of efficiency,
 we are expressing a desire that the system utilize as few system resources as possible
 for the task at hand, while responding as quickly as possible to external inputs and
 producing output at a consistently high sample rate.
@@ -22,15 +22,15 @@ producing output at a consistently high sample rate.
 \label{subsection:System_Design_and_Interface-Goals-Composability}
 
 A composable abstraction is one in which values in that abstraction may be
-combined in such a way that reasoning about their actions together involves
-little more than reasoning about their actions separately. In a signal function
+combined in such a way that reasoning about their combined actions involves
+little more than reasoning about their individual actions. In a signal function
 system, the only interaction between composed signal functions ought to be that
 the output of one is the input of another. Composability permits a particularly
 attractive form of software engineering in which successively larger systems are
 created from by combining smaller systems, without having to reason about the 
 implementation of the components of the systems being combined.
 
-\subsection{Ease of Integration}
+\subsection{Simple Integration}
 \label{subsection:System_Design_and_Interface-Goals-Ease_of_Integration}
 
 It is fine for a system to be composable with regards to itself, but an FRP
@@ -56,14 +56,16 @@ unattempted, but there is a sufficient change to the practical semantics of
 signal-function FRP between previous signal-function systems and TimeFlies to warrant
 some description.
 
-In previous systems such as Yampa, events were understood (and typed) as option-valued
+In previous systems such as Yampa, events were understood (and implemented) as option-valued
 signals. This approach is undesirable for several reasons. The most pressing reason is
 that it prohibits push-based evaluation of events, because events are embedded in the
 samples of a signal and must be searched for when sampling.
 
 Another concern is that this approach limits the event rate to the sampling rate.
-The rate of sampling should, at some level, not matter to the FRP system. Events which
-occur between sampling intervals are never observed by the system.
+The rate of sampling should, at some level, not matter to the FRP system. Events
+which occur between sampling intervals are never observed by the system. Since
+the signal function is never evaluated except at the sampling intervals, no
+events can otherwise be observed.
 
 This concern drives the next concern. Events are not instantaneous in this formulation.
 If a signal is option valued, the sampling instant must fall within the interval where
@@ -109,16 +111,16 @@ components.
 In order to type signal functions, we must be able to describe their input and
 output. In most signal function systems, a signal function takes exactly one
 input and produces exactly one output. Multiple inputs or outputs are handled
-by making the output a tuple, and combinators which combine or split the inputs
-or outputs of a signal assume this. Events are represented at the type level
-as a particular type of signal, and at the value level as an option, either an
-event occurrence or not.
+by making the input or output a tuple, and combinators which combine or split
+the inputs or outputs of a signal assume this. Events are represented at the
+type level as a particular type of signal, and at the value level as an option,
+either an event occurrence or not.
 
 This method of typing excludes push-based evaluation at the outset.
-It is not possible to construct a "partial tuple" nor in general is it possible
-to construct only part of any type of value. Push-based evaluation depends on
-evaluating only that part of the system which is updated, which means evaluating
-only that part of the input which is updated.
+It is not possible to construct a ``partial tuple'' nor in general is it
+possible to construct only part of any type of value. Push-based evaluation
+depends on evaluating only that part of the system which is updated, which means
+evaluating only that part of the input which is updated.
 
 In order to permit the construction of partial inputs and outputs, we make use
 of signal vectors. Signal vectors are uninhabited types which describe the input
@@ -169,8 +171,8 @@ readability and are not crucial to the FRP system.
 \begin{code}
 -- Signal functions
 -- init: The initialization type for 
--- the signal function, always NonInitialized
--- for exported signal functions
+--   the signal function, always NonInitialized
+--   for exported signal functions
 -- svIn: The input signal vector
 -- svOut: The output signal vector
 data SF init svIn svOut
@@ -189,14 +191,14 @@ type svLeft :^: svRight = SVAppend svLeft svRight
 \label{section:System_Design_and_Interface-Types-Evaluation_Monad}
 
 A {\em monad} is a standard, composable abstraction for writing functions with
-a context, used in Haskell for IO~\cite{PeytonJones1993,PeytonJones2001} among
+a context, used in Haskell for IO~\cite{PeytonJones1993,PeytonJones2001} and
 other tasks. A monad is simply a 1-arity type constructor together with two
 functions. The first function, {\tt return}, takes a value of type {\tt a} and
-produces a value of type {\tt m a}, where {\tt m} is the type constructor. The
-second, called {\tt bind} and stylized in the Haskell standard library as the
-infix operator {\tt (>>=)}, takes a value of type {\tt m a} and a function
-from {\tt a} to {\tt m b} and produces a value of type {\tt m b}. This allows
-a value to be operated on out of the context and a new context to be assigned.
+produces a value of type {\tt m a}. The second, called {\tt bind} and stylized
+in the Haskell standard library as the infix operator {\tt (>>=)}, takes a value
+of type {\tt m a} and a function of type {\tt a -> m b} and produces a value of
+type {\tt m b}. This allows a value to be operated on out of the context and a
+new context to be assigned.
 
 A monad can have other primitives which manipulate the context in some way. For 
 instance, the primtives in Haskell's {\tt IO} monad produce actions which, when
@@ -231,9 +233,11 @@ Figure~\ref{figure:evaluation_monad_types}.
 \begin{figure}
 \begin{code}
 -- A signal function's evaluations state
-data SFEvalState svIn m
+data SFEvalState svIn svOut m
 -- The evaluation monad
-data SFEvalT svIn m a
+data SFEvalT svIn svOut m a
+
+instance Monad m => Monad (SFEvalT svIn svOut m)
 \end{code}
 \hrule
 \caption{Evaluation monad types.}
@@ -258,7 +262,7 @@ produces the provided value as a signal at all times. The {\tt never} signal
 function has an event output which never produces occurrences. The {\tt asap}
 function produces an event occurrence with the given value at the first time
 step after it is switched into the network. The {\tt after} function waits for
-the specified amount of time before producing the event occurrence.
+the specified amount of time before producing an event occurrence.
 
 With the exception of {\tt identity}, all of the basic signal functions have
 empty inputs. This allows these signal functions to be used to insert values
@@ -280,7 +284,8 @@ never    :: SVEmpty :~> SVEvent a
 -- the signal function is initialized
 asap     :: a -> SVEmpty :~> SVEvent a
 
--- An event after the specified amount of time has elapsed.
+-- An event with one occurrence
+-- after the specified amount of time has elapsed.
 after    :: Double -> a -> SVEmpty :~> SVEvent a
 \end{code}
 \hrule
@@ -291,10 +296,11 @@ after    :: Double -> a -> SVEmpty :~> SVEvent a
 \subsection{Lifting Pure Functions}
 \label{subsection:System_Design_and_Interface-Combinators-Lifting_Pure_Functions}
 
-Two combinators are provided to lift pure functions to signal functions (Figure~\ref{figure:lifting_pure_functions}).
-The {\tt pureSignal} combinator applies the pure function to a signal at every
-sample point. The {\tt pureEvent} combinator applies the function to each
-occurrence of an input event.
+Two combinators are provided to lift pure functions to signal functions
+(Figure~\ref{figure:lifting_pure_functions}). The {\tt pureSignalTransformer}
+combinator applies the pure function to a signal at every sample point. The
+{\tt pureEventTransformer} combinator applies the function to each occurrence of
+an input event.
 
 \begin{figure}
 \begin{code}
@@ -317,10 +323,11 @@ to re-arrange signal vectors in order to connect signal functions.
 The routing combinators are shown in Figure~\ref{figure:routing_combinators}.
 
 Only those combinators which modify or combine signal functions
-({\tt (>>>)}, {\tt first}, {\tt second}) are reactive, and then
-only if they inherit their reactivity from the signal function(s)
-they modify. The rest do not react to or modify the input in any
-way, except to re-arrange it, copy it, or discard it altogether.
+({\tt (>>>)}, {\tt first}, {\tt second}) are reactive (may replace themselves in
+response to events, and then only if they inherit their reactivity from the
+signal function(s) which are inputs to combinator. The rest do not
+react to or modify the input in any way, except to re-arrange it, copy it, or
+discard it altogether.
 
 \begin{figure}
 \begin{code}
@@ -386,9 +393,10 @@ switch ::    (svIn :~> (svOut :^: SVEvent (svIn :~> svOut)))
 \label{figure:switch_combinator}
 \end{figure}
 
-There are other formulations of a reactive combinator which may be implemented
-using the one supplied. These are shown in Figure~\ref{figure:alternate_switching_combinators}
-and may be provided in a future version of the TimeFlies library.
+There are other formulations of a reactive combinator found in FRP literature
+and libraries, which may be implemented using the one supplied. These are shown
+in Figure~\ref{figure:alternate_switching_combinators} and may be provided in a
+future version of the TimeFlies library.
 
 \begin{figure}
 \begin{code}
@@ -474,7 +482,7 @@ accumulate ::    (a -> b -> (Maybe c, a))
 -- and the event occurrence, replacing the
 -- accumulator and outputting an event occurrence
 -- for each element of the list
-accumulateList ::    (a -> b -> ([c]))
+accumulateList ::    (a -> b -> ([c], a))
                   -> a
                   -> SVEvent b :~> SVEvent c
 \end{code}
@@ -528,7 +536,9 @@ is also guaranteed to respect the relationship of event occurrences to sampling
 intervals.
 
 The {\tt combineSignals} combinator applies a binary function pointwise to two
-signals, and produces the result of this application as a third signal.
+signals, and produces the result of this application as a third signal. The
+combining function is necessary because we will have two input samples at each
+time step, and must produce exactly one output sample.
 
 The {\tt capture} combinator adds the last-sampled value of a signal at the time
 of an event occurrence to that event occurrence.
@@ -541,7 +551,7 @@ reduced.
 \begin{figure}
 \begin{code}
 union          :: (SVEvent a :^: SVEvent a) :~> SVEvent a
-combineSignals :: (a -> b -> c) -> (SVEvent a :^: SVEvent b) :~> SVEvent c
+combineSignals :: (a -> b -> c) -> (SVSignal a :^: SVSignal b) :~> SVSignal c
 capture        :: (SVSignal a :^: SVEvent b) :~> SVEvent (b, a)
 \end{code}
 \hrule
@@ -571,7 +581,8 @@ integrate :: TimeIntegrate i => SVSignal i :~> SVSignal i
 The simplest time-dependent combinator is {\tt time}, which simply outputs
 the time since it began to be evaluated. This does not necessarily correspond to
 the time since the global signal function began to be evaluated, since the
-{\tt time} combinator may have been introduced through {\tt switch}.
+signal function in which the {\tt time} combinator is used may have been
+introduced through {\tt switch}.
 
 The {\tt delay} signal function allows events to be delayed. An initial delay
 time is given, and event occurrences on the right input can carry a new delay
@@ -617,16 +628,30 @@ combineHandlers ::    SVHandler out svLeft
 data SFEvalState m svIn svOut
 
 -- Create the initial state for evaluating a signal function
-initSFEval ::    SVHandler (m ()) svOut
-              -> SVSample svIn
-              -> Double
-              -> (svIn :~> svOut)
+initSFEval ::    SVHandler (m ()) svOut   -- Output handlers
+
+              -> SVSample svIn            -- Initial input samples
+              
+              -> Double                   -- Initial external time,
+                                          -- corresponding to time 0 for
+                                          -- the signal function
+                                          
+              -> (svIn :~> svOut)         -- Signal function to evaluate
               -> SFEvalState m svIn svOut
 \end{code}
 \hrule
 \caption{State maintained when evaluating a signal function.}
 \label{figure:evaluation_state}
 \end{figure}
+
+Sets which correspond to signal vectors are built with ``smart'' constructors.
+For instance, to construct a set of handlers, individual handling functions are
+lifted to handler sets with the {\tt signalHandler} and {\tt eventHandler}
+functions, and then combined with each other and {\tt emptyHandler} leaves
+using the {\tt combineHandlers} function.
+
+Building the initial input sample is similar, but {\tt sampleEvt} leaves do
+not carry a value.
 
 In order to initialize the state, the user must supply a set of handlers, the
 signal function to evaluate, and initial values for all of the signal inputs
@@ -727,4 +752,3 @@ step :: (Monad m) => Double -> SFEvalT svIn svOut m ()
 \caption{Evaluation combinators}
 \label{figure:evaluation_combinators}
 \end{figure}
-

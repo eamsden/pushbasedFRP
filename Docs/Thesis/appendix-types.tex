@@ -9,7 +9,7 @@ composition and implementation. This glossary describes features of the type
 system which may not be familiar to a general audience.
 
 \begin{description}
-\item[ADT] See {\em Algebraic Datatype}
+\item[ADT] See {\em Algebraic Datatype}.
 
 \item[Algebraic Datatype] An Algebraic Datatype or ADT is a type whose terms
 are {\em data constructors}. An ADT is defined by naming a
@@ -26,21 +26,7 @@ Algebraic~Datatype which, when applied to values of the appropriate type,
 creates a value typed with the ADT. Data constructors are the primary element
 which may be pattern matched in languages such as Haskell.
 
-\item[Existential Type] An existential type is a means of ``hiding'' a
-{\em type variable} in an {\em Algebraic Datatype} or
-{\em Generalized Algebraic Datatype}. The Glasgow Haskell Compiler provides
-existential types in two ways. The first is the {\tt Rank2Types} and
-{\tt RankNTypes} extensions. With either of these extensions enabled,
-type variables may be brought into scope for specific {\em data constructor} in
-an Algebraic Datatype using the {\tt forall} keyword. Since this
-type variable is not contained in the parameters of the type constructor, it
-cannot be constrained by type inference. Thus, no external function can assume
-anything about its type, except for equality between occurrences of the
-variable, and {\em class constraints} given in the definition of the data
-constructor. The other way is through Generalized Algebraic Datatypes. Any
-variable occurring in the type of a data member of a data constructor of a
-Generalized Algebraic Datatype, but not occurring in the type of that
-constructor, is automatically existentially quantified.
+\item[GADT] See {\em Generalized Algebraic Datatype}.
 
 \item[Generalized Algebraic Datatype] Similar to an {\em Algebraic Datatype},
 but {\em type variables} in the {\em type constructor} declaration serve merely
@@ -51,6 +37,13 @@ the parameters of the type constructor with arbitrary types. Variables which
 appear in the data member types but on in the data constructor type are
 {\em existentially quantified}, and types appearing in the data constructor
 type but not the data member types may be instantiated arbitrarily.
+
+\item[Kind] A ``type of types.'' Kinds are used to verify that types are
+consistent during typechecking. The kind of types which contain values is
+{\tt *}, and the kind of single-parameter type constructors which take a
+type is {\tt * -> *}. Other kinds may also be introduced. For instance,
+signal vectors should be their own separate kind, but the Haskell type mechanism
+was not mature enough to support this at the time of this writing..
 
 \item[Kind Signature] A means of specifying the number and kind of types which
 may instantiate type variables. Type variables in Haskell are not restricted to
@@ -66,6 +59,7 @@ and similar languages.
 
 \item[Type Variable] A type variable is a type-level term which may be 
 instantiated (by the typechecker via inference, or by the user via annotation)
-with any type. Together with {\em type constructors}, type variables form the
-basis of polymorphism in Haskell and similar languages.
+with any type at the point where the value so typed is used. 
+Together with {\em type constructors}, type variables form the basis of
+polymorphism in Haskell and similar languages.
 \end{description}

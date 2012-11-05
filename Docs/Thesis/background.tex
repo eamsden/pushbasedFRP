@@ -1,8 +1,10 @@
 \chapter{Background}
 \label{chapter:Background}
 
-The key abstraction of functional programming is the function, which takes an input and produces an output. Functions may produce functions
-as output and/or take functions as input. We say that functions are {\em first-class values} in a language.
+The key abstraction of functional programming is the function, which takes an
+input and produces an output. Functions may produce functions as output and/or
+take functions as input. We say that functions are {\em first-class values} in a
+functional programming language.
 
 In contrast, the more popular imperative model of programming takes statements,
 or actions which modify the state of the world, as the primary building blocks
@@ -17,13 +19,19 @@ or object-based event handlers, called by event loops. This ties the model of in
 should remain first-class) while incorporating reactivity into the language model. In particular, functions should be lifted to operate on reactive values,
 and functions themselves ought to be reactive.
 
-The goal of FRP is to provide compositional and high-level abstractions for creating reactive programs. The key
-abstractions of FRP are behaviors or signals\footnote{Behaviors are generally referred to as {\em signals} in signal function literature. This is unfortunate, since a signal
-function may operate on events, signals, or some combination of the two.}, which are time-dependent values defined at every point in continuous time, and events, which are 
-values defined at countably many points in time. An FRP system will provide combinators to manipulate events and signals and to react
-to events by replacing a portion of the running program in response to an event. Behaviors and events, or some abstraction
-based on them, will be first class, in keeping with the spirit of functional programming. Programs implemented in FRP languages
-should of course be efficiently executable, but this has proven to be the main challenge in implementing FRP.
+The goal of FRP is to provide compositional and high-level abstractions for
+creating reactive programs. The key abstractions of FRP are behaviors or
+signals\footnote{Behaviors are generally referred to as {\em signals} in
+signal-function literature. This is unfortunate, since a {\em signal function}
+may operate on events, signals, or some combination of the two.}, which are
+time-dependent values defined at every point in continuous time, and events,
+which are values defined at countably many points in time. An FRP system will
+provide combinators to manipulate events and signals and to react to events by
+replacing a portion of the running program in response to an event. Behaviors
+and events, or some abstraction based on them, will be first class, in keeping
+with the spirit of functional programming. Programs implemented in FRP languages
+should of course be efficiently executable, but this has proven to be the main
+challenge in implementing FRP.
 
 The two general approaches to FRP are ``classic'' FRP, where behaviors and signals are first-class and reactive objects, and ``signal-function'' FRP,
 where transformers of signals and events are first-class and reactive objects.
@@ -152,7 +160,7 @@ itself the merging of other events.
 
 A recent thesis~\cite{Czaplicki2012} described Elm, a stand-alone language for
 reactivity. Elm provides combinators for manipulating discrete events, and
-compiles to Javascript, making it useful for client-side web programming.
+compiles to JavaScript, making it useful for client-side web programming.
 However, Elm does not provide a notion of switching or continuous time
 behaviors, though an approximation is given using discrete-time events which are
 actuated at repeated intervals specified during the event definition. The thesis
@@ -185,14 +193,14 @@ Fruit~\cite{Courtney2001-1}, a library for declarative specification of GUIs.
 This library utilized the abstraction of Arrows~\cite{Hughes2000} to structure
 {\em signal functions}. Arrows are abstract type constructors with input and
 output type parameters, together with a set of routing combinators (see Figure~\ref{figure:arrow_combinators}).
-Signal functions are the first-class abstraction in this approach. They
-represent time-dependent and reactive transformers of events and signals, which
-are themselves not first class, since such values cannot be directly manipulated
-by the programmer. This approach has two motivations: it increases modularity
-since both the input and output of signal functions may be transformed (as
-opposed to signals or events which may only be transformed in their output) and
-it avoids a large class of time and space leaks which have emerged when
-implementing FRP with first-class signals and events.
+Signal functions form an arrow. Signal functions are the first-class abstraction
+in this approach. They represent time-dependent and reactive transformers of
+events and signals, which are themselves not first class, since such values
+cannot be directly manipulated by the programmer. This approach has two
+motivations: it increases modularity since both the input and output of signal
+functions may be transformed (as opposed to signals or events which may only be
+transformed in their output) and it avoids a large class of time and space leaks
+which have emerged when implementing FRP with first-class signals and events.
 
 \begin{figure}
 \begin{code}
@@ -210,14 +218,13 @@ loop   :: (Arrow a) => a (b, d) (c, d) => a b c
 
 Similarly to FrTime, the netwire~\cite{Soylemez} library eschews dynamic
 switching, in this case in favor of {\em signal inhibition}. Netwire is written
-as an arrow transformer, which, together with the Kliesli arrow instance for the
-IO monad\footnote{Any monad forms a Kliesli arrow.}, permits it to lift IO
-actions as sources and sinks at arbitrary points in a signal function network.
-Signal inhibition is accomplished by making the output of signal functions a
-monoid, and then combining the outputs of signal functions. An inhibited signal
-function will produce the monoid's zero as an output. Primitives have defined
-inhibition behavior, and composed signal functions inhibit if their outputs
-combine to the monoid's zero.
+as an arrow transformer, and permits the lifting of IO actions as sources and
+sinks at arbitrary points in a signal function network. Signal inhibition is
+accomplished by making the output of signal functions a monoid, and then
+combining the outputs of signal functions. An inhibited signal function will
+produce the monoid's zero as an output. Primitives have defined inhibition
+behavior, and composed signal functions inhibit if their outputs combine to the
+monoid's zero.
 
 Yampa~\cite{Nilsson2005} is an optimization of the Arrowized FRP system first
 utilized with Fruit (see above). The implementation of Yampa makes use of
@@ -234,8 +241,8 @@ noticeable performance gains over previous Arrowized FRP implementations.
 A recent PhD thesis~\cite{Sculthorpe2011} introduced N-Ary FRP, a technique for
 typing Arrowized FRP systems using dependent types. The bulk of the work
 consisted in using the dependent type system to prove the correctness of the FRP
-system discussed. This work introduced the typing construct of signal vectors,
-which permit the distinction of signal and event types at the level of the FRP
+system discussed. This work introduced a signal vectors, a typing construct
+which permits the distinction of signal and event types at the level of the FRP
 system, instead of making events merely a special type of signal.
 
 \section{Outstanding Challenges}

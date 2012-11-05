@@ -13,18 +13,19 @@ or ``pull-based''  evaluation for both events and signals, producing output from
 the FRP system whenever the consumer of the output is ready. This greatly
 simplifies the implementation of signal-function FRP systems, but leads to
 inefficient and wasteful evaluation of the FRP system when this strategy is
-employed to evaluate events.
+employed to evaluate events, because the components of the signal function which
+process events must be computed whether or not there is an event occurrence.
 
 In contrast, an input-driven or ``push-based'' system evaluates the network
 whenever new input is available. This frees the system from evaluating the
-network when nothing has changed, and then only components necessary to react to
-the input are re-evaluated. This form of evaluation has been applied to events
-in standard FRP systems~\cite{Elliott2009} but not in signal-function FRP
+network when nothing has changed, and then only the components necessary to
+react to the input are re-evaluated. This form of evaluation has been applied to
+events in standard FRP systems~\cite{Elliott2009} but not in signal-function FRP
 systems.
 
 I describe the design and implementation of a signal-function FRP system which
 applies pull-based evaluation to signals and push-based evaluation to events (a
-"push-pull" system). The semantics of the system are discussed, and its
+``push-pull'' system). The semantics of the system are discussed, and its
 performance and expressiveness for practical examples of interactive programs
 are compared to existing signal-function FRP systems through the implementation
 of a networking application.

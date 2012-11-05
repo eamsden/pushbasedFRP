@@ -17,7 +17,7 @@ a suitable application in both.
 \label{section:Evaluation_and_Comparisons-Evaluation_Application}
 
 The application of choice is a learning switch controller for OpenFlow~\cite{OpenflowSpec}
-switches. this application must handle input events triggered by switches
+switches. This application must handle input events triggered by switches
 signalling that they have received a packet for which they have no handling
 rules, and produce output events which install handling rules for dealing with
 these packets.
@@ -49,8 +49,8 @@ from the switch to the controller into accumulator functions.
 \label{section:Evaluation_and_Comparisons-Methodology_and_Results}
 
 The controllers were benchmarked using the {\tt cbench} program~\cite{cbench}. The
-amount to time to pause between time and signal updates was passed as a parameter to
-both programs. The {\tt cbench} benchmark operates by sending a simulated packet in
+amount to time to pause between time and signal updates (the inverse of the sampling rate for signals)
+was passed as a parameter to both programs. The {\tt cbench} benchmark operates by sending a simulated packet in
 event, waiting for a rule response, and then repeating. The output of the benchmark
 is the number of times this occurs in a second. This is thus a very good test of
 event latency in a reactive system.

@@ -4,12 +4,15 @@
 Most of the useful programs which programmers are asked to write must react to inputs which are not available at the time the program starts,
 and produce effects at many different times throughout the execution of the program. Examples of these programs include GUI applications,
 web browsers, web applications, video games, multimedia authoring and playback tools, operating system shells and kernels, servers,
-robotic control programs, and many others. This attribute of a program is called
-reactivity.
+robotic control programs, and many others. This attribute of a program is called reactivity.
 
-Functional reactive programming (FRP) is a promising class of abstractions for writing reactive programs in functional languages. FRP 
-abstractions translate desirable properties of the underlying functional languages, such as higher-order functions and referential
-transparency, to reactive constructs, generally without modifications to the underlying language. This permits the compositional
+Functional reactive programming (FRP) is a promising class of abstractions for
+writing reactive programs in functional languages. The FRP abstractions are
+behaviors or signals, which are functions of continuous time, and events, which
+are sequences of time-value pairs. These abstractions translate desirable
+properties of the underlying functional languages, such as higher-order
+functions and referential transparency, to reactive constructs, generally
+without modifications to the underlying language. This permits the compositional
 construction of reactive programs in purely functional languages.
 
 Functional reactive programming was introduced, though not quite by name, with Fran~\cite{Elliott1997}, a compositional system for writing
@@ -26,12 +29,13 @@ functions prohibit accessing past or future time values, only allowing access to
 values in the closure of the signal function and current input values. Signal
 function FRP programs are written by composing signal functions, and are
 evaluated using a function which provides input to the signal function and acts
-on the output values. This evaluation function is elided in existing literature
-on signal functions, but we provide a documented and improved interface for
-evaluating signal functions. A further advantage of signal function FRP programs
-is that they are more composable, since additional signal functions may be
-composed on the input or output side of a signal function, rather than simply
-the output side in classic (non-signal-function) FRP systems.
+on the output values. This evaluation function is generally elided in existing
+literature on signal functions, but we provide a documented and improved
+interface for evaluating signal functions. A further advantage of signal
+function FRP programs is that they are more readily composed, since additional
+signal functions may be composed on the input or output side of a signal
+function, rather than simply the output side as in classic (non-signal-function)
+FRP systems.
 
 The second challenge was addressed for classic FRP by the creation of a hybrid
 push-pull FRP system~\cite{Elliott2009}. This system relied on the distinction
@@ -41,13 +45,11 @@ occurrences. However, this implementation did not address concerns of causality
 or composability. Further, the existence of events as first-class values in
 classic FRP forced the use of an impure and resource-leaking technique to
 compare events when merging, in order to determine which event had the first
-occurrence after the current time. This technique made use of the Haskell
-{\tt unsafePerformIO} function to fork two threads to compare the improving
-values of the next occurrence time for two events being merged. Further, since
-the classic FRP interface permits access to only the output of a behavior or
-event, and is always bound to its implicit inputs, the best the push-based
-implementation could do is to block when no computation needs to be performed.
-The computation cannot be suspended entirely as a value representation.
+occurrence after the current time. Further, since the classic FRP interface
+permits access to only the output of a behavior or event, and is always bound to
+its implicit inputs, the best the push-based implementation can do is to block
+when no computation needs to be performed. The computation cannot be suspended
+entirely as a value representation.
 
 To address both challenges in a FRP implementation, we combine the approaches
 and demonstrate a push-based signal-function FRP system. The current
@@ -57,7 +59,7 @@ FRP~\cite{Sculthorpe2011}, a variant of signal-function FRP which enumerates
 inputs and distinguishes between events and behaviors, provides a representation
 which suggests a method of push-based evaluation. In previous implementations of
 FRP, events were simply option-valued signals. This approach has the advantage
-of being simple to implement. However, it does not have obvious semantics for
+of being simple to implement. However, it does not have an obvious semantics for
 event merging. Further, it necessitates pull-based evaluation, since there is no
 way to separate the events which may be pushed from the truly continuous values
 which must be repeatedly sampled.

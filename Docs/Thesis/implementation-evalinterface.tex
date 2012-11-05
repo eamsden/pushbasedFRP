@@ -54,7 +54,7 @@ to the powerful concept of monad transformer stacks, where monads with many
 different capabilities are combined without any more plumbing than explicit
 {\tt lift} operations. 
 
-This property will be useful because we wish our evaluation interface to be
+This property will be useful because we want our evaluation interface to be
 part of a monad stack, the base of which is Haskell's IO monad. By formulating
 the evaluation interface as a monad transformer, we need only define the
 operations relevant to the evaluation of signal functions, and we can depend
@@ -103,42 +103,8 @@ expression.}
 \subsection{Constructs and Interface}
 \label{section:Implementation-Evaluation_Interface-Constructs_and_Interface}
 
-The evaluation interface is exported as follows:
-
-\begin{code}
-data SFEvalState svIn m
-data SFEvalT svIn m
-data HandlerSet sv m
-data EventOccurrence sv
-data SignalDelta sv
-
-sd      :: a -> SignalDelta (SVSignal a)
-sdLeft  :: SignalDelta svl -> SignalDelta (SVAppend svl svr)
-sdRight :: SignalDelta svr -> SignalDelta (SVAppend svl svr)
-sdBoth  :: SignalDelta svl -> SignalDelta svr 
-        -> SignalDelta (SVAppend svl svr)
-
-eo      :: a -> EventOccurrence (SVEvent a)
-eoLeft  :: EventOccurrence svl -> EventOccurrence (SVAppend svl svr)
-eoRight :: EventOccurrence svr -> EventOccurrence (SVAppend svl svr)
-
-sdHS    :: (a -> m ()) -> HandlerSet m (SVSignal a)
-eoHS    :: (a -> m ()) -> HandlerSet m (SVEvent a)
-hsLeft  :: HandlerSet m svl -> HandlerSet m (SVAppend svl svr)
-hsRight :: HandlerSet m svr -> HandlerSet m (SVAppend svl svr)
-hsBoth  :: HandlerSet m svl -> HandlerSet m svr 
-        -> HandlerSet m (SVAppend svl svr)
-
-initSFEval :: HandlerSet svOut m 
-           -> SF NonInitialized svIn svOut 
-           -> SFEvalState svIn m
-
-runSFEvalT :: SFEvalT svIn m a -> SFEvalState svIn m -> m a
-
-push   :: EventOccurrence svIn -> SFEvalT svIn m ()
-update :: SignalDelta svIn -> SFEvalT svIn m ()
-sample :: Double -> SFEvalT svIn m ()
-\end{code}
+The evaluation interface is exported as shown in
+Section~\ref{section:System_Design_and_Interface-Evaluator}.
 
 The {\tt SFEvalState} type constructor parameterizes over input types for signal
 functions, and underlying monads for a monad transformer, but is not itself
@@ -166,3 +132,13 @@ of the signal function contained by the {\tt SFEvalState} to the pushed event,
 thus obtaining a new signal function and a list of events, applying the handlers
 contained in the {\tt SFEvalState} to the output events, replacing the signal
 function in the {\tt SFEvalState}, and replacing the {\tt SFEvalState}.
+
+The {\tt update} action updates the current input signal delta, which will be
+sampled at the next {\tt step} action. It has no immediately observable effect.
+It simply updates the value of one signal in the input signal vector, a delta
+of which is stored in the {\tt SFEvalState} record.
+
+The {\tt step} action takes a time delta, and calls the signal continuation of
+the stored signal function. It actuates the outputs using the stored handlers,
+replaces the stored delta with an empty delta, and stores the resulting new
+signal function in the state.

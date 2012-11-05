@@ -13,10 +13,6 @@ and output types of the signal function, and will not be exposed to the user of
 the library. Rather, they will specify how data is represented during the
 temporal evaluation of signal functions.
 
-In order to create these concrete representations, we employ the Haskell type
-system extension known as Generalized Algebraic Datatypes, which we divert
-briefly to explain before exploring its use in the implementation.
-
 We then describe how signal functions are implemented using these concrete
 types, along with higher-order functions and continuations.
 
@@ -144,9 +140,9 @@ permit typechecking in specific cases, but the principle is the same.
 \subsection{Concrete Representations of Signal Vectors}
 \label{subsection:Concrete_Representations_of_Signal_Vectors}
 
-In Chapter~\ref{chapter:System_Design_and_Interface} we present signal vectors
+In Chapter~\ref{chapter:System_Design_and_Interface} we presented signal vectors
 as a set of types. In order to be completely principled, we should isolate these
-types into their own {\tt kind} (a sort of type of types), however, the Haskell
+types into their own {\em kind} (a sort of type of types); however, the Haskell
 extension for this was far from stable at the time this system was created.
 
 The types are therefore expressed in the system exactly as they were described
@@ -160,9 +156,12 @@ these types. These concrete representations will be expressed as GADTs, allowing
 each data constructor of the representation to fill in a specific signal vector
 type for the parameter of the representation.
 
-To get our feet wet, we create a representation which carries a value for
-every {\tt SVSignal} leaf of a signal vector. In order to do this, we restrict
-each of our constructors to a single signal vector type. This ensures that the
+The first thing to represent is {\em samples}, which are sets of values for
+the signal components of a signal vector. Therefore, we create a representation
+which carries a value for every {\tt SVSignal} leaf of a signal vector. In order
+to do this, we restrict each of our constructors to a single signal vector type.
+So there are three leaf constructors: {\tt SVSample}, which carries a value; and
+{\tt SVSampleEvent} and {\tt SVSampleEmpty}, which do not. This ensures that the
 only way to represent a sample leaf is with the {\tt SVSample} constructor,
 which carries a value of the appropriate type. The datatype is shown in
 Figure~\ref{figure:signal_sample_datatype}.
@@ -183,9 +182,8 @@ data SVSample sv where
 \label{figure:signal_sample_datatype}
 \end{figure}
 
-So we now have a representation for the signal components of a signal vector.
-What about the event components? We want to represent event occurrences, each
-of which will correspond to at most one event in the vector. So a different
+What about the event components? We want to represent event occurrences,
+each of which will correspond to at most one event in the vector. So a different
 representation is called for. In this case, there will be only three
 constructors. One constructor will represent an event leaf, and the other will
 represent a single value on the left or right side of the node ({\tt SVAppend}),
@@ -248,7 +246,7 @@ with time. The common approach to this task is sampling, in which a program
 repeatedly checks for updated information, evaluates it, updates some state,
 and produces an output. This is the essence of pull-based evaluation.
 
-Another strategy is notification, in which the program exposes an interface
+Another approach is notification, in which the program exposes an interface
 which the source of updated information may invoke. This is a repeated entry
 point to the program, which causes the program to perform the same tasks
 listed above, namely, evaluate the updated information, update state, and
@@ -329,12 +327,14 @@ how it responds to event occurrences.
 We will not detail every combinator here, but we will discuss each of the
 implementation challenges encountered.
 
-The simplest combinator is the {\tt identity} signal function. This signal
-function simply passes all of its inputs along as outputs. The initialization
-function simply passes along the received sample and outputs the initialized
-version of the signal function. The initialized version of the input is similar,
-but is self-referential. It replaces itself with itself after every signal
-function or event. The implementation is shown in Figure~\ref{figure:identity_implementation}.
+As an example of the implementation of combinators, we show the implementation
+of the {\tt identity} signal function in Figure~\ref{figure:identity_implementation}.
+This signal function simply passes all of its inputs along as outputs. The
+initialization function simply passes along the received sample and outputs the
+initialized version of the signal function. The initialized version of the input
+is similar, but is self-referential. It outputs itself as its replacement. This
+is standard for simple and routing combinators which are not reactive, and
+simply move samples and event occurrences around.
 
 \begin{figure}
 \begin{code}
@@ -357,7 +357,19 @@ composing them. Serial composition creates one signal function from two, by
 using the output of one as the input of the other. The serial composition
 combinator is styled {\tt (>>>)}. The implementation of this operator is one
 place where the advantage of responding to events independently from signal
-samples becomes clear. The implementation is shown in Figure~\ref{figure:serial_composition_implementation}.
+samples becomes clear. 
+
+This is the only primitive combinator which takes two signal functions, and
+thus, it is the only way to combine signal functions. Parallel, branching, and
+joining composition can be achieved by modifying signal functions with the
+{\tt first} and {\tt second} combinators and composing them with the
+routing and joining combinators.
+
+Combinators which take one or more signal functions as input must recursively
+apply themselves, as is shown in the implementation of serial composition
+(Figure~\ref{figure:serial_composition_implementation}). They must also
+handle initialization, retaining the initialized signal functions and passing
+them to the initialized version of the combinator.
 
 \begin{figure}
 \begin{code}
@@ -404,91 +416,30 @@ applySF sf indices =
 \label{figure:serial_composition_implementation}
 \end{figure}
 
-The implementation of the non-initialized version is simple. It takes two
-non-initialized signal functions, and returns the sample output of applying the
-second to the sample output of the first, along with an initialized signal
-function constructed by applying the initialized version of the combinator to
-the initialized signal functions given by the inputs.
-
-The initialized version constructs two continuations. The first receives a time
-and signal update input, and applies the signal continuation of the first
-signal function to it. The output is fed, along with the time update, into the
-second signal function, first the signal update, and then events. The output
-of the second, along with the accumulated updated signal functions with the
-initialized serial composition recursively applied, is returned as output.
-
-The event continuation is similar but simpler, as there is no need to deal
-with signal updates.
-
 The switch combinator is the means of introducing reactivity into a signal
 function. This combinator allows a signal function to replace itself by
-producing an event occurrence. The switch combinator stores the full sample
+producing an event occurrence. The combinator wraps a signal function, and 
+observes an event on the right side of the output signal vector. At the first
+occurrence of the event, the signal function carried by the occurrence replaces
+the signal function. 
+
+The switch combinator stores the input sample provided during initialization,
+and updates it with the input signal updates. When the wrapped signal function
+produces an occurrence carrying a new signal function, that signal function is
+initialized with the stored input sample. It is then "wrapped" by another
+function which closes over its output sample, and outputs the sample as a signal
+update as the next time step. After this, it acts as the new signal function.
+This wrapping has some performance implications, which are discussed 
+
+This combinator checks the outputs of the wrapped
+signal function for an event occurrence from which an uninitialized signal
+function is extracted. The switch combinator stores the full sample
 for its input vector (which is identical to the input vector of the supplied
 signal function) to initialize the new signal function. This also demands that
-it continue wrapping the signal function until the next sampling interval, so
-that it can actuate the output of initialization as a replacement signal. This
-has some performance implications, which are discussed in
-Chapter~\ref{chapter:Evaluation_and_Comparisons}. The implementation is shown in
-Figure~\ref{figure:switch_implementation}.
-
-\begin{figure}
-\begin{code}
-switch :: (svIn :~> (svOut :^: SVEvent (svIn :~> svOut))) -> svIn :~> svOut
-switch (SF sigSampleF) =
-  SF (\sigSample -> let (sigSampleSF, sf) = sigSampleF sigSample
-                        (sigSampleOut, _) = splitSample sigSampleSF
-                    in (sigSampleOut, switchInit sigSample sf))
-
--- Pre-occurrence
-switchInit ::    SVSample svIn
-              -> SF Initialized svIn 
-                    (SVAppend svOut 
-                     (SVEvent (SF NonInitialized svIn svOut)))
-              -> SF Initialized svIn svOut
-switchInit inputSample sf@(SFInit timeCont changeCont) =
-  SFInit (\dt sigDelta ->
-            let (sigDeltaSF, occsSF, newSF) = timeCont dt sigDelta
-                newInputSample = updateSample inputSample sigDelta
-                (sigDeltaOut, _) = splitDelta sigDeltaSF
-                (occsOut, occsSwitch) = splitOccurrences occsSF
-                (outputDelta, nextSF) =
-                  maybe (sigDeltaOut, switchInit newInputSample newSF)
-                    (\(SF sigSampleF) ->
-                       let (outputSample, switchSF) =
-                             sigSampleF newInputSample
-                           outputDelta = sampleDelta outputSample
-                       in (outputDelta, switchSF))
-                  $ occurrenceListToMaybe occsSwitch
-            in (outputDelta, occsOut, nextSF))
-         (\evtOcc ->
-            let (occsSF, newSF) = changeCont evtOcc
-                (occsOut, occsSwitch) = splitOccurrences occsSF
-                nextSF = maybe (switchInit inputSample newSF) 
-                               (\(SF sigSampleF) ->
-                                  let (sampleOut, switchSF) =
-                                        sigSampleF inputSample
-                                  in switchWait sampleOut switchSF)
-                         $ occurrenceListToMaybe occsSwitch
-            in (occsOut, nextSF))
-
-switchWait ::    SVSample svOut
-              -> SF Initialized svIn svOut
-              -> SF Initialized svIn svOut
-switchWait outputSample sf@(SFInit timeCont changeCont) =
-  SFInit (\dt sigDelta -> let (sigDeltaOut, outOccs, newSF) =
-                                timeCont dt sigDelta
-                          in (sampleDelta $
-                                updateSample outputSample sigDeltaOut,
-                              outOccs,
-                              newSF))
-         \evtOcc -> let (outOccs, newSF) = changeCont evtOcc
-                    in (outOccs, switchWait outputSample newSF))
-\end{code} 
-\hrule
-\caption{Implementation of reactivity.}
-\label{figure:switch_implementation}
-\end{figure}
- 
+it add a wrapper to the new signal function which waits for the next sampling
+interval and actuates the sample output at initialization as an output set
+of changes to the signal. This has some performance implications, which are
+discussed in Chapter~\ref{chapter:Evaluation_and_Comparisons}.
 
 Most of the routing combinators are simple to implement. The only task is to add
 remove, or replace routing constructors on signal updates and event occurrences.
@@ -518,53 +469,20 @@ swapInit =
 
 \end{code}
 \hrule
-\caption{Swap routing combinator implementation.}
+\caption{Implementation of the {\tt swap} routing combinator.}
 \label{figure:swap_implementation}
 \end{figure}
 
-The {\tt first} and {\tt second} combinators are not quite as simple, as they
-must transform a provided signal function. For signal changes, they must split
-the set of changes into those which will be passed to the signal function and
-those which will be simply passed along to the output, and then recombine them
-on the other side. For event occurrences, the occurrence must be pattern-matched
-to determine whether to call the event continuation from the provided signal
-function or passed through, and output event occurrences must have the suitable
-routing constructor re-applied. In any case, when a continuation has been
-applied, the combinator must be recursively applied to the new signal function.
-The implementation of {\tt first} is shown in Figure~\ref{figure:first_implementation}.
-The implementation of {\tt second} is the obvious reversal of this
-implementation.
-
-\begin{figure}
-\begin{code}
-first :: (svIn :~> svOut) -> (svIn :^: sv) :~> (svOut :^: sv)
-first (SF sigSampleF) =
-  SF (\sigSample -> let (leftSample, rightSample) = splitSample sigSample
-                        (leftSampleOut, sf) = sigSampleF leftSample
-                    in (combineSamples leftSampleOut rightSample,
-                        firstInit sf))
-
-firstInit ::    SF Initialized svIn svOut
-             -> SF Initialized (SVAppend svIn sv) (SVAppend svOut sv)
-firstInit (SFInit timeCont inputCont) = 
-  let firstInitSF =
-    SFInit (\dt sigDelta ->
-               let (input, rightOutput) = splitDelta sigDelta
-                   (sigDeltaOutput, evtOutput, sf1New) = timeCont dt input
-               in (combineDeltas sigDeltaOutput rightOutput,
-                   map occLeft evtOutput,
-                   firstInit sf1New))
-           (\evtOcc ->
-              case chooseOccurrence evtOcc of
-                Left  lChange -> let (changes, sf) = inputCont lChange
-                                 in (map occLeft changes, firstInit sf)
-                Right rChange -> ([occRight rChange], firstInitSF))
-  in firstInitSF
-\end{code}
-\hrule
-\caption{Implemenation of {\tt first} combinator.}
-\label{figure:first_implementation}
-\end{figure}
+The {\tt first} and {\tt second} combinators are similar to serial composition,
+but they transform only one signal function. For signal changes, they must split
+the set of input changes into those which will be passed to the signal function
+and those which will be simply passed along to the output, and then recombine
+them on the other side. For event occurrences, the occurrence must be
+pattern-matched to determine whether to call the event continuation from the
+provided signal function or passed through, and output event occurrences must
+have the suitable routing constructor re-applied. In any case, when a
+continuation has been applied, the combinator must be recursively applied to the
+new signal function.
 
 The looping feedback combinator is particularly tricky. As it is currently
 implemented, the initial sample for the right side of the input signal vector to
@@ -574,50 +492,9 @@ right side of the signal function's output not be immediately dependent on its
 input. The feedback combinator makes use of Haskell's lazy evaluation to
 feed events back into the combinator, and stores signal updates until the next
 sample. Signal samples are thus automatically decoupled after initialization.
-The implementation, which makes extensive use of the recursive nature of
-Haskell's {\tt let} construct, is shown in Figure~\ref{figure:loop_implementation}.
+The implementation makes use of the recursive nature of the {\tt let} construct
+in Haskell, and the non-strict evaluation of Haskell, to implement feedback.
 
-\begin{figure}
-\begin{code}
-loop :: (svIn :^: svLoop) :~> (svOut :^: svLoop) -> svIn :~> svOut
-loop (SF sigSampleF) =
-  SF (\sigSample -> 
-        let (sigSampleOut, sfInit) =
-              sigSampleF (combineSamples sigSample sigSampleOutRight)
-            (sigSampleOutLeft, sigSampleOutRight) =
-              splitSample sigSampleOut
-        in (sigSampleOutLeft, loopInit deltaNothing sfInit))
-
-loopInit ::    SVDelta svLoop
-            -> SF Initialized (SVAppend svIn svLoop) (SVAppend svOut svLoop)
-            -> SF Initialized svIn svOut
-loopInit loopDelta (SFInit timeCont changeCont) =
-  SFInit (\dt sigDelta ->
-            let (sigDeltaOut, occsOut, newSF) =
-                  timeCont dt (combineDeltas sigDelta loopDelta)
-                (occsOutput, loopOccs) = splitOccurrences occsOut
-                (occsOutput', loopOccs') = splitOccurrences foldOccs
-                (foldOccs, newSF') =
-                  applySF newSF (map occRight (loopOccs ++ loopOccs'))
-                (outputDelta, newLoopDelta) = splitDelta sigDeltaOut
-            in (outputDelta,
-                occsOutput ++ occsOutput',
-                loopInit newLoopDelta newSF'))
-         (\change -> let (occsOut, newSF) = changeCont $ occLeft change
-                         (occsOutput, loopOccs) =
-                           splitOccurrences occsOut
-                         (occsOutput', loopOccs') =
-                           splitOccurrences foldOccs
-                         (foldOccs, newSF') =
-                           applySF newSF
-                             (map occRight (loopOccs ++ loopOccs'))
-                     in (occsOutput ++ occsOutput',
-                         loopInit loopDelta newSF'))
-\end{code}
-\hrule
-\caption{Implementation of feedback.}
-\label{figure:loop_implementation}
-\end{figure}
 
 The {\tt filter} combinators are simple to implement. Their sampling
 continuation is superfluous, and the event continuation merely applies the
@@ -670,6 +547,9 @@ The implementation strategy leaves room for optimizations. In particular, an
 additional constructor for time-independent signal functions would allow
 portions of a signal function to forgo evaluation during time steps unless they
 had signal updates. Optimizations in the style of Yampa, observed by keeping
-an updated for the signal function and pattern-matching on it when switching,
-might further improve performance. Nevertheless, this implementation performs
-quite well as it currently exists, as we demonstrate in Chapter~\ref{chapter:Evaluation_and_Comparisons}.
+an updated AST for the signal function and pattern-matching on it when switching,
+might further improve performance. In particular, collapsing nested or
+serially-composed versions of the {\tt switchWait} step when switching would
+remove at least some of the observed dependence of performance on sampling rate.
+Nevertheless, this implementation performs quite well as it currently exists, as
+we demonstrate in Chapter~\ref{chapter:Evaluation_and_Comparisons}.
