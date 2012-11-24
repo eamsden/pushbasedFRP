@@ -57,21 +57,23 @@ a behavior (in classic FRP) or a signal function (in signal-function FRP) is
 replaced by a new behavior or signal function carried by an event occurrence.
 
 Classic FRP was first described as an system for interactive animations~\cite{Elliott1997}.
-Recent work on classic FRP has focused on efficient implementation. Reactive is
-a system for push-pull FRP~\cite{Elliott2009}. Push-based evaluation evaluates a
+Recent work on classic FRP has focused on efficient implementation. One approach to
+efficiency is to separate the evaluation of behaviors and events, since suitable 
+strategies give best performance in each case. Push-based evaluation evaluates a
 system only when input is available, and is thus suitable for discrete inputs
 such as events. Pull-based evaluation evaluates the system as quickly as
 possible, polling for input, and is preferable for behaviors and signals.
 The initial implementations of FRP made use of pull-based evaluation for both
-behaviors and events. Reactive, as well as more recent systems such as
+behaviors and events. Reactive~\cite{Elliott2009}, as well as more recent systems such as
 ``reactive-banana''~\cite{Apfelmus}, make use of push-based evaluation for
-events and pull-based evaluation for behaviors.
+events and pull-based evaluation for behaviors. This is known as ``push-pull''
+evaluation.
 
 All implementations of signal-function FRP to date~\cite{Courtney2001-1,Nilsson2002,Nilsson2005,Sculthorpe2011}
-have used pull-based evaluation. This is due to the ease of implementation of
-pull-based evaluation, and the types used for signal functions which do not
-permit distinguishing signals and events, or constructing only part of the
-input (for instance, one event occurrence.)
+have used pull-based evaluation for both signals and events. This is due to
+the ease of implementation of pull-based evaluation, and the types used for
+signal functions which do not permit distinguishing signals and events, or
+constructing only part of the input (for instance, one event occurrence.)
 
 A recent extension of signal-function FRP called N-Ary FRP~\cite{Sculthorpe2011}
 describes a method of typing signal functions which, as we will show, enables
@@ -223,39 +225,6 @@ the {\tt >>>} (sequential composition), {\tt first}, and {\tt second} routing
 combinators. Other routing signal functions are provided, but they are intended
 to be combined with, rather than to modify, other signal functions.
 
-\subsection{Examples of Signal Function Primitives}
-\label{subsection:Examples_of_Signal_Function_Primitives}
-The most basic signal is the {\tt identity} signal function, which, as its
-name suggests, simply passes its input to its output.
-
-The {\tt constant} signal function has an empty input, and produces a constant
-signal as its output.
-
-The {\tt asap} signal function produces an event at the first time interval
-after it begins, and never again.
-
-The {\tt filter} signal function applies a predicate to the values of event
-occurrences and passes them along only if the predicate is true of the value.
-The predicate outputs {\tt Maybe} values to allow the user to avoid partial
-functions on types such as {\tt Maybe} or {\tt Either}.
-
-The {\tt associate} signal function is a routing function, which takes as input
-a combination of three signal vectors to which the signal vector append
-constructor is combined left-associatively, and produce the same signal vector
-as output, but with the signal vector append constructor combined
-right-associatively.
-
-The {\tt switch} function is the essential signal function for reactivity. It
-acts as the supplied signal function until that signal function produces an
-event on its right output. This event's value is a new signal function, which
-replaces the switch signal function.
-
-The {\tt loop} function permits a signal function to receive its own output
-as an input.
-
-Implementations for these examples will be discussed in Sec.~\ref{subsection:Signal_Function_Implementations}.
-
-
 \subsection{Evaluation Interface}
 The evaluation interface provides a monad~\cite{PeytonJones1993,PeytonJones2001}
 for specifying input to signal functions and handling their output. This
@@ -263,7 +232,7 @@ interface also allows input actions to be separated from output actions, and
 from each other, so that a signal function may receive input from multiple IO
 systems and have its output handled by multiple output systems.
 
-The evaluation interfaceis a monad transformer~\cite{Liang1995}. This allows
+The evaluation interface is a monad transformer~\cite{Liang1995}. This allows
 a signal function evaluation to be constructed from primitive evaluation actions
 (event pushing, input signal updating, and sampling) as well as actions from the
 underlying monad. These actions can then be run in the underlying monad
@@ -356,85 +325,26 @@ inferred using the constraints given in this signature. This is called type
 refinement.
 
 Using GADTs, we can construct representations of signal vectors to use in our
-implementation. The first such representation carries a value for each signal
-component of a signal vector, and is shown in Figure~\ref{figure:signal_sample_representation}.
+implementation. 
 
-\begin{figure}[t]
+When constructing a representation, we consider how to represent each
+component of a signal vector, whether it is a signal element, an empty
+element, or an append node. For instance, in order to represent a signal
+sample for all signals in an element, we construct the GADT shown in Figure~\ref{figure:signal_sample_representation}.
+
+\begin{figure}
 \begin{code}
 data SVSample sv where
-  SVSample    :: a -> SVSample (SVSignal a)
-  SVSampleEvt :: SVSample (SVEvent a)
-  SVNothing   :: SVSample SVEmpty
-  SVBoth      :: SVSample svLeft -> SVSample svRight
-                 -> SVSample (svLeft :^: svRight)
-
-sample         :: a -> SVSample a
-sampleEvt      :: SVSample (SVEvent a)
-sampleNothing  :: SVSample SVEmpty
-combineSamples :: SVSample svLeft -> SVSample svRight
-                  -> SVSample (svLeft :^: svRight)
-splitSample    :: SVSample (svLeft :^: svRight)
-                  -> (SVSample svLeft, svSample svRight)
-sampleValue    :: SVSample (SVSignal a) -> a
+  SVSample        ::    a -> SVSample (SVSignal a)
+  SVSampleEvt     ::    SVSample (SVEvent a)
+  SVSampleNothing ::    SVSample SVEmpty
+  SVSampleBoth    ::    SVSample svLeft
+                     -> SVSample svRight
+                     -> SVSample (svLeft :^: svRight)
 \end{code}
 \hrule
-\caption{Signal sample representation.}
+\caption{A representation which carries a value for each signal in a signal vector.}
 \label{figure:signal_sample_representation}
-\end{figure}
-
-A value of this type represents the entire vector, though it has nullary
-constructors at event leaves and empty leaves. For event occurrences, we want
-to represent only a single point in the vector, as shown in Figure~\ref{figure:event_occurrence_representation}.
-This representation uses two constructors, each of which leaves one or the
-other of the type variables in the signal vector {\tt SVAppend} constructor
-unconstrained.
-
-\begin{figure}[t]
-\begin{code}
-data SVOccurrence sv where
-  SVOccurrence :: a -> SVOccurrence (SVEvent a)
-  SVOccLeft    :: SVOccurrence svLeft
-                  -> SVOccurrence (svLeft :^: svRight)
-  SVOccRight   :: SVOccurrence svRight
-                  -> SVOccurrence (svLeft :^: svRight)
-
-occurrence        :: a -> SVOccurrence (SVEvent a)
-occLeft           :: SVOccurrence svLeft
-                     -> SVOccurrence (svLeft :^: svRight)
-occRight          :: SVOccurrence svRight
-                     -> SVOccurrence (svLeft :^: svRight)
-chooseOccurrences :: SVOccurrence (svLeft :^: svRight)
-                     -> Either (SVOccurrence svLeft) (SVOccurrence svRight)
-fromOccurrence    :: SVOccurrence (SVEvent a) -> a
-\end{code}
-\hrule
-\caption{Event occurrence representation.}
-\label{figure:event_occurrence_representation}
-\end{figure}
-
-The final representation ``signal deltas,'' carries replacement values for some
-points in a signal vector. Here, we combine the unconstrained type variable
-from the occurrence representation with the ``Both'' constructor from the sample
-representation. The unconstrained type variable will be placed in a separate
-constructor, which allows the construction of empty signal deltas, as is shown
-in Figure~\ref{figure:signal_delta_representation}.
-
-\begin{figure}[t]
-\begin{code}
-data SVDelta sv where
-  SVDelta        :: a -> SVDelta (SVSignal a)
-  SVDeltaNothing :: SVDelta sv
-  SVDeltaBoth    :: SVDelta svLeft -> SVDelta svRight
-                    -> SVDelta (svLeft :^: svRight)
-delta         :: a -> SVDelta (SVSignal a)
-deltaNothing  :: SVDelta sv
-combineDeltas :: SVDelta svLeft -> SVDelta svRight
-                 -> SVDelta (svLeft :^: svRight)
-updateSample  :: SVDelta sv -> SVSample sv -> SVSample sv
-\end{code}
-\hrule
-\caption{Signal delta representation.}
-\label{figure:signal_delta_representation}
 \end{figure}
 
 \subsection{Signal Function Representations}
