@@ -102,202 +102,719 @@ Section~\ref{section:Ongoing_and_Further_Work} describes the current and future
 work on this system. Section~\ref{section:Related_Work} gives an overview of
 related efforts. Section~\ref{section:Conclusion} concludes.
 
-\section{System Design}
-\label{section:System_Design}
+\section{System Design and Interface}
+\label{section:System_Design_and_Interface}
 
-Our goal is to produce a composable and efficient FRP system. Signal function
-FRP has an advantage in terms of composability, because it permits the
-construction of self-contained objects through both input and output composition,
-rather than purely through output composition as in classic FRP. Signal-function
-FRP also avoids problematic properties common to classic FRP systems such as a
-large class of time and space leaks~\cite{Liu2007}.
+\subsection{Goals}
+\label{section:System_Design_and_Interface-Goals}
 
-Efficient implementations of signal-function FRP have been approached through
-runtime optimization~\cite{Nilsson2005}, but all implementations have been
-pull-based for both signals and events. A truly efficient implementation will
-likely combine run-time optimization with push-based evaluation for events.
+The goal of FRP is to provide an efficient, declarative abstraction for creating
+reactive programs. Towards this overall goal, there are three goals which this
+system is intended to meet.
 
-The concept of N-Ary FRP was to encode additional safety properties into the
-types of a signal-function FRP system~\cite{Sculthorpe2011}. This system
-introduced the concept of {\em signal vectors} as input and output types for
-signal functions. Signal vectors are combinations of signals and events. In
-N-Ary FRP, signal functions are represented at the type level, and type-level
-functions (type families in Haskell) are used to specify the representations
-of signal functions.
+Efficient evaluation is the motivation for push-based evaluation of events.
+Since FRP programs are expected to  interact with an outside world in real time,
+efficiency cannot simply be measured by the runtime of a program. Thus, when speaking of efficiency,
+we are expressing a desire that the system utilize as few system resources as possible
+for the task at hand, while responding as quickly as possible to external inputs and
+producing output at a consistently high sample rate.
 
-In our system, we construct representations of signal vectors using
-Generalized Algebraic Datatypes~\cite{Cheney2003,Xi2003}. The use of GADTs
-enables us to use signal vectors to instantiate type parameters in the types
-of signal vector representations, as well as in the types of signal functions.
-GADTs are available as an extension in the Glasgow Haskell Compiler~\cite{PeytonJones2006}.
+A composable abstraction is one in which values in that abstraction may be
+combined in such a way that reasoning about their combined actions involves
+little more than reasoning about their individual actions. In a signal function
+system, the only interaction between composed signal functions ought to be that
+the output of one is the input of another. Composability permits a particularly
+attractive form of software engineering in which successively larger systems are
+created from by combining smaller systems, without having to reason about the 
+implementation of the components of the systems being combined.
 
-This approach permits us to construct partial inputs and outputs for signal
-functions. For instance, we can construct a representation for a single event
-in a signal vector, and another representation of updated values for a subset of
-the signals in the signal vector, and yet another carrying values for all
-signals in a signal vector. The signal vector types are shown in
-Figure~\ref{figure:signal_vectors}.
+It is fine for a system to be composable with regards to itself, but an FRP
+system must interact with the outside world. Since we cannot anticipate every
+possible form of input and output that the system will be asked to interact
+with, we must interface with Haskell's IO system. In particular, most libraries
+for user interaction (e.g. GUI and graphics libraries such as GTK+ and GLUT) and
+most libraries for time-dependent IO (e.g. audio and video systems) make use of
+the event loop abstraction. In this abstraction, event handlers are registered
+with the system, and then a command is issued to run a loop which detects events
+and runs the handlers, and uses the results of the handlers to render the
+appropriate output. 
 
-\begin{figure}[t]
-\begin{code}
-data SVEmpty
-data SVSignal a
-data SVEvent a
-data SVAppend svLeft svRight
-\end{code}
-\hrule
-\caption{Signal vectors.}
-\label{figure:signal_vectors}
-\end{figure}
+We would like for the FRP system to be easy to integrate with such IO systems,
+while being flexible enough to enable its use with other forms of IO systems,
+such as simple imperative systems, threaded systems, or network servers.
 
-With the ability to construct partial representations of signal vectors, we can
-represent signal functions with a datatype carrying multiple functions, one for
-each type of input. This allows us to separate the pull-based processing of
-signals from the push-based reaction to events.
+\subsection{Semantics}
+\label{subsection:System_Design_and_Interface-Semantics}
 
-The exposed interface is a set of combinators for constructing signal functions,
-as well as combinators for describing the evaluation of a signal function. The
-interface is shown in Fig.~\ref{figure:signal_function_interface}.
+A rigorous and formal elucidation of the semantics of signal-function FRP remains
+unattempted, but there is a sufficient change to the practical semantics of
+signal-function FRP between previous signal-function systems and TimeFlies to warrant
+some description.
+
+In previous systems such as Yampa, events were understood (and implemented) as option-valued
+signals. This approach is undesirable for several reasons. The most pressing reason is
+that it prohibits push-based evaluation of events, because events are embedded in the
+samples of a signal and must be searched for when sampling.
+
+Another concern is that this approach limits the event rate to the sampling rate.
+The rate of sampling should, at some level, not matter to the FRP system. Events
+which occur between sampling intervals are never observed by the system. Since
+the signal function is never evaluated except at the sampling intervals, no
+events can otherwise be observed.
+
+This concern drives the next concern. Events are not instantaneous in this formulation.
+If a signal is option valued, the sampling instant must fall within the interval where
+there is an event occurrence present for that event to be observed. If events are
+instantaneous, the probability of observing an event occurrence is zero.
+
+Therefore, TimeFlies employs the N-Ary FRP type formulation to represent signals and
+events as distinct entities in the inputs and outputs of signal functions. This means
+we are now free to choose our representation of events, and to separate it from the
+representation and evaluation of signals.
+
+This freedom yields the additional ability to make events independent of the sampling
+interval altogether. The semantics of event handling in TimeFlies is that an event occurrence
+is responded to immediately, and does not wait for the next sampling instant. This allows events
+to be instantaneous, and further, allows multiple events to occur within a single sampling interval.
+
+There are two tradeoffs intrinsic to this approach. The first is that events are only partially ordered
+temporally. There is no way to guarantee the order of observation of event occurrences occurring in the
+same sampling interval. Further, the precise time of an event occurrence cannot be observed, only the 
+time of the last sample prior to the occurrence.
+
+In return for giving up total ordering and precise observation of the timing of events, we obtain the
+ability to employ push-based evaluation for event occurrences, and the ability to non-deterministically
+merge event occurrences. When events being input to a non-deterministic merge have simultaneous occurrences,
+we arbitrarily select one to occur first. This does not violate any guarantee about time values, since
+they will both have the same time value in either case, and does not violate any guarantee about ordering,
+since no guarantee of their order is given.
+
+A formal semantic description of signal function FRP would clarify the consequences of this decision somewhat,
+but is outside the scope of this thesis.
+
+\subsection{Types}
+\label{subsection:System_Design_and_Interface-Types}
+
+In a strongly and statically typed functional language, types are a key part of
+an interface. Types provide a mechanism for describing and ensuring properties
+of the interface's components and about the systems created with these
+components. 
+
+In order to type signal functions, we must be able to describe their input and
+output. In most signal function systems, a signal function takes exactly one
+input and produces exactly one output. Multiple inputs or outputs are handled
+by making the input or output a tuple, and combinators which combine or split
+the inputs or outputs of a signal assume this. Events are represented at the
+type level as a particular type of signal, and at the value level as an option,
+either an event occurrence or not.
+
+This method of typing excludes push-based evaluation at the outset.
+It is not possible to construct a ``partial tuple'' nor in general is it
+possible to construct only part of any type of value. Push-based evaluation
+depends on evaluating only that part of the system which is updated, which means
+evaluating only that part of the input which is updated.
+
+In order to permit the construction of partial inputs and outputs, we make use
+of signal vectors. Signal vectors are uninhabited types which describe the input
+and output of a signal function. Singleton vectors are parameterized over the
+type carried by the signal or by event occurrences. The definition of the signal
+vector type is shown in Figure~\ref{figure:signal_vector_types}. 
+
+Having an uninhabited signal vector type allows us to construct representations
+of inputs and outputs which are hidden from the user of the system, and are
+designed for partial representations.
 
 \begin{figure}
 \begin{code}
-
--- Signal Functions
-type :~> svIn svOut
-
--- Infix type alias for SVAppend
-type :^: svLeft svRight = SVAppend svLeft svRight
-
--- Basic signal functions
-identity :: sv :~> sv
-constant :: a -> SVEmpty :~> SVSignal a
-never    :: SVEmpty :~> SVEvent a
-asap     :: a -> SVEmpty :~> SVEvent a
-after    :: Double -> a -> SVEmpty :~> SVEvent a
-
--- Lifting pure functions
-pureSignalTransformer :: (a -> b) -> SVSignal a :~> SVSignal a
-pureEventTransformer  :: (a -> b) -> SVEvent a :~> SVEvent a
-
--- Composition and routing
-(>>>)           :: (svIn :~> svMiddle) -> (svMiddle :~> svOut) 
-                   -> (svIn :~> svOut)
-first           :: (svIn :~> svOut) -> (svIn :^: sv) :~> (svOut :^: sv)
-second          :: (svIn :~> svOut) -> (sv :^: svIn) :~> (sv :^: svOut) 
-swap            :: (svLeft :^: svRight) :~> (svRight :^: svLeft)
-copy            :: sv :~> (sv :^: sv)
-ignore          :: sv :~> SVEmpty
-cancelLeft      :: (SVEmpty :^: sv) :~> sv
-cancelRight     :: (sv :^: SVEmpty) :~> sv
-uncancelLeft    :: sv :~> (SVEmpty :^: sv)
-uncancelRight   :: sv :~> (sv :^: SVEmpty)
-associate       :: ((sv1 :^: sv2) :^: sv3) :~> (sv1 :^: (sv2 :^: sv3)) 
-unassociate     :: (sv1 :^: (sv2 :^: sv3)) :~> ((sv1 :^: sv2) :^: sv3)
-
--- Reactivity
-switch :: (svIn :~> (svOut :^: SVEvent (svIn :~> svOut))) 
-          -> svIn :~> svOut
-
--- Feedback
-loop :: ((svIn :^: svLoop) :~> (svOut :^: svLoop)) -> svIn :~> svOut
-
--- Time dependence
-time  :: SVEmpty :~> Double
-delay :: Double -> (SVEvent a :^: SVEvent Double) :~> SVEvent a
-class TimeIntegrate
-
--- Joining
-union          :: (SVEvent a :^: SVEvent a) :~> SVEvent a
-combineSignals :: (a -> b -> c) 
-                  -> (SVSignal a :^: SVSignal b) :~> SVSignal c
-capture        :: (SVSignal a :^: SVEvent b) :~> SVEvent a
-
--- Events
-filter         :: (a -> Maybe b) -> SVEvent a :~> SVEvent b
+data SVEmpty    -- An empty signal vector component,
+                -- neither event nor signal
+data SVSignal a -- A signal, carrying values of type a
+data SVEvent a  -- An event, whose occurrences carry values of type a
+data SVAppend svLeft svRight -- The combination of the signal vectors
+                             -- svLeft and svRight
 \end{code}
 \hrule
-\caption{Signal function interface.}
-\label{figure:signal_function_interface}
+\caption{Signal vector types.}
+\label{figure:signal_vector_types}
 \end{figure}
 
-Signal functions are produced by combining primitive signal functions using
-the {\tt >>>} (sequential composition), {\tt first}, and {\tt second} routing
-combinators. Other routing signal functions are provided, but they are intended
-to be combined with, rather than to modify, other signal functions.
+The type constructor for signal functions is shown in
+Figure~\ref{figure:signal_function_types}. For the {\tt init} parameter, only
+one possible instantiation is shown. The usefulness of this type parameter,
+along with another instantation which is hidden from users of the library,
+is discussed in the section on implementation of signal functions
+(Section~\ref{section:Implementation}).
+
+Signal functions with signal vectors as input and output types form a
+Haskell {\tt GArrow}~\cite{Megacz2011}. Specifically, the signal function
+type constructor (with the initialization parameter fixed) forms the arrow
+type, the {\tt SVAppend} type constructor forms the product type, and the
+{\tt SVEmpty} type constructor forms the unit type.
+
+The representation of signal functions is discussed in
+Section~\ref{section:Implementation-Signal_Functions}. The type synonyms
+{\tt :\textasciitilde>} and {\tt :\textasciicircum:} are included for
+readability and are not crucial to the FRP system.
+
+\begin{figure}
+\begin{code}
+-- Signal functions
+-- init: The initialization type for 
+--   the signal function, always NonInitialized
+--   for exported signal functions
+-- svIn: The input signal vector
+-- svOut: The output signal vector
+data SF init svIn svOut
+
+data NonInitialized
+
+type svIn :~> svOut = SF NonInitialized svIn svOut
+type svLeft :^: svRight = SVAppend svLeft svRight
+\end{code}
+\hrule
+\caption{Signal function types.}
+\label{figure:signal_function_types}
+\end{figure}
+
+A {\em monad} is a standard, composable abstraction for writing functions with
+a context, used in Haskell for IO~\cite{PeytonJones1993,PeytonJones2001} and
+other tasks. A monad is simply a 1-arity type constructor together with two
+functions. The first function, {\tt return}, takes a value of type {\tt a} and
+produces a value of type {\tt m a}. The second, called {\tt bind} and stylized
+in the Haskell standard library as the infix operator {\tt (>>=)}, takes a value
+of type {\tt m a} and a function of type {\tt a -> m b} and produces a value of
+type {\tt m b}. This allows a value to be operated on out of the context and a
+new context to be assigned.
+
+A monad can have other primitives which manipulate the context in some way. For 
+instance, the primtives in Haskell's {\tt IO} monad produce actions which, when
+interpreted as part of the {\tt main} action, produce some side-effect. The
+{\tt State} monad provides {\tt get} and {\tt put} operations to work with a 
+state value stored in the context.
+
+Monad transformers~\cite{Jones1995} provide a means to combine the functionality
+of multiple monads. A monad transformer is a monad with an extra type parameter.
+This type parameter is instantiated with the type constructor of the underlying
+monad, and an extra operation {\tt lift} is provided which converts values in
+the underlying monad to values in the monad transformer.
+
+The evaluation monad is a monad transformer. This permits it to be used in
+conjunction with the {\tt IO} monad (or any other monad) to describe how input
+is to be obtained for the signal function being evaluated, and how outputs are
+to be handled.
+
+The evaluation monad, in addition to the standard monad operators, provides a
+means of {\em initializing} a signal function, and a means of translating the
+monadic value describing evaluation to a value in the underlying monad. This
+means, for instance, that we can obtain an action in the {\tt IO} monad to
+evaluate a signal function.
+
+The type of the evaluation monad must track the input and output type of the
+signal function. The monad's context stores a mapping from outputs to handling
+actions. There are thus four type parameters to the monad's type
+constructor: the input signal vector, the output signal vector, the type of the
+underlying monad, and the monadic type parameter. The type is shown in
+Figure~\ref{figure:evaluation_monad_types}.
+
+\begin{figure}
+\begin{code}
+-- A signal function's evaluations state
+data SFEvalState svIn svOut m
+-- The evaluation monad
+data SFEvalT svIn svOut m a
+
+instance Monad m => Monad (SFEvalT svIn svOut m)
+\end{code}
+\hrule
+\caption{Evaluation monad types.}
+\label{figure:evaluation_monad_types}
+\end{figure}
+
+\subsection{Combinators}
+\label{section:System_Design_and_Interface-Combinators}
+
+Signal functions are constructed from combinators, which are primitive signal
+functions and operations to combine these primitives. These combinators are
+grouped as basic signal functions, lifting operations for pure functions,
+routing, reactivity, feedback, event processing, joining, and time dependence.
+
+The basic signal functions (Figure~\ref{figure:basic_signal_functions})
+provide very simple operations. The {\tt identity} signal function, as expected,
+simply copies its input to its output. The {\tt constant} signal function
+produces the provided value as a signal at all times. The {\tt never} signal
+function has an event output which never produces occurrences. The {\tt asap}
+function produces an event occurrence with the given value at the first time
+step after it is switched into the network. The {\tt after} function waits for
+the specified amount of time before producing an event occurrence.
+
+With the exception of {\tt identity}, all of the basic signal functions have
+empty inputs. This allows these signal functions to be used to insert values
+into the network which are known when the signal function is created, without
+having to route those values from an input.
+
+\begin{figure}
+\begin{code}
+-- Pass the input unmodified to the output
+identity :: sv :~> sv
+
+-- Produce a signal which is at all times the supplied value
+constant :: a -> SVEmpty :~> SVSignal a
+
+-- An event with no occurrences
+never    :: SVEmpty :~> SVEvent a
+
+-- An event with one occurrence, as soon as possible after
+-- the signal function is initialized
+asap     :: a -> SVEmpty :~> SVEvent a
+
+-- An event with one occurrence
+-- after the specified amount of time has elapsed.
+after    :: Double -> a -> SVEmpty :~> SVEvent a
+\end{code}
+\hrule
+\caption{Basic signal function combinators.}
+\label{figure:basic_signal_functions}
+\end{figure}
+
+
+
+Two combinators are provided to lift pure functions to signal functions
+(Figure~\ref{figure:lifting_pure_functions}). The {\tt pureSignalTransformer}
+combinator applies the pure function to a signal at every sample point. The
+{\tt pureEventTransformer} combinator applies the function to each occurrence of
+an input event.
+
+\begin{figure}
+\begin{code}
+-- Apply the given function to a signal at all points in time
+pureSignalTransformer :: (a -> b) -> SVSignal a :~> SVSignal b
+
+-- Apply the given function to each event occurrence
+pureEventTransformer  :: (a -> b) -> SVEvent a :~> SVEvent b
+\end{code}
+\hrule
+\caption{Lifting pure functions.}
+\label{figure:lifting_pure_functions}
+\end{figure}
+
+The routing combinators are used to combine signal functions, and
+to re-arrange signal vectors in order to connect signal functions.
+The routing combinators are shown in Figure~\ref{figure:routing_combinators}.
+
+Only those combinators which modify or combine signal functions
+({\tt (>>>)}, {\tt first}, {\tt second}) are reactive (may replace themselves in
+response to events, and then only if they inherit their reactivity from the
+signal function(s) which are inputs to combinator. The rest do not
+react to or modify the input in any way, except to re-arrange it, copy it, or
+discard it altogether.
+
+\begin{figure}
+\begin{code}
+-- Use the output of one signal function as the input for another
+(>>>) :: (svIn :~> svBetween) -> (svBetween :~> svOut) -> svIn :~> svOut
+
+-- Pass through the right side of the input unchanged
+first :: (svIn :~> svOut) -> (svIn :^: sv) :~> (svOut :^: sv)
+
+-- Pass through the left side of the input unchanged
+second :: (svIn :~> svOut) -> (sv :^: svIn) :~> (sv :^: svOut)
+
+-- Swap the left and right sides
+swap :: (svLeft :^: svRight) :~> (svRight :^: svLeft)
+
+-- Duplicate the input
+copy :: sv :~> (sv :^: sv)
+
+-- Ignore the input
+ignore :: sv :~> svEmpty
+
+-- Remove an empty vector on the left
+cancelLeft :: (SVEmpty :^: sv) :~> sv
+
+-- Add an empty vector on the left
+uncancelLeft :: sv :~> (SVEmpty :^: sv)
+
+-- Remove an empty vector on the right
+cancelRight :: (sv :^: SVEmpty) :~> sv
+
+-- Add an empty vector on the right
+uncancelRight :: sv :~> (sv :^: SVEmpty)
+
+-- Make right-associative
+associate :: ((sv1 :^: sv2) :^: sv3) :~> (sv1 :^: (sv2 :^: sv3))
+
+-- Make left-associative
+unassociate :: (sv1 :^: (sv2 :^: sv3)) :~> ((sv1 :^: sv2) :^: sv3)
+\end{code}
+\hrule
+\caption{Routing combinators.}
+\label{figure:routing_combinators}
+\end{figure}
+
+Reactivity is introduced by means of the {\tt switch} combinator
+(Figure~\ref{figure:switch_combinator}). The design of this combinator
+allows modular packaging of reactivity. A signal function can determine
+autonomously when to replace itself, based only on its input and state,
+by emitting an event occurrence carrying its replacement. The combinator
+consumes and hides the event carrying the replacement signal function, 
+so the reactivity is not exposed by the resulting reactive signal function.
+
+\begin{figure}
+\begin{code}
+switch ::    (svIn :~> (svOut :^: SVEvent (svIn :~> svOut)))
+          -> svIn :~> svOut
+\end{code}
+\hrule
+\caption{Reactivity combinator.}
+\label{figure:switch_combinator}
+\end{figure}
+
+There are other formulations of a reactive combinator found in FRP literature
+and libraries, which may be implemented using the one supplied. These are shown
+in Figure~\ref{figure:alternate_switching_combinators} and may be provided in a
+future version of the TimeFlies library.
+
+\begin{figure}
+\begin{code}
+-- Alternate version of switch,
+-- implemented in terms of supplied version
+switch_gen ::    (svIn :~> (svOut :^: SVEvent a))
+              -> (a -> svIn :~> svOut)
+              -> svIn :~> svOut
+switch_gen sf f =
+  switch (sf >>> second (pureEventTransformer f))
+
+-- Supplied version in terms of alternate version
+switch ::    (svIn :~> (svOut :^: SVEvent (svIn :~> svOut)))
+          -> svIn :~> svOut
+switch sf = switch_gen sf id
+
+-- Repeated switch, which takes replacement signal functions
+-- externally.
+rswitch ::    (svIn :~> svOut)
+           -> (svIn :^: SVEvent (svIn :~> svOut)) :~> svOut
+rswitch sf =
+  switch (first sf >>> second (pureEventTransformer rswitch))
+\end{code}
+\hrule
+\caption{Alternate reactivity combinators.}
+\label{figure:alternate_switching_combinators}
+\end{figure}
+
+It is often useful for a signal function to receive a portion of its
+own output as input. This is especially useful when we have two
+signal functions which we would like to mutually interact. We cannot
+just serially compose them, we must also bring the output of the second
+back around to the first. Many signal-processing algorithms also depend
+on feedback. The combinator which provides this ability is shown
+in Figure~\ref{figure:feedback_combinator}. 
+
+\begin{figure}
+\begin{code}
+loop ::    ((svIn :^: svLoop) :~> (svOut :^: svLoop))
+        -> svIn :~> svOut
+\end{code}
+\hrule
+\caption{Feedback combinator.}
+\label{figure:feedback_combinator}
+\end{figure}
+
+This combinator provides decoupling for signals
+(the input signal is the output signal at the previous time-step)
+but not events (event occurrences are supplied to the combinator immediately).
+This means that the programmer has the responsibility to ensure that feedback
+does not generate an infinite sequence of events in a single time-step.
+
+Several combinators are provided for manipulating, suppressing, and generating events.
+Each of the combinators has an option variant and a list variant. The option variant
+produces an output event occurrence whenever the application of the supplied function
+to the input event produces a value. The list version produces an event occurrence for
+each of the elements of the output list. The combinators are shown in Figure~\ref{figure:event_specific_combinators}.
+
+\begin{figure}
+\begin{code}
+-- Apply the function to each input occurrence,
+-- and produce an occurrence for each Just.
+filter :: (a -> Maybe b) -> SVEvent a :~> SVEvent b
+
+-- Apply the function to each input occurrence,
+-- and produce an occurrence for each list element
+filterList :: (a -> [b]) -> SVEvent a :~> SVEvent b
+
+-- Apply the function to the stored accumulator
+-- and the event occurrence, replacing the accumulator
+-- and possibly outputting an occurrence
+accumulate ::    (a -> b -> (Maybe c, a))
+              -> a
+              -> SVEvent b :~> SVEvent c
+
+-- Apply the function to the stored accumulator
+-- and the event occurrence, replacing the
+-- accumulator and outputting an event occurrence
+-- for each element of the list
+accumulateList ::    (a -> b -> ([c], a))
+                  -> a
+                  -> SVEvent b :~> SVEvent c
+\end{code}
+\hrule
+\caption{Event-specific combinators.}
+\label{figure:event_specific_combinators}
+\end{figure}
+
+The filter combinators are stateless, and thus apply the function to only the new
+input value. They are useful for suppressing events, as well as for extracting one
+of multiple cases of a datatype. For instance, a splitter for events carrying
+{\tt Either}-valued occurrences could be written as:
+
+\begin{code}
+getLeft :: Either a b -> Maybe a
+getLeft (Left x) = Just x
+getLeft _ = Nothing
+
+getRight :: Either a b -> Maybe b
+getRight (Right x) = Just x
+getRight _ = Nothing
+
+split :: SVEvent (Either a b) :~> (SVEvent a :^: SVEvent b)
+split = copy >>> first (filter getLeft) >>> second (filter getRight)
+\end{code}
+
+The accumulate combinators are stateful, applying the supplied function
+to both the input value and an accumulator. This function has two results:
+the option or list of output event occurrence values, and the new value
+for the accumulator.
+
+The accumulator is useful when responses to multiple event occurrences
+(from one or more sources) must be coordinated. For instance, in the
+benchmark application (see Chapter~\ref{chapter:Evaluation_and_Comparisons}),
+a table is maintained that allows knowledge from previous event occurrences
+(packets from a network switch) to be used in deciding where the present
+packet ought to go.
+
+The joining combinators provide the ability to combine two event
+streams, two signals, or a signal and an event stream. These
+combinators are shown in Figure~\ref{figure:joining_combinators}
+
+The {\tt union} combinator is a non-deterministic merge of event
+streams. Any event which occurs on either input will occur
+on the output. For simultaneous event occurrences, the order of occurrence
+is not guaranteed, but the occurrence itself is. This construct
+is also guaranteed to respect the relationship of event occurrences to sampling
+intervals.
+
+The {\tt combineSignals} combinator applies a binary function pointwise to two
+signals, and produces the result of this application as a third signal. The
+combining function is necessary because we will have two input samples at each
+time step, and must produce exactly one output sample.
+
+The {\tt capture} combinator adds the last-sampled value of a signal at the time
+of an event occurrence to that event occurrence.
+
+These three combinators together provide the ability to combine elements of
+signal vectors. By combining these combinators, along with the {\tt cancelLeft}
+and {\tt cancelRight} routing combinators, arbitrary signal vectors can be
+reduced.
+
+\begin{figure}
+\begin{code}
+union          :: (SVEvent a :^: SVEvent a) :~> SVEvent a
+combineSignals :: (a -> b -> c) -> (SVSignal a :^: SVSignal b) :~> SVSignal c
+capture        :: (SVSignal a :^: SVEvent b) :~> SVEvent (b, a)
+\end{code}
+\hrule
+\caption{Joining combinators.}
+\label{figure:joining_combinators}
+\end{figure}
+
+A set of combinators are provided for making use of time-dependence in a signal
+function. These combinators allow the modification of signals and events with
+respect to time, and the observation of the current time value. The combinators
+are shown in Figure~\ref{figure:time_combinators}
+
+\begin{figure}
+\begin{code}
+time      :: SVEmpty :~> SVSignal Double
+delay     :: Double -> (SVEvent a :^: SVEvent Double) :~> SVEvent a
+integrate :: TimeIntegrate i => SVSignal i :~> SVSignal i
+\end{code}
+\hrule
+\caption{Time-dependent combinators.}
+\label{figure:time_combinators}
+\end{figure}
+
+The simplest time-dependent combinator is {\tt time}, which simply outputs
+the time since it began to be evaluated. This does not necessarily correspond to
+the time since the global signal function began to be evaluated, since the
+signal function in which the {\tt time} combinator is used may have been
+introduced through {\tt switch}.
+
+The {\tt delay} signal function allows events to be delayed. An initial delay
+time is given, and event occurrences on the right input can carry a new delay
+time. Event occurrences on the left input are stored and output when their delay
+time has passed. Changing the delay time does not affect occurrences already
+waiting.
+
+The {\tt integrate} combinator outputs the rectangle-rule approximation of the
+integral of its input signal with respect to time.
 
 \subsection{Evaluation Interface}
-The evaluation interface provides a monad~\cite{PeytonJones1993,PeytonJones2001}
-for specifying input to signal functions and handling their output. This
-interface also allows input actions to be separated from output actions, and
-from each other, so that a signal function may receive input from multiple IO
-systems and have its output handled by multiple output systems.
+\label{subsection:System_Design_and_Interface-Evaluation_Interface}
 
-The evaluation interface is a monad transformer~\cite{Liang1995}. This allows
-a signal function evaluation to be constructed from primitive evaluation actions
-(event pushing, input signal updating, and sampling) as well as actions from the
-underlying monad. These actions can then be run in the underlying monad
-to actuate the signal function. Because the actuation takes a signal function's
-state as input and produces a new state as output, in addition to the monadic
-side effects of handling the signal function's output, different evaluation
-actions may be taken on the same signal function from distinct locations within
-an application's code. This allows the evaluation interface to be easily
-integrated with event-loop style systems as well as traditional imperative
-IO systems.
-
-The evaluation interface consists of the monad transformer type, functions for
-constructing event inputs, initial input signal samples, and input signal
-updates, functions for constructing the vector of output handlers for a signal
-function, and evaluation actions. The full interface is shown in Fig.~\ref{figure:evaluation_interface}.
+The evaluation interface provides a modified state monad which holds a signal
+function, together with some additional information, as its state (shown in Figure~\ref{figure:evaluation_state}.
+Rather than monadic instructions to put and get the state, the monad provides instructions
+to trigger an input event, update an input signal, and trigger sampling of
+signals in the signal function. Additional state includes the current set of
+modifications to the input signals (since the last sample) and a set of
+handlers which actuate effects based on output events or changes to the output
+signal.
 
 \begin{figure}
 \begin{code}
--- Input helpers
-class SVRoutable -- Instances: SVSignalUpdate,
-                 -- SVEventOccurrence
-svLeft :: (SVRoutable r) => 
-          r svLeft -> r (SVAppend svLeft svRight)
-svRight :: (SVRoutable r) =>
-           r svRight -> r (SVAppend svLeft svRight)
+-- A vector of handlers for outputs
+data SVHandler out sv
 
--- Signal inputs
-data SVSignalUpdate
-data SVSample
-sample :: a -> SVSample (SVSignal a)
-sampleEvt :: SVSample (SVEvent a)
-sampleNothing :: SVSample SVEmpty
-combineSamples :: SVSample svLeft -> svSample svRight 
-                  -> svSample (svLeft :^: svRight)
-svSig :: a -> SVSignalUpdate (SVSignal a)
+-- A dummy handler for an empty output
+emptyHandler    :: SVHandler out SVEmpty
 
--- Event inputs
-data SVEventInput
-svOcc :: a -> SVEventInput (SVEvent a)
--- Actuation
-update :: (Monad m) => SVSignalUpdate svIn 
-           -> SFEvalT svIn svOut m ()
-push   :: (Monad m) => SVEventInput svIn
-          -> SFEvalT svIn svOut m ()
-sample :: SVEvalT svIn svOut m ()
--- Running
-data SVHandler
-emptyHandler :: SVHandler m SVEmpty
-eventHandler :: (a -> m ()) 
-                -> SVHandler m (SVEvent a)
-signalHandler :: (a -> m ()) 
-                 -> SVHandler m (SVSignal a)
-combineHandlers :: SVHandler m svLeft
-                   -> SVHandler m svRight
-                   -> SVHandler m (svLeft :^: svRight)
-initSFEvalT :: SVHandler m svOut -> SVSample svIn 
-               -> Double ->(svIn :~> svOut)
-               -> SFEvalState m svIn svOut
-runSFEvalT :: SFEvalT svIn svOut m a
+-- A handler for an updated signal sample
+signalHandler   :: (a -> out) -> SVHandler out (SVSignal a)
+
+-- A handler for an event occurrence
+eventHandler    :: (a -> out) -> SVHandler out (SVEvent a)
+
+-- Combine handlers for a vector
+combineHandlers ::    SVHandler out svLeft
+                   -> SVHandler out svRight
+                   -> SVHandler out (svLeft :^: svRight)
+
+-- The state maintained when evaluating a signal function
+data SFEvalState m svIn svOut
+
+-- Create the initial state for evaluating a signal function
+initSFEval ::    SVHandler (m ()) svOut   -- Output handlers
+
+              -> SVSample svIn            -- Initial input samples
+              
+              -> Double                   -- Initial external time,
+                                          -- corresponding to time 0 for
+                                          -- the signal function
+                                          
+              -> (svIn :~> svOut)         -- Signal function to evaluate
               -> SFEvalState m svIn svOut
-              -> m a
 \end{code}
 \hrule
-\caption{Evaluation interface.}
-\label{figure:evaluation_interface}
+\caption{State maintained when evaluating a signal function.}
+\label{figure:evaluation_state}
+\end{figure}
+
+Sets which correspond to signal vectors are built with ``smart'' constructors.
+For instance, to construct a set of handlers, individual handling functions are
+lifted to handler sets with the {\tt signalHandler} and {\tt eventHandler}
+functions, and then combined with each other and {\tt emptyHandler} leaves
+using the {\tt combineHandlers} function.
+
+Building the initial input sample is similar, but {\tt sampleEvt} leaves do
+not carry a value.
+
+In order to initialize the state, the user must supply a set of handlers, the
+signal function to evaluate, and initial values for all of the signal inputs
+(Figure~\ref{figure:initial_input}).
+
+\begin{figure}
+\begin{code}
+-- A sample for all leaves of a signal vector
+data SVSample sv
+
+-- Create a sample for a signal leaf
+sample          :: a -> SVSample (SVSignal a)
+
+-- A dummy sample for an event leaf
+sampleEvt       :: SVSample (SVEvent a)
+
+-- A dummy sample for an empty leaf
+sampleNothing   :: SVSample SVEmpty
+
+-- Combine two samples
+combineSamples  ::    SVSample svLeft
+                   -> SVSample svRight
+                   -> SVSample (svLeft :^: svRight)
+\end{code}
+\hrule
+\caption{Data type for initial input}
+\label{figure:initial_input}
+\end{figure}
+
+This state can then be passed to a monadic action which will supply input to
+the signal function. Inputs are constructed using a simple interface with
+functions to construct sample updates and event occurrences, and to specify
+their place in the vector (Figure~\ref{figure:ongoing_input}).
+
+\begin{figure}
+\begin{code}
+-- Class to overload left and right functions
+class SVRoutable r where
+  svLeft          :: r svLeft -> r (svLeft :^: svRight)
+  svRight         :: r svRight -> r (svLeft :^: svRight)
+
+-- An input event occurrence
+data SVEventInput sv
+instance SVRoutable SVEventInput sv
+
+-- An updated sample for a signal
+data SVSignalUpdate sv
+instance SVRoutable SVSignalUpdate sv
+
+-- Create an event occurrence
+svOcc           :: a -> SVEventInput (SVEvent a)
+
+-- Create an updated sample
+svSig           :: a -> SVSignalUpdate (SVSignal a)
+\end{code}
+\hrule
+\caption{Data types for ongoing input.}
+\label{figure:ongoing_input}
+\end{figure}
+
+The {\tt SFEvalT} monad is actually a monad transformer, that is, it is
+parameterized over an underlying monad whose actions may be lifted to
+{\tt SFEvalT}. In the usual case, this will be the {\tt IO} monad.
+
+{\tt SFEvalT} actions are constructed using combinators to push events,
+update inputs, and step time, as well as actions lifted from the underlying
+monad (used to obtain these inputs). An action in the underlying monad
+which produces the result and a new state is obtained with the {\tt runSFEvalT}
+function. These combinators are shown in Figure~\ref{figure:evaluation_combinators}.
+
+\begin{figure}
+\begin{code}
+-- The evaluation monad
+data SFEvalT svIn svOut m a
+instance MonadTrans (SFEvalT svIn svOut)
+instance (Monad m) => Monad (SFEvalT svIn svOut m)
+instance (Functor m) => Functor (SFEvalT svIn svOut m)
+instance (Monad m, Functor m) => Applicative (SFEvalT svIn svOut m)
+instance (MonadIO m) => MonadIO (SVEvalT svIn svOut m)
+
+-- Obtain an action in the underlying monad
+-- from an SFEvalT and a new state.
+runSFEvalT ::    SFEvalT svIn svOut m a
+              -> SFEvalState m svIn svOut
+              -> m (a, SFEvalState m svIn svOut)
+
+-- Push an event occurrence.
+push :: (Monad m) => SVEventInput svIn -> SFEvalT svIn svOut m ()
+
+-- Update the value of an input signal sample
+-- (not immediately observed)
+update :: (Monad m) => SVEventInput svIn -> SFEvalT svIn svOut m ()
+
+-- Step forward in time, observing the updated signal values
+step :: (Monad m) => Double -> SFEvalT svIn svOut m ()
+\end{code}
+\hrule
+\caption{Evaluation combinators}
+\label{figure:evaluation_combinators}
 \end{figure}
 
 \section{Implementation}
@@ -307,329 +824,573 @@ We now turn our attention to the implementation of the signal function
 system. We will discuss representations of inputs, outputs, and signal functions,
 as well as the implementations of specific signal function combinators.
 
-\subsection{Input and Output Representations}
-\label{subsection:Input_and_Output_Representations}
-As discussed in Section~\ref{section:System_Design}, our implementation requires
-representations of the inputs and outputs of signal functions. Since signal
-functions are typed using signal vectors, the representation types must be
-parameterized over signal vectors. But signal vectors are uninhabited types, and
-in ordinary Haskell we cannot declare a data constructor which uses a component
-of a type parameter. Further, we cannot restrict which types may instantiate a
-type parameter for a particular data constructor.
+\subsection{Signal Functions}
+\label{subsection:Implementation-Signal_Functions}
 
-GADTs lift these restrictions, permitting type constraints to be applied
-to individual data constructors. In the declaration of a GADT, a type signature
-is provided for each data constructor, including the types of the constructor's
-parameters. When a GADT is pattern-matched, the types of the parameters are
-inferred using the constraints given in this signature. This is called type
-refinement.
+The design of signal functions specifies a family of types for the inputs and
+outputs of signal functions. Signal functions are not functions in the purest
+sense, however. They are not mappings from a single instance of their input
+type to a single instance of their output type. They must be implemented with
+respect to the temporal semantics of their inputs and outputs.
 
-Using GADTs, we can construct representations of signal vectors to use in our
-implementation. 
+We therefore start by creating a set of concrete datatypes for the inputs and
+outputs of signal functions. These datatypes will be parameterized by the input
+and output types of the signal function, and will not be exposed to the user of
+the library. Rather, they will specify how data is represented during the
+temporal evaluation of signal functions.
 
-When constructing a representation, we consider how to represent each
-component of a signal vector, whether it is a signal element, an empty
-element, or an append node. For instance, in order to represent a signal
-sample for all signals in an element, we construct the GADT shown in Figure~\ref{figure:signal_sample_representation}.
+We then describe how signal functions are implemented using these concrete
+types, along with higher-order functions and continuations.
+
+In Section~\ref{section:System_Design_and_Interface} we presented signal vectors
+as a set of types. In order to be completely principled, we should isolate these
+types into their own {\em kind} (a sort of type of types); however, the Haskell
+extension for this was far from stable at the time this system was created.
+
+The types are therefore expressed in the system exactly as they were described
+in Section~\ref{section:System_Design_and_Interface}. (To refresh, see
+Figure~\ref{figure:signal_vector_types}.) The striking observation about these
+types is that they have {\em no data constructors}. There are no values which
+take these types.
+
+Instead, we will create concrete representations which are parameterized over
+these types. These concrete representations will be expressed as GADTs, allowing
+each data constructor of the representation to fill in a specific signal vector
+type for the parameter of the representation.
+
+The first thing to represent is {\em samples}, which are sets of values for
+the signal components of a signal vector. Therefore, we create a representation
+which carries a value for every {\tt SVSignal} leaf of a signal vector. In order
+to do this, we restrict each of our constructors to a single signal vector type.
+So there are three leaf constructors: {\tt SVSample}, which carries a value; and
+{\tt SVSampleEvent} and {\tt SVSampleEmpty}, which do not. This ensures that the
+only way to represent a sample leaf is with the {\tt SVSample} constructor,
+which carries a value of the appropriate type. The datatype is shown in
+Figure~\ref{figure:signal_sample_datatype}.
 
 \begin{figure}
 \begin{code}
 data SVSample sv where
-  SVSample        ::    a -> SVSample (SVSignal a)
-  SVSampleEvt     ::    SVSample (SVEvent a)
-  SVSampleNothing ::    SVSample SVEmpty
-  SVSampleBoth    ::    SVSample svLeft
-                     -> SVSample svRight
-                     -> SVSample (svLeft :^: svRight)
+  SVSample      ::    a
+                   -> SVSample (SVSignal a)
+  SVSampleEvent ::    SVSample (SVEvent a)
+  SVSampleEmpty ::    SVSample SVEmpty
+  SVSampleBoth  ::    SVSample svLeft
+                   -> SVSample svRight
+                   -> SVSample (SVAppend svLeft svRight)
 \end{code}
 \hrule
-\caption{A representation which carries a value for each signal in a signal vector.}
-\label{figure:signal_sample_representation}
+\caption{Datatype for signal samples.}
+\label{figure:signal_sample_datatype}
 \end{figure}
 
-\subsection{Signal Function Representations}
-\label{subsection:Signal_Function_Representations}
-With representations for signal function inputs and outputs in place, we turn
-to the representation of signal functions. A signal function must be able to
-respond to time increments and new signal samples, as well as event occurrences.
-Since we wish to be able to ``push'' event occurrences independently of
-sampling, events are handled using the last-updated time and signal sample.
+What about the event components? We want to represent event occurrences,
+each of which will correspond to at most one event in the vector. So a different
+representation is called for. In this case, there will be only three
+constructors. One constructor will represent an event leaf, and the other will
+represent a single value on the left or right side of the node ({\tt SVAppend}),
+ignoring all of the type structure on the other side. This representation
+describes a path from the root of the signal vector, terminating at an event
+leaf with a value.
 
-When a signal function is asked to respond to either of these types of inputs,
-it must produce an output consisting of zero or more event occurrences, a new
-signal function with the same type (to enable reactivity and state), and, if
-it is responding to a time and sample update, a delta which represents updates
-to the sample of its output signals.
+By pattern matching on the path constructors, we can determine which subvector
+of a signal vector an event occurrence belongs to, repeatedly refining it until
+we determine which event in the vector the occurrence corresponds to. The
+datatype for occurrences is shown in Figure~\ref{figure:event_occurrence_datatype}.
 
-Finally, there is a special case for a signal function at time 0. It must be
-provided with an initial input sample before it can respond to incremental time
-and sample updates or to event occurrences.
+\begin{figure}
+\begin{code}
+data SVOccurrence sv where
+  SVOccurrence ::    a
+                  -> SVOccurrence (SVEvent a)
+  SVOccLeft    ::    SVOccurrence svLeft
+                  -> SVOccurrence (SVAppend svLeft svRight)
+  SVOccRight   ::    SVOccurrence svRight 
+                  -> SVOccurrence (SVAppend svLeft svRight)
+\end{code}
+\hrule
+\caption{Datatype for event occurrences.}
+\label{figure:event_occurrence_datatype}
+\end{figure}
 
-Signal functions are represented as a datatype with two constructors. The first
-constructor wraps a function from an input sample to an output sample and an
-initialized signal function. The second wraps two functions. The first accepts
-a time delta and a signal delta, and produces a signal delta, a list of event
-occurrences, and a new signal function as the output. The second accepts an
-event occurrence and produces a list of event occurrences and a new signal
-function as the output. The signal function representation is shown in Figure~\ref{figure:signal_function_representation}.
+We add one more representation for signals, in order to avoid uneccessary
+representations of the values of all signals when not all signals have changed
+their values. This representation allows us to represent the values of zero or
+more of the signals in a signal vector. To accomplish this, we replace the
+individual constructors for the {\tt SVEmpty} and {\tt SVEvent} leaves with %there is a better word, something about "useless but not really", for this
+a single, unconstrained constructor. This constructor can represent an arbitrary
+signal vector. We can use the constructor for signal vector nodes and the 
+constructor for sample leaves to represent the updated values, while filling
+in the unchanged portions of the signal vector with this general constructor.
+This datatype is shown in Figure~\ref{figure:signal_update_datatype}.
 
-\begin{figure}[t]
+\begin{figure}
+\begin{code}
+data SVDelta sv where
+  SVDeltaSignal  ::    a
+                    -> SVDelta (SVSignal a)
+  SVDeltaNothing ::    SVDelta sv
+  SVDeltaBoth    ::    SVDelta svLeft
+                    -> SVDelta svRight
+                    -> SVDelta (SVAppend svLeft svRight)
+\end{code}
+\hrule
+\caption{Datatype for signal updates.}
+\label{figure:signal_update_datatype}
+\end{figure}
+
+We now have concrete datatypes for an implementation to operate on. Our next
+task is to represent transformers of temporal data, which themselves may change
+with time. The common approach to this task is sampling, in which a program
+repeatedly checks for updated information, evaluates it, updates some state,
+and produces an output. This is the essence of pull-based evaluation.
+
+Another approach is notification, in which the program exposes an interface
+which the source of updated information may invoke. This is a repeated entry
+point to the program, which causes the program to perform the same tasks
+listed above, namely, evaluate the updated information, update state, and
+produce output. The strategy of notification as opposed to repeated checking is
+the essence of push-based evaluation.
+
+Signal functions are declarative objects, and not running processes. They have
+no way to invoke sampling themselves. They can, however, expose separate
+interfaces for when sampling is invoked, and when they are notified of an event
+occurrence. This creates two control paths through a signal function. One of
+these control paths is intended to be invoked regularly and frequently with
+updates to the time and sample values, and the other is intended to be invoked
+only when an event occurs. The benefit of separating these control paths is that
+events are no longer defined in terms of sampling intervals, and need not even
+be considered in sampling, except when they are generated by a condition on a
+sample. On the other hand, events can be responded to even if the time has not
+yet come for another sample, and multiple events can be responded to in a single
+sampling interval.
+
+We represent signal functions as a GADT with three type parameters and two 
+constructors. The first type parameter represents the initialization state,
+and is specialized to {\tt Initialized} or {\tt NonInitialized} depending on the
+constructor. The other two type parameters are the input and output signal
+vectors, respectively. The signal functions that a user will compose are\
+non-initialized signal functions. They must be provided with an initial set of
+input signals (corresponding to time zero). When provided with this input, they
+produce their time-zero output, and an initialized signal function. The datatype
+is shown in Figure~\ref{figure:signal_function_datatype}.
+
+\begin{figure}
 \begin{code}
 data Initialized
+
 data NonInitialized
 
-type :~> svIn svOut = SF NonInitialized svIn svOut
-
 data SF init svIn svOut where
-  SF :: (SVSample svIn -> (SVSample svOut, SF Initialized svIn svOut))
-        -> SF NonInitialized svIn svOut
-  SFInit :: (Double -> SVDelta svIn 
-             -> (SVDelta svOut, [SVOccurrence svOut],
-                 SF Initialized svIn svOut))
-            -> (SVOccurrence svIn -> ([SVOccurrence svOut],
-                                      SF Initialized svIn svOut))
+  SF     ::    (SVSample svIn 
+                  -> (SVSample svOut,
+                      SF Initialized svIn svOut)) 
+            -> SF NonInitialized svIn svOut
+  SFInit ::    (Double 
+                  -> SVDelta svIn
+                  -> (SVDelta svOut,
+                      [SVOccurrence svOut],
+                      SF Initialized svIn svOut)) 
+            -> (SVOccurrence svIn
+                  -> ([SVOccurrence svOut],
+                      SF Initialized svIn svOut))
             -> SF Initialized svIn svOut
 \end{code}
 \hrule
-\caption{Signal function representation}
-\label{figure:signal_function_representation}
+\caption{Datatype and empty types for signal functions.}
+\label{figure:signal_function_datatype}
 \end{figure}
 
-This representation allows a signal function to respond to events and time
-updates separately, and does not enforce the representation of events during
-time updates, as previous signal function systems do.
+Initialized signal functions carry two continuations. The first continuation
+takes a time differential and a set of signal updates, and returns a set of
+signal updates, a collection of event occurrences, and a new initialized signal
+function of the same type. This is the continuation called when sampling.
 
-\subsection{Signal Function Implementations}
-\label{subsection:Signal_Function_Implementations}
+The second continuation takes an event occurrence, and returns a collection of
+event occurrences and a new signal function of the same type. This continuation
+is only called when there is an event occurrence to be input to the signal
+function.
 
-Now that we have established representations for signal functions and their
-inputs and outputs, we show several examples of how signal function combinators
-are implemented.
+Note that each of these continuations uses one or more of the concrete
+representations of signal vectors, and applies the type constructor for the
+representation to the input or output signal vector for the signal function.
 
-The {\tt identity} signal function's initialization function takes a sample,
-and returns that sample as its output sample. The initialized function returned
-is the {\tt identityInit} function, which is not exported by the module.
-The time and sample function ignores the provided time delta, produces the
-input signal delta as the output signal delta, and returns {\tt identityInit} as
-the new signal function. The event function takes an event occurrence and
-returns a singleton list containing that occurrence, along with the
-{\tt identityInit} function as the replacement signal function. The
-implementation is shown in Figure~\ref{figure:identity_signal_function_implementation}.
+Having specified a datatype for signal functions, we must now provide
+combinators which produce signal functions of this type. Each combinator's
+implementation must specify how it is initialized, how it samples its input, and
+how it responds to event occurrences.
 
-\begin{figure}[t]
+We will not detail every combinator here, but we will discuss each of the
+implementation challenges encountered.
+
+As an example of the implementation of combinators, we show the implementation
+of the {\tt identity} signal function in Figure~\ref{figure:identity_implementation}.
+This signal function simply passes all of its inputs along as outputs. The
+initialization function simply passes along the received sample and outputs the
+initialized version of the signal function. The initialized version of the input
+is similar, but is self-referential. It outputs itself as its replacement. This
+is standard for simple and routing combinators which are not reactive, and
+simply move samples and event occurrences around.
+
+\begin{figure}
 \begin{code}
 identity :: sv :~> sv
-identity = SF (\sample -> (sample, identityInit))
+identity =
+  SF (\initSample -> (initSample, identityInit))
 
 identityInit :: SF Initialized sv sv
-identityInit = SFInit (\_ delta -> (delta, [], identityInit))
-                      (\occ -> ([occ], identityInit))
+identityInit =
+  SFInit (\dt sigDelta -> (sigDelta, [], identityInit))
+         (\evtOcc -> ([evtOcc], identityInit))
 \end{code}
 \hrule
-\caption{{\tt identity} signal function implementation.}
-\label{figure:identity_signal_function_implementation}
+\caption{Implementation of the {\tt identity} combinator.}
+\label{figure:identity_implementation}
 \end{figure}
 
-The {\tt constant} signal function is initialized with a value, which it then
-produces as its output forever. Thus, the initialized version of {\tt constant}
-never produces any output other than itself as a replacement
-signal function, and an empty signal delta. The implementation of {\tt constant}
-is shown in Fig.~\ref{figure:constant_signal_function_implementation}.
+In order for our primitive signal functions to be useful, we need a means of
+composing them. Serial composition creates one signal function from two, by
+using the output of one as the input of the other. The serial composition
+combinator is styled {\tt (>>>)}. The implementation of this operator is one
+place where the advantage of responding to events independently from signal
+samples becomes clear. 
+
+This is the only primitive combinator which takes two signal functions, and
+thus, it is the only way to combine signal functions. Parallel, branching, and
+joining composition can be achieved by modifying signal functions with the
+{\tt first} and {\tt second} combinators and composing them with the
+routing and joining combinators.
+
+Combinators which take one or more signal functions as input must recursively
+apply themselves, as is shown in the implementation of serial composition
+(Figure~\ref{figure:serial_composition_implementation}). They must also
+handle initialization, retaining the initialized signal functions and passing
+them to the initialized version of the combinator.
 
 \begin{figure}
 \begin{code}
-constant :: a -> SVEmpty :~> SVSignal a
-constant x = SF (\_ -> (constantInit, sample x))
+(>>>) ::    (svIn :~> svBetween) 
+         -> (svBetween :~> svOut)
+         -> (svIn :~> svOut)
+(SF sigSampleF1) >>> (SF sigSampleF2) =
+  SF (\sigSample -> let (sigSample', sfInit1) = sigSampleF1 sigSample
+                        (sigSample'', sfInit2) = sigSampleF2 sigSample'
+                    in (sigSample'', composeInit sfInit1 sfInit2))
 
-constantInit :: SF Initialized SVEmpty (SVSignal a)
-constantInit = SFInit (\_ _ -> (deltaNothing, [], constantInit))
-                      (\_ -> ([], constantInit))
+composeInit ::     SF Initialized svIn svBetween
+                -> SF Initialized svBetween svOut
+                -> SF Initialized svIn svOut
+composeInit (SFInit dtCont1 inputCont1) sf2@(SFInit dtCont2 inputCont2) =
+  SFInit
+    (\dt sigDelta -> 
+       let (sf1MemOutput, sf1EvtOutputs, sf1New) = dtCont1 dt sigDelta
+           (sf2MemOutput, sf2EvtOutputs, sf2New) = dtCont2 dt sf1MemOutput
+           (sf2EvtEvtOutputs, sf2Newest) = applySF sf2New sf1EvtOutputs
+       in (sf2MemOutput,
+           sf2EvtOutputs ++ sf2EvtEvtOutputs,
+           composeInit sf1New sf2Newest)
+    )
+    (\evtOcc -> 
+      let (sf1Outputs, newSf1) = inputCont1 evtOcc
+          (sf2FoldOutputs, newSf2) = applySF sf2 sf1Outputs
+      in (sf2FoldOutputs, composeInit newSf1 newSf2)   
+    )
+
+applySF ::    SF Initialized svIn svOut
+           -> [SVOccurrence svIn]
+           -> ([SVOccurrence svOut],
+               SF Initialized svIn svOut)
+applySF sf indices =
+  foldr (\evtOcc (changes, SFInit _ changeCont) ->
+           let (newChanges, nextSF) = changeCont evtOcc
+               in (newChanges ++ changes, nextSF))
+        ([], sf)
+        indices
 \end{code}
 \hrule
-\caption{{\tt constant} signal function implementation.}
-\label{figure:constant_signal_function_implementation}
+\caption{Implementation of serial composition.}
+\label{figure:serial_composition_implementation}
 \end{figure}
 
-The {\tt asap} signal function implementation requires a parameter for the
-initialized version of the signal function, to specify the value of the event
-occurrence. It replaces itself with the initialized version of the {\tt never}
-signal function after the first time step. The implementation is shown in
-Fig.~\ref{figure:asap_signal_function_implementation}.
+The switch combinator is the means of introducing reactivity into a signal
+function. This combinator allows a signal function to replace itself by
+producing an event occurrence. The combinator wraps a signal function, and 
+observes an event on the right side of the output signal vector. At the first
+occurrence of the event, the signal function carried by the occurrence replaces
+the signal function. 
+
+The switch combinator stores the input sample provided during initialization,
+and updates it with the input signal updates. When the wrapped signal function
+produces an occurrence carrying a new signal function, that signal function is
+initialized with the stored input sample. It is then "wrapped" by another
+function which closes over its output sample, and outputs the sample as a signal
+update as the next time step. After this, it acts as the new signal function.
+This wrapping has some performance implications, which are discussed 
+
+This combinator checks the outputs of the wrapped
+signal function for an event occurrence from which an uninitialized signal
+function is extracted. The switch combinator stores the full sample
+for its input vector (which is identical to the input vector of the supplied
+signal function) to initialize the new signal function. This also demands that
+it add a wrapper to the new signal function which waits for the next sampling
+interval and actuates the sample output at initialization as an output set
+of changes to the signal. This has some performance implications, which are
+discussed in Chapter~\ref{chapter:Evaluation_and_Comparisons}.
+
+Most of the routing combinators are simple to implement. The only task is to add
+remove, or replace routing constructors on signal updates and event occurrences.
+Since these signal functions are stateless and primitive, they can simply
+return themselves as their replacements. The {\tt swap} combinator is shown as
+an example in Figure~\ref{figure:swap_implementation}
 
 \begin{figure}
 \begin{code}
-asap :: a -> SVEmpty :~> SVEvent a
-asap x = SF (\_ -> (sampleEvt, asapInit x))
+-- T.swap is imported from Data.Tuple
+swap :: (sv1 :^: sv2) :~> (sv2 :^: sv1)
+swap =
+  SF ((, swapInit) . 
+      uncurry combineSamples .
+      T.swap . splitSample)
 
-asapInit :: a -> SF Initialized SVEmpty (SVEvent a)
-asapInit x = SFInit (\_ _ -> (deltaNothing, [occurrence x], neverInit))
-                    (\_ -> (never))
+swapInit :: SF Initialized (SVAppend sv1 sv2) (SVAppend sv2 sv1)
+swapInit =
+  SFInit (flip (const .
+                (, [], swapInit) .
+                uncurry combineDeltas .
+                T.swap . splitDelta))
+          (\evtOcc ->
+             (case chooseOccurrence evtOcc of
+                Left lOcc  -> [occRight lOcc]
+                Right rOcc -> [occLeft rOcc], swapInit))
+
 \end{code}
 \hrule
-\caption{{\tt asap} signal function implementation.}
-\label{figure:asap_signal_function_implementation}
+\caption{Implementation of the {\tt swap} routing combinator.}
+\label{figure:swap_implementation}
 \end{figure}
 
-The {\tt filter} function accepts events, applies a {\tt Maybe} predicate to
-their values, and produces the value produced by the predicate as an event
-occurrence, or no occurrence if the value is {\tt Nothing}. It is implemented
-by having the event occurrence response function apply the {\tt maybe} function
-from the Haskell prelude to the value returned by the predicate, as shown in 
-Fig.~\ref{figure:filter_signal_function_implementation}
+The {\tt first} and {\tt second} combinators are similar to serial composition,
+but they transform only one signal function. For signal changes, they must split
+the set of input changes into those which will be passed to the signal function
+and those which will be simply passed along to the output, and then recombine
+them on the other side. For event occurrences, the occurrence must be
+pattern-matched to determine whether to call the event continuation from the
+provided signal function or passed through, and output event occurrences must
+have the suitable routing constructor re-applied. In any case, when a
+continuation has been applied, the combinator must be recursively applied to the
+new signal function.
 
-\begin{figure}[t]
+The looping feedback combinator is particularly tricky. As it is currently
+implemented, the initial sample for the right side of the input signal vector to
+the supplied function is the right side of the output sample. This is acceptable,
+given Haskell's non-strict evaluation strategy, but it is necessary that the
+right side of the signal function's output not be immediately dependent on its
+input. The feedback combinator makes use of Haskell's lazy evaluation to
+feed events back into the combinator, and stores signal updates until the next
+sample. Signal samples are thus automatically decoupled after initialization.
+The implementation makes use of the recursive nature of the {\tt let} construct
+in Haskell, and the non-strict evaluation of Haskell, to implement feedback.
+
+
+The {\tt filter} combinators are simple to implement. Their sampling
+continuation is superfluous, and the event continuation merely applies the
+supplied function, and constructs an output list based on the result.
+
+The {\tt accumulate} combinators are implemented in terms of the {\tt filter}
+and {\tt switch} combinators, as shown in
+Figure~\ref{figure:accumulate_implementation}.
+
+\begin{figure}
 \begin{code}
-filter :: (a -> Maybe b) -> SVEvent a :~> SVEvent b
-filter p = SF (\_ -> (sampleEvt, filterInit p))
+-- | Accumulate over event occurrences
+accumulate :: (a -> b -> (Maybe c, a)) -> a -> SVEvent b :~> SVEvent c
+accumulate f a = acc a
+  where acc a = switch (pureEventTransformer (f a) >>>
+                        copy >>>
+                        first (pureEventTransformer fst >>> filter id) >>>
+                        second (pureEventTransformer (acc . snd)))
 
-filterInit :: (a -> Maybe b) -> SF Initialized (SVEvent a) (SVEvent b)
-filterInit p = SFInit (\_ _ -> (deltaNothing, [], filterInit p))
-                      (\evtOcc -> (maybe [] ((:[]) . occurrence) $
-                                   fromOccurrence evtOcc,
-                                   filterInit p))
+-- | Accumulate over event occurrences, with lists of event outputs
+accumulateList :: (a -> b -> ([c], a)) -> a -> SVEvent b :~> SVEvent c
+accumulateList f a = acc a
+  where acc a = switch (pureEventTransformer (f a) >>>
+                        copy >>>
+                        first (pureEventTransformer fst >>> filterList id) >>>
+                        second (pureEventTransformer (acc . snd)))
 \end{code}
 \hrule
-\caption{{\tt filter} signal function implementation.}
-\label{figure:filter_signal_function_implementation}
+\caption{Implementation of event accumulators.}
+\label{figure:accumulate_implementation}
 \end{figure}
 
-The {\tt associate} signal function is a routing signal function. It transforms
-a signal vector which is left-associated at the top level to one that is
-right-associated at the top level. Its implementation is representative of all
-of the routing functions, and is shown in Fig.~\ref{figure:associate_signal_function_implementation}.
+The implementation of the joining combinators is simple. The {\tt union}
+combinator simply passes along every event occurrence it receives on either
+input, stripping off the left and right combinator. This is acceptable since we
+do not insist on a total ordering of events, or an event time resolution greater
+than the sampling rate. The {\tt combineSignals} combinator maintains the values
+of both signals, and applies the combination function whenever one is updated.
+The {\tt capture} combinator maintains the input signal value, and adds it to
+each event occurrence.
 
-\begin{figure}[t]
+Time dependence is introduced by the {\tt time}, {\tt delay}, and {\tt integrate}
+combinators. The time combinator simply sums the time updates and provides the
+sum as a signal output. The {\tt delay} combinator keeps a table of events
+which have come in, along with their schedule occurrence time, and produces
+them as output when time advances far enough. The integrate combinator performs
+rectangle-rule integration on signal samples with respect to time.
+
+The implementation strategy leaves room for optimizations. In particular, an
+additional constructor for time-independent signal functions would allow
+portions of a signal function to forgo evaluation during time steps unless they
+had signal updates. Optimizations in the style of Yampa, observed by keeping
+an updated AST for the signal function and pattern-matching on it when switching,
+might further improve performance. In particular, collapsing nested or
+serially-composed versions of the {\tt switchWait} step when switching would
+remove at least some of the observed dependence of performance on sampling rate.
+Nevertheless, this implementation performs quite well as it currently exists, as
+we demonstrate in Chapter~\ref{chapter:Evaluation_and_Comparisons}.
+
+\subsection{Evaluation Interface}
+\label{subsection:Implementation-Evaluation_Interface}
+The evaluation interface provides the means of evaluating a signal function
+with inputs and producing effects in response to the signal function's outputs.
+We would like to produce a set of constructs that interacts well with Haskell's
+system for external IO.
+
+The evaluation interface translates between signal functions and the standard
+Haskell construct for sequencing effects and external inputs, namely,
+{\em monads}~\cite{PeytonJones1993}. The inspiration for monads is drawn from
+the rather esoteric domain of category theory, but the concept as applied to
+programming languages is actually rather simple.
+
+In a programming language with type constructors, a monad is simply a 1-arity
+type constructor together with two operations. We shall call this type
+constructor $m$. The first operation takes a value of any type
+(call the type $a$) and produces a value of type $m \: a$ ($m$ applied to $a$).
+The second operation takes a value of type $m \: a$ and a function from $a$ to
+$m \: b$, and produces a $m \: b$. This means that this second operation,
+monadic application, applies the function to the value in the context of the
+monad.
+
+For our purposes, there are two interesting properties of monads. One is that
+for a specific type constructor, opaque primitives may be defined which
+can be used, along with return, to build functions for the second argument
+of the monadic application operation. In our case, we would like operations
+to push an event to a signal function, to update the signal components of
+the signal function, and to increment the time and sample the signal function.
+
+This property is what enables monads to be used for input and output. A Haskell
+{\tt main} program is an IO action. An IO action is a value of the monadic type
+IO. This action is comprised of a primitive action (either a {\tt return} or a 
+true IO primitive), possibly together with a function from the output of that
+action to another IO action. Note that values with the IO type may appear
+anywhere in a Haskell program, but they are only execute when they are returned
+as a part of the {\tt main} IO program.
+
+The Haskell typeclass for monads is defined:
+
 \begin{code}
-associate :: SVAppend (SVAppend sv1 sv2) sv3
-             :~> SVAppend sv1 (SVAppend sv2 sv3)
-associate = 
-  SF (\sigSample -> let (sigSampleLeft, sigSampleRight) = 
-                          splitSample sigSample
-                        (sigSampleLeftLeft, sigSampleLeftRight) =
-                          splitSample sigSampleLeft
-                    in (combineSamples sigSampleLeftLeft 
-                        (combineSamples sigSampleLeftRight sigSampleRight),
-                        associateInit))
-
-associateInit :: SF Initialized (SVAppend (SVAppend sv1 sv2) sv3)
-                                (SVAppend sv1 (SVAppend sv2 sv3))
-associateInit = SFInit (\_ sigDelta -> let (sigDeltaLeft, sigDeltaRight) =
-                                             splitDelta sigDelta
-                                           (sigDeltaLeftLeft,
-                                            sigDeltaLeftRight) =
-                                             splitDelta sigDeltaLeft
-                                       in (combineDeltas sigDeltaLeftLeft
-                                           (combineDeltas sigDeltaLeftRight
-                                                          sigDeltaRight),
-                                           [], associateInit)) 
-                       (\evtOcc -> (case chooseOccurrence evtOcc of
-                                      Left leftOcc -> 
-                                        case chooseOccurrence leftOcc of
-                                          Left leftLeftOcc ->
-                                            [occLeft leftLeftOcc]
-                                          Right leftRightOcc ->
-                                            [occRight $ occLeft leftRightOcc]
-                                      Right rightOcc ->
-                                        [occRight $ occRight $ rightOcc],
-                                    associateInit))
+class Monad m where
+  return :: a -> m a
+  -- | Infix operator for monadic application
+  (>>=)  :: m a -> (a -> m b) -> m b 
 \end{code}
-\hrule
-\caption{{\tt associate} signal function implementation.}
-\label{figure:associate_signal_function_implementation}
-\end{figure}
 
-The {\tt switch} function is the basic combinator used to introduce reactivity.
-It is given a signal function whose output is the append of two signal vectors.
-The left side of the signal vector is passed on as the output of the reactive
-signal function, and the right side is an event carrying signal functions. When
-an event occurrence is present on the right-side event output, the signal
-function carried by this occurrence replaces the signal function constructed
-by switch. Due to space concerns, the implementation is elided, but a brief
-description will suffice. The signal function stores the input sample
-provided during initialization, and updates it with deltas. When an event
-occurrence carrying a signal function is produced by either the event or 
-time function of the wrapped signal function, the stored signal sample is used
-to initialize the new signal function. If this occurs while handling an event
-input, the sample output by the new signal function's initialization is stored
-and is combined with its first output delta to produce the output delta at the
-next time step.
+The other interesting property of monads is the existence of a class of monads
+called monad transformers. These are arity-2 type constructors which take as
+their first parameter a monad type constructor. The partial application of
+such a type constructor to any monad type constructor then results in a monad.
+A construct is then provided to lift values of the underlying monad to values
+in the transforming monad, which may then be sequenced as normal. This leads
+to the powerful concept of monad transformer stacks, where monads with many
+different capabilities are combined without any more plumbing than explicit
+{\tt lift} operations. 
 
-The {\tt loop} function allows a signal function to see a component of its own
-output as input. This is primarily useful when a signal function has components
-which mutually depend on each others outputs, such as in physics simulations
-or games. Care must be taken that the feedback output is not immediately
-dependent on the feedback input, or sampling the signal function will not
-terminate. Loop is implemented by generating a recursive list (which will
-be infinite if the feedback is not decoupled) of event inputs, and by splitting
-the output signal delta and using the right side output delta as the right
-side input delta within a recursive let-binding. (The let-binding in Haskell
-always admits recursive bindings.) If the system is not completely decoupled,
-this will result in non-termination during an evaluation step. Decoupling can
-be achieved using {\tt delay} primitive.
+This property will be useful because we want our evaluation interface to be
+part of a monad stack, the base of which is Haskell's IO monad. By formulating
+the evaluation interface as a monad transformer, we need only define the
+operations relevant to the evaluation of signal functions, and we can depend
+on the constructs of the IO monad to interact with whatever inputs and outputs
+are necessary. In some cases, we may not wish to use the IO monad at all (e.g
+for testing or simulation). In this case, we can parameterize over another
+monad, such as the Identity monad (which has no special operations and whose
+context is just the value), or the State monad (which maintains an implicit 
+state accessible by {\tt get} and {\tt put} operations).
 
-\subsection{Evaluation Interface Implementation}
-\label{subsection:Evaluation_Interface_Implementation}
+The monad tranformer typeclass is defined as:
 
-The evaluation interface must maintain state including the current signal
-function, the current time (to produce time deltas), updates to the input
-sample which have yet to be sampled, and the output handlers.
-
-The output handlers are stored in a structure similar to that for a signal
-sample. The difference is that both signal and event leaves contain values, and
-these values are functions from the leaf type to another type. The handler
-datatype is shown in Fig.~\ref{figure:handler_datatype}.
-
-\begin{figure}[t]
 \begin{code}
-data SVHandler out sv where
-  SVHandlerEmpty  :: SVHandler out SVEmpty
-  SVHandlerSignal :: (a -> out) -> SVHandler out (SVSignal a)
-  SVHandlerEvent  :: (a -> out) -> SVHandler out (SVEvent a)
-  SVHandlerBoth   :: SVHandler out svLeft -> SVHandler out svRight 
-                     -> SVHandler out (SVAppend svLeft svRight)
+class MonadTrans t where
+  lift :: Monad m => m a -> t m a
 \end{code}
-\hrule
-\caption{Handler datatype.}
-\label{figure:handler_datatype}
-\end{figure}
 
-We now need a datatype to hold the various components of the evaluation state.
-This type is shown in Fig~\ref{figure:evaluation_state_datatype}.
+Haskell also supports {\em do}-notation for monads. Do notation simply
+makes monadic application implicit between lines and reverses the syntatic
+order of lambda bindings, providing a way to use monads in a manner similar
+to imperative programming. (See Figure~\ref{figure:monad-example} for an
+example.)
 
-\begin{figure}[t]
+\begin{figure}
 \begin{code}
-data SFEvalState m svIn svOut 
-  = SFEvalState { 
-                  esSF :: SF Initialized svIn svOut,
-                  esOutputHandlers :: SVHandler (m ()) svOut,
-                  esLastTime :: Double,
-                  esDelta :: SVDelta svIn
-                }
+-- Do notation:
+do putStr "Hello: "
+   string <- getStr
+   putStrLn $ "Nice to meet you " ++ string
+   time <- getCurrentTime
+   print time
+   putStrLn "Look at the time! Bye."
 
+-- Translates to:
+putStr "Hello: " >> getStr >>= 
+(\string -> (putStrLn $ "Nice to meet you " ++ string) >>
+ getCurrentTime >>=
+ (\time -> print time >> putStrLn "Look at the time! Bye."))
 \end{code}
 \hrule
-\caption{Evaluation state datatype.}
-\label{figure:evaluation_state_datatype}
+\caption{An example of monadic $do$-notation and its equivalent monadic
+expression.}
+\label{figure:monad-example}
 \end{figure}
 
-The evaluation interface itself is a monad transformer, which we implement
-as a Haskell newtype wrapping the {\tt StateT} monad transformer. We do not
-export the raw {\tt put} and {\tt get} actions of the state monad, but instead
-implement the push, update, and sampling operations for signal function
-evaluation using {\tt put} and {\tt get}. The evaluation monad transformer is
-shown in Fig.~\ref{figure:signal_function_evaluation_monad_transformer}.
-Instances of typeclasses including {\tt Monad} and {\tt MonadTrans} are derived
-using the ``GeneralizedNewtypeDeriving'' extension to the Glasgow Haskell
-Compiler.
+The evaluation interface is exported as shown in
+Section~\ref{section:System_Design_and_Interface-Evaluator}.
 
-\begin{figure}[t]
-\begin{code}
-newtype SFEvalT svIn svOut m a = StateT (SFEvalState m svIn svOut) m a
-\end{code}
-\hrule
-\caption{Signal function evaluation monad transformer.}
-\label{figure:signal_function_evaluation_monad_transformer}
-\end{figure}
+The {\tt SFEvalState} type constructor parameterizes over input types for signal
+functions, and underlying monads for a monad transformer, but is not itself
+a monad transformer. It describes the state of signal function evaluation.
+It consists of a record with four members: the current signal function,
+the set of handlers for outputs, the current input signal delta, and the last
+sample time.
+
+The {\tt SFEvalT} monad transformer is a newtype wrapper around the {\tt StateT}
+monad available in the Haskell {\tt transformers} package. The StateT monad
+wraps any other monad, providing a state which may be read using the {\tt get}
+action and replaced with the {\tt put} action. An action in the underlying
+monad is obtained by supplying a {\tt StateT} value and an initial state
+value to the {\tt runStateT} function.
+
+The {\tt SFEvalT} monad transformer does not make the {\tt get} and {\tt put}
+actions available, but uses them in its implementation of the {\tt push},
+{\tt update}, and {\tt sample} actions.
+
+The {\tt push} action pushes an event onto the input of the signal function,
+resulting in immediate evaluation of the relevant components signal function
+and possible actuation of handlers specified for output events. It is
+implemented by fetching the {\tt SFEvalState}, applying the event continuation
+of the signal function contained by the {\tt SFEvalState} to the pushed event,
+thus obtaining a new signal function and a list of events, applying the handlers
+contained in the {\tt SFEvalState} to the output events, replacing the signal
+function in the {\tt SFEvalState}, and replacing the {\tt SFEvalState}.
+
+The {\tt update} action updates the current input signal delta, which will be
+sampled at the next {\tt step} action. It has no immediately observable effect.
+It simply updates the value of one signal in the input signal vector, a delta
+of which is stored in the {\tt SFEvalState} record.
+
+The {\tt step} action takes a time delta, and calls the signal continuation of
+the stored signal function. It actuates the outputs using the stored handlers,
+replaces the stored delta with an empty delta, and stores the resulting new
+signal function in the state.
 
 \section{Discussion}
 \label{section:Discussion}
@@ -687,7 +1448,17 @@ behaviors in reactive normal form. The system is evaluated by forking a Haskell
 thread to repeatedly sample the non-reactive behavior, and then blocking on the
 evaluation of the first occurrence in the event stream. When this occurrence
 is yielded, the evaluation thread for the behavior is killed and a new
-thread forked to evaluate the new behavior~\cite{Elliott2009}. 
+thread forked to evaluate the new behavior~\cite{Elliott2009}.
+
+An alternate push-based system, based on {\em signal segments}, was presented in
+work on the Curry-Howard correspondence between a form of temporal logic (LTL)
+and FRP~\cite{Jeffrey2012}. However, this system continues to represent events
+as option-valued signals. It therefore cannot be push-based in its response to
+individual events, and cannot be push-pull, evaluating signals by pull-based
+evaluation and events by push-based evaluation. It is push-based not in the
+sense of evaluating events only when they occur, but rather in that it provides
+a means to push signal segments (samples of a signal over intervals of time) to
+the system and wait on its response.
 
 \section{Conclusion}
 \label{section:Conclusion}
