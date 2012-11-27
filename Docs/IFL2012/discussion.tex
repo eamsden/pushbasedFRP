@@ -1,0 +1,39 @@
+\section{Discussion}
+\label{section:Discussion}
+
+The system presented here, TimeFlies, demonstrates how using signal vectors
+to type inputs and outputs enables push-based evaluation of events in a
+signal-function system. We take advantage of this representation in several ways.
+
+First, by separating components of inputs and outputs in the types, we are free
+to create distinct, and often partial, representations of the input or output
+of a signal function. This enables us to represent only the event occurrence
+being pushed at that time.
+
+Second, this separation also permits us to separate the process of gathering
+the input to a signal function, and the process of handling its output, into
+different points in a program. Using the evaluation interface described, an
+event occurrence may be pushed onto one input of a signal function from one
+point in a program (e.g. a mouse click handler), an input signal
+may be updated in another (e.g. a mouse movement handler), and finally the
+system may be sampled in a third place (e.g. an animation or audio timed
+callback).
+
+Finally, this approach enables further work on the implementation of the signal
+function system to be separated from changes in the interface. By enabling
+differing representations of the inputs and outputs of signal functions, we are
+free to change these representations without the need to further constrain the
+input and output types.
+
+\section{Ongoing and Further Work}
+\label{section:Ongoing_and_Further_Work}
+
+TimeFlies, the system described here, has been implemented, but not
+extensively tested. The immediate goal is to create a real-time application
+which will permit a performance and implementation comparison of TimeFlies with
+Yampa, the current state-of-the-art pull-based signal-function system.
+
+In the future, we hope to apply run-time optimizations, using the technique used
+for Yampa, to create a push-pull self-optimizing signal-function system. Further,
+we hope to use this system as a basis for exploring signal-function FRP as a
+basis for general-purpose application frameworks.

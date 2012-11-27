@@ -1,0 +1,29 @@
+\section{Related Work}
+\label{section:Related_Work}
+
+Signal Function FRP was introduced as a model for Graphical User Interfaces~\cite{Courtney2001-1}.
+The system was originally termed ``AFRP'' (Arrowized FRP). Yampa is a rewrite of
+AFRP where signal functions apply a number of ad-hoc optimizatons to themselves
+as they evolve. Yampa demonstrated a modest performance improvement
+over AFRP~\cite{Nilsson2005}.
+
+Reactive is a classic FRP system which implements push-based evaluation for events
+by transforming behaviors to ``reactive~normal~form,'' where a behavior
+is a non-reactive behavior running inside a switch, whose event stream carries
+behaviors in reactive normal form. The system is evaluated by forking a Haskell
+thread to repeatedly sample the non-reactive behavior, and then blocking on the
+evaluation of the first occurrence in the event stream. When this occurrence
+is yielded, the evaluation thread for the behavior is killed and a new
+thread forked to evaluate the new behavior~\cite{Elliott2009}.
+
+An alternate push-based system, based on {\em signal segments}, was presented in
+work on the Curry-Howard correspondence between a form of temporal logic (LTL)
+and FRP~\cite{Jeffrey2012}. However, this system continues to represent events
+as option-valued signals. It therefore cannot be push-based in its response to
+individual events, and cannot be push-pull, evaluating signals by pull-based
+evaluation and events by push-based evaluation. It is push-based not in the
+sense of evaluating events only when they occur, but rather in that it provides
+a means to push signal segments (samples of a signal over intervals of time) to
+the system and wait on its response.
+
+

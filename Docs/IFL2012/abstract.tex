@@ -1,0 +1,16 @@
+\begin{abstract}
+Functional Reactive Programming is a promising class of systems for writing
+interactive and time-dependent programs. Signal-function FRP is a subclass of
+these systems which provides advantages of modularity and correctness, but
+has proven difficult to efficiently implement.
+
+The abstraction of signal vectors provides the necessary type apparatus to
+distinguish components of the input and output of signal functions which benefit
+from a push-based implementation from those which benefit from a pull-based
+implementation, and to combine both implementation strategies in a single system.
+
+We describe a signal-function FRP system which provides push-based evaluation
+for events, pull-based evaluation for signals, and a simple monadic evaluation
+interface which permits the system to be easily integrated with one or more
+IO systems.
+\end{abstract}
