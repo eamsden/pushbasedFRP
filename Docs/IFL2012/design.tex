@@ -129,13 +129,6 @@ data SVAppend svLeft svRight -- The combination of the signal vectors
 \label{figure:signal_vector_types}
 \end{figure}
 
-The type constructor for signal functions is shown in
-Figure~\ref{figure:signal_function_types}. For the {\tt init} parameter, only
-one possible instantiation is shown. The usefulness of this type parameter,
-along with another instantation which is hidden from users of the library,
-is discussed in the section on implementation of signal functions
-(Section~\ref{section:Implementation}).
-
 Signal functions with signal vectors as input and output types form a
 Haskell {\tt GArrow}~\cite{Megacz2011}. Specifically, the signal function
 type constructor (with the initialization parameter fixed) forms the arrow
@@ -143,10 +136,7 @@ type, the {\tt SVAppend} type constructor forms the product type, and the
 {\tt SVEmpty} type constructor forms the unit type.
 
 The representation of signal functions is discussed in
-Section~\ref{section:Implementation-Signal_Functions}. The type synonyms
-{\tt :\textasciitilde>} and {\tt :\textasciicircum:} are included for
-readability and are not crucial to the FRP system.
-
+Section~\ref{section:Implementation-Signal_Functions}.
 \begin{figure}
 \begin{code}
 -- Signal functions
@@ -167,43 +157,16 @@ type svLeft :^: svRight = SVAppend svLeft svRight
 \label{figure:signal_function_types}
 \end{figure}
 
-Monad transformers~\cite{Jones1995} provide a means to combine the functionality
-of multiple monads. A monad transformer is a monad with an extra type parameter.
-This type parameter is instantiated with the type constructor of the underlying
-monad, and an extra operation {\tt lift} is provided which converts values in
-the underlying monad to values in the monad transformer.
-
-The evaluation monad is a monad transformer. This permits it to be used in
-conjunction with Haskell's {\tt IO} monad (or any other monad) to describe how
-input is to be obtained for the signal function being evaluated, and how outputs
-are to be handled.
-
-The evaluation monad, in addition to the standard monad operators, provides a
-means of {\em initializing} a signal function, and a means of translating the
-monadic value describing evaluation to a value in the underlying monad. This
-means, for instance, that we can obtain an action in the {\tt IO} monad to
-evaluate a signal function.
-
-The type of the evaluation monad must track the input and output type of the
-signal function. The monad's context stores a mapping from outputs to handling
-actions. There are thus four type parameters to the monad's type
-constructor: the input signal vector, the output signal vector, the type of the
-underlying monad, and the monadic type parameter. The type is shown in
-Figure~\ref{figure:evaluation_monad_types}.
-
-\begin{figure}
-\begin{code}
--- A signal function's evaluations state
-data SFEvalState svIn svOut m
--- The evaluation monad
-data SFEvalT svIn svOut m a
-
-instance Monad m => Monad (SFEvalT svIn svOut m)
-\end{code}
-\hrule
-\caption{Evaluation monad types.}
-\label{figure:evaluation_monad_types}
-\end{figure}
+Our interface for evaluating signal functions takes the form of a monad
+transformer~\cite{Jones1995}. This formulation permits us to provide specific
+temporal actions to perform on a signal function in sequence, and in conjunction
+with actions taken in Haskell's {\tt IO} monad, or another monad. Actions are
+provided in this monad to push an event to the signal function's input, step
+the signal function's time, or modify a signal on the signal functions input to
+be observed at the next time step. Outputs are handled by a vector of actuation
+functions in the underlying monad, supplied by the user of the interface. This
+vector is structured by parameterizing it over the signal function's output
+signal vector.
 
 \subsection{Combinators}
 \label{section:System_Design_and_Interface-Combinators}
@@ -222,22 +185,15 @@ function produces an event occurrence with the given value at the first time
 step after it is switched into the network. The {\tt after} function waits for
 the specified amount of time before producing an event occurrence.
 
-With the exception of {\tt identity}, all of the basic signal functions have
-empty inputs. This allows these signal functions to be used to insert values
-into the network which are known when the signal function is created, without
-having to route those values from an input.
+Two combinators are provided to lift pure functions to signal functions.
+The {\tt pureSignalTransformer} combinator applies the pure function pointwise
+to a signal. The {\tt pureEventTransformer} combinator applies the function to
+the value carried by each occurrence of an input event.
 
-Two combinators are provided to lift pure functions to signal functions
-(Figure~\ref{figure:lifting_pure_functions}). The {\tt pureSignalTransformer}
-combinator applies the pure function to a signal at every sample point. The
-{\tt pureEventTransformer} combinator applies the function to each occurrence of
-an input event.
+The routing combinators are used to combine signal functions, and to re-arrange
+and discard components of signal vectors in order to connect signal functions.
 
-The routing combinators are used to combine signal functions, and
-to re-arrange signal vectors in order to connect signal functions.
-The routing combinators are shown in Figure~\ref{figure:routing_combinators}.
-
-Only those combinators which modify or combine signal functions
+Only those routing combinators which modify or combine signal functions
 ({\tt (>>>)}, {\tt first}, {\tt second}) are reactive (may replace themselves in
 response to events, and then only if they inherit their reactivity from the
 signal function(s) which are inputs to combinator. The rest do not
@@ -266,20 +222,17 @@ but not events (event occurrences are supplied to the combinator immediately).
 This means that the programmer has the responsibility to ensure that feedback
 does not generate an infinite sequence of events in a single time-step.
 
-Several combinators are provided for manipulating, suppressing, and generating events.
-Each of the combinators has an option variant and a list variant. The option variant
-produces an output event occurrence whenever the application of the supplied function
-to the input event produces a value. The list version produces an event occurrence for
-each of the elements of the output list. The combinators are shown in Figure~\ref{figure:event_specific_combinators}.
+The {\tt filter} and {\tt filterList} combinators are stateless signal functions
+which apply a function to each event occurrence. The {\tt filter} combinator
+expects an option-typed output, while the {\tt list} combinator expects a list
+output. If the function yields a non-empty output, one or more output occurrences
+are produced with the elements of that output. If the output is empty, there
+are no output occurrences.
 
-The filter combinators are stateless, and thus apply the function to only the new
-input value. They are useful for suppressing events, as well as for extracting one
-of multiple cases of a datatype.
-
-The accumulate combinators are stateful, applying the supplied function
-to both the input value and an accumulator. This function has two results:
-the option or list of output event occurrence values, and the new value
-for the accumulator.
+The {\tt accumulate} and {\tt accumulateList} functions are similar, except that
+they maintain a state value which is replaced after each input event occurrence
+by an additional output from the function, and supplied to the function in
+addition to the value of each event occurrence.
 
 The accumulator is useful when responses to multiple event occurrences
 (from one or more sources) must be coordinated. For instance, in the
@@ -292,12 +245,11 @@ The joining combinators provide the ability to combine two event
 streams, two signals, or a signal and an event stream. These
 combinators are shown in Figure~\ref{figure:joining_combinators}
 
-The {\tt union} combinator is a non-deterministic merge of event
-streams. Any event which occurs on either input will occur
-on the output. For simultaneous event occurrences, the order of occurrence
-is not guaranteed, but the occurrence itself is. This construct
-is also guaranteed to respect the relationship of event occurrences to sampling
-intervals.
+The {\tt union} combinator is a non-deterministic merge of two event streams.
+Simultaneity of events is only observable up to the sampling rate, but events
+can occur in between sampling intervals. Thus, if two events occur
+simultaneously, one occurrence is arbitrarily selected to be first in the output
+stream.
 
 The {\tt combineSignals} combinator applies a binary function pointwise to two
 signals, and produces the result of this application as a third signal. The

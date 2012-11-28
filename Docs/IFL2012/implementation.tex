@@ -31,100 +31,78 @@ as a set of types. In order to be completely principled, we should isolate these
 types into their own {\em kind} (a sort of type of types); however, the Haskell
 extension for this was far from stable at the time this system was created.
 
-We create concrete representations which are parameterized over
-these types. These concrete representations will be expressed as GADTs, allowing
-each data constructor of the representation to fill in a specific signal vector
-type for the parameter of the representation.
+Using the Glasgow Haskell Compiler's extension for Generalized Algebraic
+Datatypes~\cite{Cheney2003,Xi2003,PeytonJones2006}, we specify three concrete
+datatypes which are parameterized over signal vectors, and represent
+information about one temporal point in a signal function's evaluation.
 
-The first thing to represent is {\em samples}, which are sets of values for
-the signal components of a signal vector. Therefore, we create a representation
-which carries a value for every {\tt SVSignal} leaf of a signal vector. In order
-to do this, we restrict each of our constructors to a single signal vector type.
-So there are three leaf constructors: {\tt SVSample}, which carries a value; and
-{\tt SVSampleEvent} and {\tt SVSampleEmpty}, which do not. This ensures that the
-only way to represent a sample leaf is with the {\tt SVSample} constructor,
-which carries a value of the appropriate type. The datatype is shown in
-Figure~\ref{figure:signal_sample_datatype}.
+The first type carries the instantaneous values of all signals in a signal vector.
+There is precisely one constructor for each type constructor of a signal vector ({\tt SVEmpty},
+{\tt SVSignal}, {\tt SVEvent}, and {\tt SVAppend}). The constructor for {\tt SVSignal}
+carries a value typed with the type parameter of the {\tt SVSignal} constructor,
+the rest do not. Thus, in this representation, for any signal vector, there is
+a node in the representation for each node in the signal vector, and precisely
+the signal nodes have values.
 
-What about the event components? We want to represent event occurrences,
-each of which will correspond to at most one event in the vector. So a different
-representation is called for. In this case, there will be only three
-constructors. One constructor will represent an event leaf, and the other will
-represent a single value on the left or right side of the node ({\tt SVAppend}),
-ignoring all of the type structure on the other side. This representation
-describes a path from the root of the signal vector, terminating at an event
-leaf with a value.
+The next representation contains a constructor for {\tt SVEvent} nodes, carrying
+a value typed by the type parameter of {\tt SVEvent}, and two constructors, each
+of which carries a representation for one child of a {\tt SVAppend} node (the
+left or right), and is parametric in the other. Thus, an instance of this
+representation is a path from the root of a signal vector to an event node,
+carrying exactly one value for the event.
 
-By pattern matching on the path constructors, we can determine which subvector
-of a signal vector an event occurrence belongs to, repeatedly refining it until
-we determine which event in the vector the occurrence corresponds to. The
-datatype for occurrences is shown in Figure~\ref{figure:event_occurrence_datatype}.
+The last representation is used for efficient implementation, and has three
+constructors. One constructor represents a {\tt SVSignal} node and has a value
+typed by its type parameter. The second carries representations of both
+children of a {\tt SVAppend} node. The third is parametric in its signal vector,
+and thus represents the absence of information for an arbitrary signal vector.
+This representation contains values for all, some, or none of the {\tt SVSignal}
+nodes of a signal vector.
 
-We add one more representation for signals, in order to avoid uneccessary
-representations of the values of all signals when not all signals have changed
-their values. This representation allows us to represent the values of zero or
-more of the signals in a signal vector. To accomplish this, we replace the
-individual constructors for the {\tt SVEmpty} and {\tt SVEvent} leaves with %there is a better word, something about "useless but not really", for this
-a single, unconstrained constructor. This constructor can represent an arbitrary
-signal vector. We can use the constructor for signal vector nodes and the 
-constructor for sample leaves to represent the updated values, while filling
-in the unchanged portions of the signal vector with this general constructor.
-This datatype is shown in Figure~\ref{figure:signal_update_datatype}.
+Signal functions are implemented by combining two strategies for temporal
+updates. The first such strategy is sampling. A signal function has a 
+continuation which may be invoked at regular intervals, using the partial
+representation of signals described above as input and producing such a
+representation as output. This amounts to repeated sampling of the output
+signals of a signal function.
 
-We now have concrete datatypes for an implementation to operate on. Our next
-task is to represent transformers of temporal data, which themselves may change
-with time. The common approach to this task is sampling, in which a program
-repeatedly checks for updated information, evaluates it, updates some state,
-and produces an output. This is the essence of pull-based evaluation.
-
-Another approach is notification, in which the program exposes an interface
-which the source of updated information may invoke. This is a repeated entry
-point to the program, which causes the program to perform the same tasks
-listed above, namely, evaluate the updated information, update state, and
-produce output. The strategy of notification as opposed to repeated checking is
-the essence of push-based evaluation.
-
-Signal functions are declarative objects, and not running processes. They have
-no way to invoke sampling themselves. They can, however, expose separate
-interfaces for when sampling is invoked, and when they are notified of an event
-occurrence. This creates two control paths through a signal function. One of
-these control paths is intended to be invoked regularly and frequently with
-updates to the time and sample values, and the other is intended to be invoked
-only when an event occurs. The benefit of separating these control paths is that
-events are no longer defined in terms of sampling intervals, and need not even
-be considered in sampling, except when they are generated by a condition on a
-sample. On the other hand, events can be responded to even if the time has not
-yet come for another sample, and multiple events can be responded to in a single
-sampling interval.
+The other approach is notification. Signal functions have a second continuation
+which is only invoked when there is an event occurence on their input. The input
+to this continuation is, of course, the representation of event occurrences. If
+events were signals, they would be sampled as above, and the sampling interval
+would not match the event occurrence interval. It would thus be necessary to
+represent these non-occurrences. By implementing event handling separately from
+signal updates, we eliminate the need for a representation of event
+non-occurences and the need for invoking event-handling code at every time step.
 
 We represent signal functions as a GADT with three type parameters and two 
 constructors. The first type parameter represents the initialization state,
 and is specialized to {\tt Initialized} or {\tt NonInitialized} depending on the
-constructor. The other two type parameters are the input and output signal
-vectors, respectively. The signal functions that a user will compose are\
-non-initialized signal functions. They must be provided with an initial set of
-input signals (corresponding to time zero). When provided with this input, they
-produce their time-zero output, and an initialized signal function. The datatype
-is shown in Figure~\ref{figure:signal_function_datatype}.
+constructor. It would of course be possible to represent these as two distinct
+datatypes, but this representation communicates the intuition that these are
+two states of the same object, rather than separate objects. The other two type
+parameters are the input and output signal vectors, respectively. The signal
+functions that a user will compose are non-initialized signal functions.
+They must be provided with an initial set of input signal values, which are considered
+the sample for time zero, and represented by the full representation of signals
+described above. When provided with this input, they produce their time-zero
+output and an initialized signal function.
 
-Initialized signal functions carry two continuations. The first continuation
-takes a time differential and a set of signal updates, and returns a set of
-signal updates, a collection of event occurrences, and a new initialized signal
-function of the same type. This is the continuation called when sampling.
+Initialized signal functions carry the two continuations described above.
+The first continuation takes a time differential and a set of signal updates
+(the partial representation of signals) and returns a set of signal updates, a
+collection of event occurrences, and a new initialized signal function of the
+same type. This is the continuation called when sampling.
 
 The second continuation takes an event occurrence, and returns a collection of
 event occurrences and a new signal function of the same type. This continuation
 is only called when there is an event occurrence to be input to the signal
 function.
 
-Note that each of these continuations uses one or more of the concrete
-representations of signal vectors, and applies the type constructor for the
-representation to the input or output signal vector for the signal function.
-
-Having specified a type constructor for signal functions, we must now provide
-combinators which produce signal functions typed with this type constructor.
-Space precludes a complete description of the combinators in the TimeFlies
-system, but we will present 
+This is the type and framework for our signal function implementation.
+Combinators are implemented as functions which return these types with specific
+implementations of the continuations. Space precludes a full discussion of the
+implemenation of each combinator, but some of the examples will be discussed.
 
 The simplest example of the implementation of is the {\tt identity} combinator,
 shown in Figure~\ref{figure:identity_implementation}. This signal function
