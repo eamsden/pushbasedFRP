@@ -136,7 +136,7 @@ type, the {\tt SVAppend} type constructor forms the product type, and the
 {\tt SVEmpty} type constructor forms the unit type.
 
 The representation of signal functions is discussed in
-Section~\ref{section:Implementation-Signal_Functions}.
+Section~\ref{subsection:Implementation-Signal_Functions}.
 \begin{figure}
 \begin{code}
 -- Signal functions
@@ -176,7 +176,7 @@ functions and operations to combine these primitives. These combinators are
 grouped as basic signal functions, lifting operations for pure functions,
 routing, reactivity, feedback, event processing, joining, and time dependence.
 
-The basic signal functions (Figure~\ref{figure:basic_signal_functions})
+The basic signal functions
 provide very simple operations. The {\tt identity} signal function, as expected,
 simply copies its input to its output. The {\tt constant} signal function
 produces the provided value as a signal at all times. The {\tt never} signal
@@ -200,8 +200,8 @@ signal function(s) which are inputs to combinator. The rest do not
 react to or modify the input in any way, except to re-arrange it, copy it, or
 discard it altogether.
 
-Reactivity is introduced by means of the {\tt switch} combinator
-(Figure~\ref{figure:switch_combinator}). The design of this combinator
+Reactivity is introduced by means of the {\tt switch} combinator.
+The design of this combinator
 allows modular packaging of reactivity. A signal function can determine
 autonomously when to replace itself, based only on its input and state,
 by emitting an event occurrence carrying its replacement. The combinator
@@ -213,8 +213,7 @@ own output as input. This is especially useful when we have two
 signal functions which we would like to mutually interact. We cannot
 just serially compose them, we must also bring the output of the second
 back around to the first. Many signal-processing algorithms also depend
-on feedback. The combinator which provides this ability is shown
-in Figure~\ref{figure:feedback_combinator}. 
+on feedback. This ability is provided by the {\tt loop} operator. 
 
 This combinator provides decoupling for signals
 (the input signal is the output signal at the previous time-step)
@@ -234,16 +233,8 @@ they maintain a state value which is replaced after each input event occurrence
 by an additional output from the function, and supplied to the function in
 addition to the value of each event occurrence.
 
-The accumulator is useful when responses to multiple event occurrences
-(from one or more sources) must be coordinated. For instance, in the
-benchmark application (see Chapter~\ref{chapter:Evaluation_and_Comparisons}),
-a table is maintained that allows knowledge from previous event occurrences
-(packets from a network switch) to be used in deciding where the present
-packet ought to go.
-
 The joining combinators provide the ability to combine two event
-streams, two signals, or a signal and an event stream. These
-combinators are shown in Figure~\ref{figure:joining_combinators}
+streams, two signals, or a signal and an event stream.
 
 The {\tt union} combinator is a non-deterministic merge of two event streams.
 Simultaneity of events is only observable up to the sampling rate, but events
@@ -266,8 +257,7 @@ reduced.
 
 A set of combinators are provided for making use of time-dependence in a signal
 function. These combinators allow the modification of signals and events with
-respect to time, and the observation of the current time value. The combinators
-are shown in Figure~\ref{figure:time_combinators}
+respect to time, and the observation of the current time value.
 
 The simplest time-dependent combinator is {\tt time}, which simply outputs
 the time since it began to be evaluated. This does not necessarily correspond to
@@ -288,7 +278,7 @@ integral of its input signal with respect to time.
 \label{subsection:System_Design_and_Interface-Evaluation_Interface}
 
 The evaluation interface provides a modified state monad which holds a signal
-function, together with some additional information, as its state (shown in Figure~\ref{figure:evaluation_state}.
+function, together with some additional information, as its state.
 Rather than monadic instructions to put and get the state, the monad provides instructions
 to trigger an input event, update an input signal, and trigger sampling of
 signals in the signal function. Additional state includes the current set of
@@ -306,14 +296,12 @@ Building the initial input sample is similar, but {\tt sampleEvt} leaves do
 not carry a value.
 
 In order to initialize the state, the user must supply a set of handlers, the
-signal function to evaluate, and initial values for all of the signal inputs
-(Figure~\ref{figure:initial_input}).
+signal function to evaluate, and initial values for all of the signal inputs.
 
 This state can then be passed to a monadic action which will supply input to
 the signal function. Inputs are constructed using a simple interface with
 functions to construct sample updates and event occurrences, and to specify
-their place in the vector (Figure~\ref{figure:ongoing_input}).
-
+their place in the vector.
 
 The {\tt SFEvalT} monad is actually a monad transformer, that is, it is
 parameterized over an underlying monad whose actions may be lifted to
@@ -323,4 +311,4 @@ parameterized over an underlying monad whose actions may be lifted to
 update inputs, and step time, as well as actions lifted from the underlying
 monad (used to obtain these inputs). An action in the underlying monad
 which produces the result and a new state is obtained with the {\tt runSFEvalT}
-function. These combinators are shown in Figure~\ref{figure:evaluation_combinators}.
+function.
