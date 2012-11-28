@@ -46,22 +46,6 @@ only way to represent a sample leaf is with the {\tt SVSample} constructor,
 which carries a value of the appropriate type. The datatype is shown in
 Figure~\ref{figure:signal_sample_datatype}.
 
-\begin{figure}
-\begin{code}
-data SVSample sv where
-  SVSample      ::    a
-                   -> SVSample (SVSignal a)
-  SVSampleEvent ::    SVSample (SVEvent a)
-  SVSampleEmpty ::    SVSample SVEmpty
-  SVSampleBoth  ::    SVSample svLeft
-                   -> SVSample svRight
-                   -> SVSample (SVAppend svLeft svRight)
-\end{code}
-\hrule
-\caption{Datatype for signal samples.}
-\label{figure:signal_sample_datatype}
-\end{figure}
-
 What about the event components? We want to represent event occurrences,
 each of which will correspond to at most one event in the vector. So a different
 representation is called for. In this case, there will be only three
@@ -76,21 +60,6 @@ of a signal vector an event occurrence belongs to, repeatedly refining it until
 we determine which event in the vector the occurrence corresponds to. The
 datatype for occurrences is shown in Figure~\ref{figure:event_occurrence_datatype}.
 
-\begin{figure}
-\begin{code}
-data SVOccurrence sv where
-  SVOccurrence ::    a
-                  -> SVOccurrence (SVEvent a)
-  SVOccLeft    ::    SVOccurrence svLeft
-                  -> SVOccurrence (SVAppend svLeft svRight)
-  SVOccRight   ::    SVOccurrence svRight 
-                  -> SVOccurrence (SVAppend svLeft svRight)
-\end{code}
-\hrule
-\caption{Datatype for event occurrences.}
-\label{figure:event_occurrence_datatype}
-\end{figure}
-
 We add one more representation for signals, in order to avoid uneccessary
 representations of the values of all signals when not all signals have changed
 their values. This representation allows us to represent the values of zero or
@@ -101,21 +70,6 @@ signal vector. We can use the constructor for signal vector nodes and the
 constructor for sample leaves to represent the updated values, while filling
 in the unchanged portions of the signal vector with this general constructor.
 This datatype is shown in Figure~\ref{figure:signal_update_datatype}.
-
-\begin{figure}
-\begin{code}
-data SVDelta sv where
-  SVDeltaSignal  ::    a
-                    -> SVDelta (SVSignal a)
-  SVDeltaNothing ::    SVDelta sv
-  SVDeltaBoth    ::    SVDelta svLeft
-                    -> SVDelta svRight
-                    -> SVDelta (SVAppend svLeft svRight)
-\end{code}
-\hrule
-\caption{Datatype for signal updates.}
-\label{figure:signal_update_datatype}
-\end{figure}
 
 We now have concrete datatypes for an implementation to operate on. Our next
 task is to represent transformers of temporal data, which themselves may change
@@ -152,32 +106,6 @@ non-initialized signal functions. They must be provided with an initial set of
 input signals (corresponding to time zero). When provided with this input, they
 produce their time-zero output, and an initialized signal function. The datatype
 is shown in Figure~\ref{figure:signal_function_datatype}.
-
-\begin{figure}
-\begin{code}
-data Initialized
-
-data NonInitialized
-
-data SF init svIn svOut where
-  SF     ::    (SVSample svIn 
-                  -> (SVSample svOut,
-                      SF Initialized svIn svOut)) 
-            -> SF NonInitialized svIn svOut
-  SFInit ::    (Double 
-                  -> SVDelta svIn
-                  -> (SVDelta svOut,
-                      [SVOccurrence svOut],
-                      SF Initialized svIn svOut)) 
-            -> (SVOccurrence svIn
-                  -> ([SVOccurrence svOut],
-                      SF Initialized svIn svOut))
-            -> SF Initialized svIn svOut
-\end{code}
-\hrule
-\caption{Datatype and empty types for signal functions.}
-\label{figure:signal_function_datatype}
-\end{figure}
 
 Initialized signal functions carry two continuations. The first continuation
 takes a time differential and a set of signal updates, and returns a set of
@@ -239,7 +167,7 @@ produces an occurrence carrying a new signal function, that signal function is
 initialized with the stored input sample. It is then "wrapped" by another
 function which closes over its output sample, and outputs the sample as a signal
 update as the next time step. After this, it acts as the new signal function.
-This wrapping has some performance implications, which are discussed 
+This wrapping has some performance implications, which are discussed in Section~\ref{section:Discussion}.
 
 This combinator checks the outputs of the wrapped
 signal function for an event occurrence from which an uninitialized signal
@@ -257,17 +185,6 @@ Since these signal functions are stateless and primitive, they can simply
 return themselves as their replacements. The {\tt swap} combinator is shown as
 an example in Figure~\ref{figure:swap_implementation}
 
-The {\tt first} and {\tt second} combinators are similar to serial composition,
-but they transform only one signal function. For signal changes, they must split
-the set of input changes into those which will be passed to the signal function
-and those which will be simply passed along to the output, and then recombine
-them on the other side. For event occurrences, the occurrence must be
-pattern-matched to determine whether to call the event continuation from the
-provided signal function or passed through, and output event occurrences must
-have the suitable routing constructor re-applied. In any case, when a
-continuation has been applied, the combinator must be recursively applied to the
-new signal function.
-
 The looping feedback combinator is particularly tricky. As it is currently
 implemented, the initial sample for the right side of the input signal vector to
 the supplied function is the right side of the output sample. This is acceptable,
@@ -278,24 +195,6 @@ feed events back into the combinator, and stores signal updates until the next
 sample. Signal samples are thus automatically decoupled after initialization.
 The implementation makes use of the recursive nature of the {\tt let} construct
 in Haskell, and the non-strict evaluation of Haskell, to implement feedback.
-
-
-The {\tt filter} combinators are simple to implement. Their sampling
-continuation is superfluous, and the event continuation merely applies the
-supplied function, and constructs an output list based on the result.
-
-The {\tt accumulate} combinators are implemented in terms of the {\tt filter}
-and {\tt switch} combinators, as shown in
-Figure~\ref{figure:accumulate_implementation}.
-
-The implementation of the joining combinators is simple. The {\tt union}
-combinator simply passes along every event occurrence it receives on either
-input, stripping off the left and right combinator. This is acceptable since we
-do not insist on a total ordering of events, or an event time resolution greater
-than the sampling rate. The {\tt combineSignals} combinator maintains the values
-of both signals, and applies the combination function whenever one is updated.
-The {\tt capture} combinator maintains the input signal value, and adds it to
-each event occurrence.
 
 Time dependence is introduced by the {\tt time}, {\tt delay}, and {\tt integrate}
 combinators. The time combinator simply sums the time updates and provides the
@@ -347,13 +246,6 @@ a monad transformer. It describes the state of signal function evaluation.
 It consists of a record with four members: the current signal function,
 the set of handlers for outputs, the current input signal delta, and the last
 sample time.
-
-The {\tt SFEvalT} monad transformer is a newtype wrapper around the {\tt StateT}
-monad available in the Haskell {\tt transformers} package. The StateT monad
-wraps any other monad, providing a state which may be read using the {\tt get}
-action and replaced with the {\tt put} action. An action in the underlying
-monad is obtained by supplying a {\tt StateT} value and an initial state
-value to the {\tt runStateT} function.
 
 The {\tt SFEvalT} monad transformer does not make the {\tt get} and {\tt put}
 actions available, but uses them in its implementation of the {\tt push},

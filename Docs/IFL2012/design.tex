@@ -39,15 +39,15 @@ such as simple imperative systems, threaded systems, or network servers.
 \subsection{Semantics}
 \label{subsection:System_Design_and_Interface-Semantics}
 
-A rigorous and formal elucidation of the semantics of signal-function FRP remains
-unattempted, but there is a sufficient change to the practical semantics of
-signal-function FRP between previous signal-function systems and TimeFlies to warrant
-some description.
-
-In previous systems such as Yampa, events were understood (and implemented) as option-valued
-signals. This approach is undesirable for several reasons. The most pressing reason is
-that it prohibits push-based evaluation of events, because events are embedded in the
-samples of a signal and must be searched for when sampling.
+A rigorous and formal elucidation of the semantics of signal-function FRP with signal
+vectors remains unattempted, though a categorical semantics for signal-function
+FRP using {\em fan categories} has been explored~\cite{Jeffrey2012}. In both
+these semantics and their implementation, events are represented (following
+AFRP~\cite{Courtney2001-1} and Yampa~\cite{Nilsson2005}) as option-valued
+signals. A push-based implementation of these semantics is proposed, but the
+unit being pushed is {\em segments} of signals, and not event occurrences. This
+approach requires processing the whole signal function at each time step,
+whether an event occurs or not, and checking for its occurrence at each step.
 
 Another concern is that this approach limits the event rate to the sampling rate.
 The rate of sampling should, at some level, not matter to the FRP system. Events
@@ -55,10 +55,11 @@ which occur between sampling intervals are never observed by the system. Since
 the signal function is never evaluated except at the sampling intervals, no
 events can otherwise be observed.
 
-This concern drives the next concern. Events are not instantaneous in this formulation.
-If a signal is option valued, the sampling instant must fall within the interval where
-there is an event occurrence present for that event to be observed. If events are
-instantaneous, the probability of observing an event occurrence is zero.
+This concern drives the next concern. Events are not instantaneous in this
+formulation. If events are signals, the sampling instant must fall within
+the interval where there is an event occurrence present for that event to be
+observed. If events are instantaneous, the probability of observing an event 
+occurrence is zero.
 
 Therefore, TimeFlies employs the N-Ary FRP type formulation to represent signals and
 events as distinct entities in the inputs and outputs of signal functions. This means
@@ -81,9 +82,6 @@ merge event occurrences. When events being input to a non-deterministic merge ha
 we arbitrarily select one to occur first. This does not violate any guarantee about time values, since
 they will both have the same time value in either case, and does not violate any guarantee about ordering,
 since no guarantee of their order is given.
-
-A formal semantic description of signal function FRP would clarify the consequences of this decision somewhat,
-but is outside the scope of this thesis.
 
 \subsection{Types}
 \label{subsection:System_Design_and_Interface-Types}
@@ -229,50 +227,11 @@ empty inputs. This allows these signal functions to be used to insert values
 into the network which are known when the signal function is created, without
 having to route those values from an input.
 
-\begin{figure}
-\begin{code}
--- Pass the input unmodified to the output
-identity :: sv :~> sv
-
--- Produce a signal which is at all times the supplied value
-constant :: a -> SVEmpty :~> SVSignal a
-
--- An event with no occurrences
-never    :: SVEmpty :~> SVEvent a
-
--- An event with one occurrence, as soon as possible after
--- the signal function is initialized
-asap     :: a -> SVEmpty :~> SVEvent a
-
--- An event with one occurrence
--- after the specified amount of time has elapsed.
-after    :: Double -> a -> SVEmpty :~> SVEvent a
-\end{code}
-\hrule
-\caption{Basic signal function combinators.}
-\label{figure:basic_signal_functions}
-\end{figure}
-
-
-
 Two combinators are provided to lift pure functions to signal functions
 (Figure~\ref{figure:lifting_pure_functions}). The {\tt pureSignalTransformer}
 combinator applies the pure function to a signal at every sample point. The
 {\tt pureEventTransformer} combinator applies the function to each occurrence of
 an input event.
-
-\begin{figure}
-\begin{code}
--- Apply the given function to a signal at all points in time
-pureSignalTransformer :: (a -> b) -> SVSignal a :~> SVSignal b
-
--- Apply the given function to each event occurrence
-pureEventTransformer  :: (a -> b) -> SVEvent a :~> SVEvent b
-\end{code}
-\hrule
-\caption{Lifting pure functions.}
-\label{figure:lifting_pure_functions}
-\end{figure}
 
 The routing combinators are used to combine signal functions, and
 to re-arrange signal vectors in order to connect signal functions.
@@ -285,37 +244,6 @@ signal function(s) which are inputs to combinator. The rest do not
 react to or modify the input in any way, except to re-arrange it, copy it, or
 discard it altogether.
 
-\begin{figure}
-\begin{code}
--- Use the output of one signal function as the input for another
-(>>>) :: (svIn :~> svBetween) -> (svBetween :~> svOut) -> svIn :~> svOut
-
--- Pass through the right side of the input unchanged
-first :: (svIn :~> svOut) -> (svIn :^: sv) :~> (svOut :^: sv)
-
--- Swap the left and right sides
-swap :: (svLeft :^: svRight) :~> (svRight :^: svLeft)
-
--- Duplicate the input
-copy :: sv :~> (sv :^: sv)
-
--- Ignore the input
-ignore :: sv :~> svEmpty
-
--- Remove an empty vector on the left
-cancelLeft :: (SVEmpty :^: sv) :~> sv
-
--- Add an empty vector on the left
-uncancelLeft :: sv :~> (SVEmpty :^: sv)
-
--- Make right-associative
-associate :: ((sv1 :^: sv2) :^: sv3) :~> (sv1 :^: (sv2 :^: sv3))
-\end{code}
-\hrule
-\caption{Routing combinators.}
-\label{figure:routing_combinators}
-\end{figure}
-
 Reactivity is introduced by means of the {\tt switch} combinator
 (Figure~\ref{figure:switch_combinator}). The design of this combinator
 allows modular packaging of reactivity. A signal function can determine
@@ -324,16 +252,6 @@ by emitting an event occurrence carrying its replacement. The combinator
 consumes and hides the event carrying the replacement signal function, 
 so the reactivity is not exposed by the resulting reactive signal function.
 
-\begin{figure}
-\begin{code}
-switch ::    (svIn :~> (svOut :^: SVEvent (svIn :~> svOut)))
-          -> svIn :~> svOut
-\end{code}
-\hrule
-\caption{Reactivity combinator.}
-\label{figure:switch_combinator}
-\end{figure}
-
 It is often useful for a signal function to receive a portion of its
 own output as input. This is especially useful when we have two
 signal functions which we would like to mutually interact. We cannot
@@ -341,16 +259,6 @@ just serially compose them, we must also bring the output of the second
 back around to the first. Many signal-processing algorithms also depend
 on feedback. The combinator which provides this ability is shown
 in Figure~\ref{figure:feedback_combinator}. 
-
-\begin{figure}
-\begin{code}
-loop ::    ((svIn :^: svLoop) :~> (svOut :^: svLoop))
-        -> svIn :~> svOut
-\end{code}
-\hrule
-\caption{Feedback combinator.}
-\label{figure:feedback_combinator}
-\end{figure}
 
 This combinator provides decoupling for signals
 (the input signal is the output signal at the previous time-step)
@@ -364,41 +272,9 @@ produces an output event occurrence whenever the application of the supplied fun
 to the input event produces a value. The list version produces an event occurrence for
 each of the elements of the output list. The combinators are shown in Figure~\ref{figure:event_specific_combinators}.
 
-\begin{figure}
-\begin{code}
--- Apply the function to each input occurrence,
--- and produce an occurrence for each Just.
-filter :: (a -> Maybe b) -> SVEvent a :~> SVEvent b
-
--- Apply the function to the stored accumulator
--- and the event occurrence, replacing the accumulator
--- and possibly outputting an occurrence
-accumulate ::    (a -> b -> (Maybe c, a))
-              -> a
-              -> SVEvent b :~> SVEvent c
-\end{code}
-\hrule
-\caption{Event-specific combinators.}
-\label{figure:event_specific_combinators}
-\end{figure}
-
 The filter combinators are stateless, and thus apply the function to only the new
 input value. They are useful for suppressing events, as well as for extracting one
-of multiple cases of a datatype. For instance, a splitter for events carrying
-{\tt Either}-valued occurrences could be written as:
-
-\begin{code}
-getLeft :: Either a b -> Maybe a
-getLeft (Left x) = Just x
-getLeft _ = Nothing
-
-getRight :: Either a b -> Maybe b
-getRight (Right x) = Just x
-getRight _ = Nothing
-
-split :: SVEvent (Either a b) :~> (SVEvent a :^: SVEvent b)
-split = copy >>> first (filter getLeft) >>> second (filter getRight)
-\end{code}
+of multiple cases of a datatype.
 
 The accumulate combinators are stateful, applying the supplied function
 to both the input value and an accumulator. This function has two results:
@@ -436,32 +312,10 @@ signal vectors. By combining these combinators, along with the {\tt cancelLeft}
 and {\tt cancelRight} routing combinators, arbitrary signal vectors can be
 reduced.
 
-\begin{figure}
-\begin{code}
-union          :: (SVEvent a :^: SVEvent a) :~> SVEvent a
-combineSignals :: (a -> b -> c) -> (SVSignal a :^: SVSignal b) :~> SVSignal c
-capture        :: (SVSignal a :^: SVEvent b) :~> SVEvent (b, a)
-\end{code}
-\hrule
-\caption{Joining combinators.}
-\label{figure:joining_combinators}
-\end{figure}
-
 A set of combinators are provided for making use of time-dependence in a signal
 function. These combinators allow the modification of signals and events with
 respect to time, and the observation of the current time value. The combinators
 are shown in Figure~\ref{figure:time_combinators}
-
-\begin{figure}
-\begin{code}
-time      :: SVEmpty :~> SVSignal Double
-delay     :: Double -> (SVEvent a :^: SVEvent Double) :~> SVEvent a
-integrate :: TimeIntegrate i => SVSignal i :~> SVSignal i
-\end{code}
-\hrule
-\caption{Time-dependent combinators.}
-\label{figure:time_combinators}
-\end{figure}
 
 The simplest time-dependent combinator is {\tt time}, which simply outputs
 the time since it began to be evaluated. This does not necessarily correspond to
@@ -490,31 +344,6 @@ modifications to the input signals (since the last sample) and a set of
 handlers which actuate effects based on output events or changes to the output
 signal.
 
-\begin{figure}
-\begin{code}
--- A vector of handlers for outputs
-data SVHandler out sv
-
--- The state maintained when evaluating a signal function
-data SFEvalState m svIn svOut
-
--- Create the initial state for evaluating a signal function
-initSFEval ::    SVHandler (m ()) svOut   -- Output handlers
-
-              -> SVSample svIn            -- Initial input samples
-              
-              -> Double                   -- Initial external time,
-                                          -- corresponding to time 0 for
-                                          -- the signal function
-                                          
-              -> (svIn :~> svOut)         -- Signal function to evaluate
-              -> SFEvalState m svIn svOut
-\end{code}
-\hrule
-\caption{State maintained when evaluating a signal function.}
-\label{figure:evaluation_state}
-\end{figure}
-
 Sets which correspond to signal vectors are built with ``smart'' constructors.
 For instance, to construct a set of handlers, individual handling functions are
 lifted to handler sets with the {\tt signalHandler} and {\tt eventHandler}
@@ -533,31 +362,6 @@ the signal function. Inputs are constructed using a simple interface with
 functions to construct sample updates and event occurrences, and to specify
 their place in the vector (Figure~\ref{figure:ongoing_input}).
 
-\begin{figure}
-\begin{code}
--- Class to overload left and right functions
-class SVRoutable r where
-  svLeft          :: r svLeft -> r (svLeft :^: svRight)
-  svRight         :: r svRight -> r (svLeft :^: svRight)
-
--- An input event occurrence
-data SVEventInput sv
-instance SVRoutable SVEventInput sv
-
--- An updated sample for a signal
-data SVSignalUpdate sv
-instance SVRoutable SVSignalUpdate sv
-
--- Create an event occurrence
-svOcc           :: a -> SVEventInput (SVEvent a)
-
--- Create an updated sample
-svSig           :: a -> SVSignalUpdate (SVSignal a)
-\end{code}
-\hrule
-\caption{Data types for ongoing input.}
-\label{figure:ongoing_input}
-\end{figure}
 
 The {\tt SFEvalT} monad is actually a monad transformer, that is, it is
 parameterized over an underlying monad whose actions may be lifted to
@@ -568,33 +372,3 @@ update inputs, and step time, as well as actions lifted from the underlying
 monad (used to obtain these inputs). An action in the underlying monad
 which produces the result and a new state is obtained with the {\tt runSFEvalT}
 function. These combinators are shown in Figure~\ref{figure:evaluation_combinators}.
-
-\begin{figure}
-\begin{code}
--- The evaluation monad
-data SFEvalT svIn svOut m a
--- Appropriate instances for Monad, MonadTrans, MonadIO,
--- Functor, Applicative, etc
-
--- Obtain an action in the underlying monad
--- from an SFEvalT and a new state.
-runSFEvalT ::    SFEvalT svIn svOut m a
-              -> SFEvalState m svIn svOut
-              -> m (a, SFEvalState m svIn svOut)
-
--- Push an event occurrence.
-push :: (Monad m) => SVEventInput svIn -> SFEvalT svIn svOut m ()
-
--- Update the value of an input signal sample
--- (not immediately observed)
-update :: (Monad m) => SVEventInput svIn -> SFEvalT svIn svOut m ()
-
--- Step forward in time, observing the updated signal values
-step :: (Monad m) => Double -> SFEvalT svIn svOut m ()
-\end{code}
-\hrule
-\caption{Evaluation combinators}
-\label{figure:evaluation_combinators}
-\end{figure}
-
-
