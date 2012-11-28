@@ -104,8 +104,8 @@ Combinators are implemented as functions which return these types with specific
 implementations of the continuations. Space precludes a full discussion of the
 implemenation of each combinator, but some of the examples will be discussed.
 
-The simplest example of the implementation of is the {\tt identity} combinator,
-shown in Figure~\ref{figure:identity_implementation}. This signal function
+The simplest example of the implementation of is the {\tt identity} combinator.
+This signal function
 simply passes all of its inputs along as outputs. The initialization function
 simply passes along the received sample and outputs the initialized version of
 the signal function. The initialized version of the input is similar, but is
@@ -127,8 +127,8 @@ joining composition can be achieved by modifying signal functions with the
 routing and joining combinators.
 
 Combinators which take one or more signal functions as input must recursively
-apply themselves, as is shown in the implementation of serial composition
-(Figure~\ref{figure:serial_composition_implementation}). They must also
+apply themselves, as is shown in the implementation of serial composition.
+They must also
 handle initialization, retaining the initialized signal functions and passing
 them to the initialized version of the combinator.
 
@@ -155,13 +155,12 @@ signal function) to initialize the new signal function. This also demands that
 it add a wrapper to the new signal function which waits for the next sampling
 interval and actuates the sample output at initialization as an output set
 of changes to the signal. This has some performance implications, which are
-discussed in Chapter~\ref{chapter:Evaluation_and_Comparisons}.
+discussed in Section~\ref{section:Discussion}.
 
 Most of the routing combinators are simple to implement. The only task is to add
 remove, or replace routing constructors on signal updates and event occurrences.
 Since these signal functions are stateless and primitive, they can simply
-return themselves as their replacements. The {\tt swap} combinator is shown as
-an example in Figure~\ref{figure:swap_implementation}
+return themselves as their replacements.
 
 The looping feedback combinator is particularly tricky. As it is currently
 implemented, the initial sample for the right side of the input signal vector to
@@ -190,7 +189,7 @@ might further improve performance. In particular, collapsing nested or
 serially-composed versions of the {\tt switchWait} step when switching would
 remove at least some of the observed dependence of performance on sampling rate.
 Nevertheless, this implementation performs quite well as it currently exists, as
-we demonstrate in Chapter~\ref{chapter:Evaluation_and_Comparisons}.
+we demonstrate in Section~\ref{section:Discussion}.
 
 \subsection{Evaluation Interface}
 \label{subsection:Implementation-Evaluation_Interface}
@@ -215,9 +214,6 @@ monad, such as the Identity monad (which has no special operations and whose
 context is just the value), or the State monad (which maintains an implicit 
 state accessible by {\tt get} and {\tt put} operations).
 
-The evaluation interface is exported as shown in
-Section~\ref{section:System_Design_and_Interface-Evaluator}.
-
 The {\tt SFEvalState} type constructor parameterizes over input types for signal
 functions, and underlying monads for a monad transformer, but is not itself
 a monad transformer. It describes the state of signal function evaluation.
@@ -238,12 +234,11 @@ thus obtaining a new signal function and a list of events, applying the handlers
 contained in the {\tt SFEvalState} to the output events, replacing the signal
 function in the {\tt SFEvalState}, and replacing the {\tt SFEvalState}.
 
-The {\tt update} action updates the current input signal delta, which will be
+The {\tt update} action modifies the current input signal update, which will be
 sampled at the next {\tt step} action. It has no immediately observable effect.
-It simply updates the value of one signal in the input signal vector, a delta
-of which is stored in the {\tt SFEvalState} record.
+It simply updates the value of one signal in the input signal vector.
 
 The {\tt step} action takes a time delta, and calls the signal continuation of
-the stored signal function. It actuates the outputs using the stored handlers,
-replaces the stored delta with an empty delta, and stores the resulting new
-signal function in the state.
+the stored signal function with the time delta and the stored signal update. It
+actuates the outputs using the stored handlers, replaces the stored delta with
+an empty delta, and stores the resulting new signal function in the state.
