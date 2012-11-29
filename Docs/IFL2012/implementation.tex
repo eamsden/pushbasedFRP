@@ -13,13 +13,21 @@ outputs of signal functions. Signal functions are not functions in the purest
 sense, however. They are not mappings from a single instance of their input
 type to a single instance of their output type. They must be implemented with
 respect to the temporal semantics of their inputs and outputs.
+\rn{What does that mean?  ``implement with respect to the temporal
+  semantics'' seems like an underspecified relation.  I'm also not
+  sure about the use of ``purest'' -- isn't this a semantics
+  vs. runtime/implementation issue?}
 
 We therefore start by creating a set of concrete datatypes for the inputs and
 outputs of signal functions. These datatypes will be parameterized by the input
 and output types of the signal function, and will not be exposed to the user of
 the library. Rather, they will specify how data is represented during the
-temporal evaluation of signal functions. We then implement signal functions
-as records of functions from these concrete types to these concrete types paired
+temporal evaluation of signal functions. 
+\rn{Maybe ``temporal evaluation'' could be more concrete... this means
+  repeated running sampling computation, right?  Maybe there should be a term
+  for each sampling interval, epoch, whatever?}
+We then implement signal functions
+as records of functions from these concrete types \textred{to these concrete types} paired
 with new signal functions. The evaluation system for signal functions then
 maintains this record for the signal function it is evaluating, calls the
 correct function for the current input, actuates the outputs (using supplied
@@ -30,11 +38,13 @@ In Section~\ref{section:System_Design_and_Interface} we presented signal vectors
 as a set of types. In order to be completely principled, we should isolate these
 types into their own {\em kind} (a sort of type of types); however, the Haskell
 extension for this was far from stable at the time this system was created.
+\rn{This should probably be a footnote... doesn't need to be highlighted.}
 
 Using the Glasgow Haskell Compiler's extension for Generalized Algebraic
 Datatypes~\cite{Cheney2003,Xi2003,PeytonJones2006}, we specify three concrete
 datatypes which are parameterized over signal vectors, and represent
-information about one temporal point in a signal function's evaluation.
+information about \textred{one} temporal point \rn{and not others?
+  rephrase?} in a signal function's evaluation.
 
 The first type carries the instantaneous values of all signals in a signal vector.
 There is precisely one constructor for each type constructor of a signal vector ({\tt SVEmpty},
@@ -47,7 +57,7 @@ the signal nodes have values.
 The next representation contains a constructor for {\tt SVEvent} nodes, carrying
 a value typed by the type parameter of {\tt SVEvent}, and two constructors, each
 of which carries a representation for one child of a {\tt SVAppend} node (the
-left or right), and is parametric in the other. Thus, an instance of this
+left or right), and is parametric in the other. \rn{?? Example?} Thus, an instance of this
 representation is a path from the root of a signal vector to an event node,
 carrying exactly one value for the event.
 
@@ -99,7 +109,7 @@ event occurrences and a new signal function of the same type. This continuation
 is only called when there is an event occurrence to be input to the signal
 function.
 
-This is the type and framework for our signal function implementation.
+This is the \textred{type and} framework for our signal function implementation.
 Combinators are implemented as functions which return these types with specific
 implementations of the continuations. Space precludes a full discussion of the
 implemenation of each combinator, but some of the examples will be discussed.
@@ -178,7 +188,8 @@ combinators. The time combinator simply sums the time updates and provides the
 sum as a signal output. The {\tt delay} combinator keeps a table of events
 which have come in, along with their schedule occurrence time, and produces
 them as output when time advances far enough. The integrate combinator performs
-rectangle-rule integration on signal samples with respect to time.
+rectangle-rule integration on signal samples with respect to
+time. \rn{repetitive with previous section...}
 
 The implementation strategy leaves room for optimizations. In particular, an
 additional constructor for time-independent signal functions would allow
