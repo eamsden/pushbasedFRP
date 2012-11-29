@@ -15,16 +15,18 @@ implementation, and to combine both implementation strategies in a single system
 \rn{Without understanding it a priori, the above para is hard to
   parse.  How about the following?}
 
-\new{One important implementation trade-off is whether evaluation of a composition 
+\new{One important implementation trade-off is whether evaluation 
+% of a composition 
 of signal functions is {\em push-based} or {\em pull-based}.
-The {\em signal vector} technique provides a type-level
-  description of the inputs and outputs of signal functions, while
+The {\em signal-vector} technique addresses this by providing a type-level
+  description of the inputs and outputs of signal functions, 
   distinguishing} components that benefit from a push-based
 implementation from those that benefit from a pull-based
 implementation.  This makes it possible to combine both implementation
 strategies in a single system.
 
-We describe a novel signal-function FRP system which provides push-based evaluation
+We describe a \new{novel} \rn{is it novel? how? need clear contributions}
+ signal-function FRP system which provides push-based evaluation
 for events, pull-based evaluation for signals, and a simple monadic evaluation
 interface that permits the system to easily integrate with one or more
 IO systems.
