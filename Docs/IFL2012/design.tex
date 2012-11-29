@@ -222,6 +222,9 @@ functions in the underlying monad, supplied by the user of the interface. This
 vector is structured by parameterizing it over the signal function's output
 signal vector. \rn{huh? more concrete way to say it?}
 
+\rn{Evaluation interface: Very cool.  It sounds a bit your FRP implementation itself is kind of
+  ``scriptable'' rather than black box...}
+
 \subsection{Combinators}
 \label{section:System_Design_and_Interface-Combinators}
 
@@ -347,10 +350,13 @@ waiting.
 The {\tt integrate} combinator outputs the rectangle-rule approximation of the
 integral of its input signal with respect to time.
 
-\todo{What's novel here?  After this section is de-listified need to emphasize that.}
+\todo{What's novel here?  After this section is de-listified, need to emphasize that.}
+
 
 \subsection{Evaluation Interface}
 \label{subsection:System_Design_and_Interface-Evaluation_Interface}
+
+\rn{Is the thing that really sets TimeFlies apart?  (Apart from being the first push/pull for SFFRP.)}
 
 The evaluation interface provides a modified state monad which holds a signal
 function, together with some additional information, as its state.
@@ -362,10 +368,15 @@ handlers which actuate effects based on output events or changes to the output
 signal.
 
 Sets which correspond to signal vectors are built with ``smart'' constructors.
-For instance, to construct a set of handlers, individual handling functions are
+For instance, to construct a set of handlers, 
+\rn{is this ``set'' the same as the earlier ``vector of actuation functions''?}
+individual handling functions are
 lifted to handler sets with the {\tt signalHandler} and {\tt eventHandler}
 functions, and then combined with each other and {\tt emptyHandler} leaves
 using the {\tt combineHandlers} function.
+%
+\rn{Examples, examples, examples.  There's a lot of prose here that gives the reader some idea, but doesn't
+  show them exactly what it would look like.  Too much guesswork required to fill in the gaps.}
 
 Building the initial input sample is similar, but {\tt sampleEvt} leaves do
 not carry a value.
@@ -384,6 +395,9 @@ parameterized over an underlying monad whose actions may be lifted to
 
 {\tt SFEvalT} actions are constructed using combinators to push events,
 update inputs, and step time, as well as actions lifted from the underlying
-monad (used to obtain these inputs). An action in the underlying monad
+monad (used to obtain these inputs). 
+\rn{That sounds introductory... I thought that was supposed to be what we were learning about throughout
+  this subsection?}
+An action in the underlying monad
 which produces the result and a new state is obtained with the {\tt runSFEvalT}
 function.
