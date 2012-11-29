@@ -2,7 +2,7 @@
 \label{section:System_Design_and_Interface}
 
 The purpose of FRP is to provide an efficient, declarative abstraction for creating
-reactive programs. To this end, there are three goals which the TimeFlies
+reactive programs. To this end, there are three goals that the TimeFlies
 system is intended to meet. \rn{What are the three!?  Enumerate.  Push
 based, composable, IO-system agnostic?}
 
@@ -35,8 +35,8 @@ implementation of the components of the systems being combined.
 
 % It is fine for a system to be composable with regards to itself, but
 % an FRP system must
-\new{Further, an FRP program is not a closed system; it must}
-interact with the outside world. Since we cannot anticipate every
+\new{Further, an FRP program is not a closed system; it}
+interacts with the outside world. Since we cannot anticipate every
 possible form of input and output that the system will be asked to interact
 with, we must interface with Haskell's IO system. 
 \rn{First mention of Haskell... need some transition?}
@@ -51,54 +51,77 @@ the event-loop abstraction. In this abstraction, event handlers are registered
 %% and runs the handlers, and uses the results of the handlers to render the
 %% appropriate output. 
 
-\rn{Is the event loop really an {\em abstraction}?  (What is
-  abstracted?)  Or is it just a ``model'' or an API?}
+\rn{Is the event loop really an {\em abstraction}?  What is
+  abstracted?  Or is it just a ``model'' or an API?}
 
 We would like for the FRP system to be easy to integrate with such IO systems,
 while being flexible enough to enable its use with other forms of IO systems,
 such as simple imperative systems, threaded systems, or network servers.
 \rn{vague... not sure what these mean.  Threaded = multiple event
-  loop?  Alternative to an event loop is what... blocking IO operations?}
+  loop?  Alternative to an event loop is... what?... blocking IO operations?}
 
 \subsection{Semantics}
 \label{subsection:System_Design_and_Interface-Semantics}
 
-A rigorous and formal elucidation of the semantics of signal-function FRP with signal
+A rigorous 
+%and formal elucidation of the 
+semantics of signal-function FRP with signal
 vectors remains unattempted, though a categorical semantics for signal-function
 FRP using {\em fan categories} has been explored~\cite{Jeffrey2012}. In both
 these semantics and their implementation, events are represented (following
 AFRP~\cite{Courtney2001-1} and Yampa~\cite{Nilsson2005}) as option-valued
 signals. A push-based implementation of these semantics is proposed, but the
-unit being pushed is {\em segments} of signals, and not event occurrences. This
+unit being pushed is a {\em segment} of signals, and not event occurrences. This
 approach requires processing the whole signal function at each time step,
 whether an event occurs or not, and checking for its occurrence at each step.
 
+\rn{Might want to make it clear -- the ``whole'' signal function means
+  ``all signal functions in the program'' (i.e. which are composed
+  to form the global signal function) right?}
+
 Another concern is that this approach limits the event rate to the sampling rate.
 The rate of sampling should, at some level, not matter to the FRP system. Events
-which occur between sampling intervals are never observed by the system. Since
-the signal function is never evaluated except at the sampling intervals, no
+which occur between sampling intervals are never observed by the
+system. \rn{An FRP system has sampling intervals?  Where were we told
+  this!?}  
+Since the signal function is never evaluated except at the sampling intervals, no
 events can otherwise be observed.
 
-This concern drives the next concern. Events are not instantaneous in this
+This \new{raises another} concern. Events are not instantaneous in this
 formulation. If events are signals, the sampling instant must fall within
 the interval where there is an event occurrence present for that event to be
 observed. If events are instantaneous, the probability of observing an event 
-occurrence is zero.
+occurrence is zero. \rn{So.... how do existing systems/semantics
+  compensate for this?  They allow events to have temporal extent?}
 
 Therefore, TimeFlies employs the N-Ary FRP type formulation to represent signals and
 events as distinct entities in the inputs and outputs of signal functions. This means
 we are now free to choose our representation of events, and to separate it from the
 representation and evaluation of signals.
-
+%
 This freedom yields the additional ability to make events independent of the sampling
 interval altogether. The semantics of event handling in TimeFlies is that an event occurrence
-is responded to immediately, and does not wait for the next sampling instant. This allows events
-to be instantaneous, and further, allows multiple events to occur within a single sampling interval.
+is responded to immediately, and does not wait for the next sampling
+instant. 
+\rn{Could you flesh out how this is a {\em semantics} issue and not
+  merely a more efficient or accurate implementation?  Ah, that's
+  answered in the next para, but might be good to use the word
+  semantics somewhere and connect this explicitly.} 
+This allows events to be instantaneous, and further, allows multiple
+events to occur within a single sampling interval.
+\rn{Clarification---even in traditional approaches multiple {\bf
+    different} events could occur in one sampling round right?  It's
+  just that {\em each} event [stream] could only have one occurrence per
+  sampling interval?}
+
 
 There are two tradeoffs intrinsic to this approach. The first is that events are only partially ordered
 temporally. There is no way to guarantee the order of observation of event occurrences occurring in the
 same sampling interval. Further, the precise time of an event occurrence cannot be observed, only the 
-time of the last sample prior to the occurrence.
+time of the last \rn{[signal?]} sample prior to the occurrence.
+\rn{That last sentence had an ambiguous parse wherein the first time I read it I thought it was saying that you
+couldn't tell the timestamp of event N only of the preceding event $N-1$, which of course makes no sense,
+but it might be good to clarify what {\em sample} you're referring to.}
 
 In return for giving up total ordering and precise observation of the timing of events, we obtain the
 ability to employ push-based evaluation for event occurrences, and the ability to non-deterministically
@@ -106,6 +129,7 @@ merge event occurrences. When events being input to a non-deterministic merge ha
 we arbitrarily select one to occur first. This does not violate any guarantee about time values, since
 they will both have the same time value in either case, and does not violate any guarantee about ordering,
 since no guarantee of their order is given.
+\rn{Nice.}
 
 \subsection{Types}
 \label{subsection:System_Design_and_Interface-Types}
