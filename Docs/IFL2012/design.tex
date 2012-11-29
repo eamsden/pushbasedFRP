@@ -1,9 +1,10 @@
 \section{System Design and Interface}
 \label{section:System_Design_and_Interface}
 
-The goal of FRP is to provide an efficient, declarative abstraction for creating
-reactive programs. Towards this overall goal, there are three goals which this
-system is intended to meet.
+The purpose of FRP is to provide an efficient, declarative abstraction for creating
+reactive programs. To this end, there are three goals which the TimeFlies
+system is intended to meet. \rn{What are the three!?  Enumerate.  Push
+based, composable, IO-system agnostic?}
 
 Efficient evaluation is the motivation for push-based evaluation of events.
 Since FRP programs are expected to  interact with an outside world in real time,
@@ -11,6 +12,9 @@ efficiency cannot simply be measured by the runtime of a program. Thus, when spe
 we are expressing a desire that the system utilize as few system resources as possible
 for the task at hand, while responding as quickly as possible to external inputs and
 producing output at a consistently high sample rate.
+
+\todo{At this point we still need a clear notion of what a pull-based
+  evaluation of events would actually do.}
 
 A composable abstraction is one in which values in that abstraction may be
 combined in such a way that reasoning about their combined actions involves
@@ -21,20 +25,40 @@ attractive form of software engineering in which successively larger systems are
 created from by combining smaller systems, without having to reason about the 
 implementation of the components of the systems being combined.
 
-It is fine for a system to be composable with regards to itself, but an FRP
-system must interact with the outside world. Since we cannot anticipate every
+\rn{Can the above be made into a slightly more technical claim?
+  Composable abstractions enable composing $O(N)$ components while
+  reasoning about the $O(N)$ local interactions, rather than the
+  $O(N^2)$ global interactions between all components?  Second, I
+  think not needing to know the implementation is separate from
+  ``composability''; surely there is some name for that: ADTs,
+  ``encapsulation'', information hiding, etc.}
+
+% It is fine for a system to be composable with regards to itself, but
+% an FRP system must
+\new{Further, an FRP program is not a closed system; it must}
+interact with the outside world. Since we cannot anticipate every
 possible form of input and output that the system will be asked to interact
-with, we must interface with Haskell's IO system. In particular, most libraries
+with, we must interface with Haskell's IO system. 
+\rn{First mention of Haskell... need some transition?}
+In particular, most libraries
 for user interaction (e.g. GUI and graphics libraries such as GTK+ and GLUT) and
 most libraries for time-dependent IO (e.g. audio and video systems) make use of
-the event loop abstraction. In this abstraction, event handlers are registered
-with the system, and then a command is issued to run a loop which detects events
-and runs the handlers, and uses the results of the handlers to render the
-appropriate output. 
+the event-loop abstraction. In this abstraction, event handlers are registered
+\new{centrally}; 
+\new{once initiated, the running event-loop detects events and invokes handlers; and
+  handlers are responsible for rendering output.}
+%% and then a command is issued to run a loop which detects events
+%% and runs the handlers, and uses the results of the handlers to render the
+%% appropriate output. 
+
+\rn{Is the event loop really an {\em abstraction}?  (What is
+  abstracted?)  Or is it just a ``model'' or an API?}
 
 We would like for the FRP system to be easy to integrate with such IO systems,
 while being flexible enough to enable its use with other forms of IO systems,
 such as simple imperative systems, threaded systems, or network servers.
+\rn{vague... not sure what these mean.  Threaded = multiple event
+  loop?  Alternative to an event loop is what... blocking IO operations?}
 
 \subsection{Semantics}
 \label{subsection:System_Design_and_Interface-Semantics}
