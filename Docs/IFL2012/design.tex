@@ -1,3 +1,5 @@
+% (set-fill-column 100)
+
 \section{System Design and Interface}
 \label{section:System_Design_and_Interface}
 
@@ -223,10 +225,20 @@ signal vector. \rn{huh? more concrete way to say it?}
 \subsection{Combinators}
 \label{section:System_Design_and_Interface-Combinators}
 
-Signal functions are constructed from combinators, which are primitive signal
-functions and operations to combine these primitives. These combinators are
-grouped as basic signal functions, lifting operations for pure functions,
+%% Signal functions are constructed from combinators, which are primitive signal
+%% functions and operations to combine these primitives. 
+\new{TimeFlies includes basic signal functions and a library of signal function combinators, falling
+  into these categories:}
+% These combinators are grouped as basic signal functions, 
+lifting operations from pure functions to signal functions,
 routing, reactivity, feedback, event processing, joining, and time dependence.
+%
+\rn{Eek, I get thrown off by a definition of combinators which is so broad as to include everything.  I
+  like the definition here 
+   \url{http://stackoverflow.com/tags/combinators/info} : 
+   {\em A combinator is a higher-order function that uses only function application and earlier defined
+    combinators to define a result from its arguments.}  Does everything in the above list meet that
+   definition?}
 
 The basic signal functions
 provide very simple operations. The {\tt identity} signal function, as expected,
@@ -244,9 +256,9 @@ the value carried by each occurrence of an input event.
 
 The routing combinators are used to combine signal functions, and to re-arrange
 and discard components of signal vectors in order to connect signal functions.
-
+%
 Only those routing combinators which modify or combine signal functions
-({\tt (>>>)}, {\tt first}, {\tt second}) are reactive (may replace themselves in
+({\tt (>>>)}, {\tt first}, {\tt second}) are reactive (\ie{} may replace themselves in
 response to events, and then only if they inherit their reactivity from the
 signal function(s) which are inputs to combinator. The rest do not
 react to or modify the input in any way, except to re-arrange it, copy it, or
@@ -272,21 +284,25 @@ This combinator provides decoupling for signals
 but not events (event occurrences are supplied to the combinator immediately).
 This means that the programmer has the responsibility to ensure that feedback
 does not generate an infinite sequence of events in a single time-step.
+\rn{Presumably that is different from previous formulations of FRP?  Because ... there was no
+  notion of multiple events in a sampling interval?}
 
 The {\tt filter} and {\tt filterList} combinators are stateless signal functions
 which apply a function to each event occurrence. The {\tt filter} combinator
 expects an option-typed output, while the {\tt list} combinator expects a list
-output. If the function yields a non-empty output, one or more output occurrences
+output. \rn{and input right?} If the function yields a non-empty output, one or more output occurrences
 are produced with the elements of that output. If the output is empty, there
 are no output occurrences.
 
 The {\tt accumulate} and {\tt accumulateList} functions are similar, except that
 they maintain a state value which is replaced after each input event occurrence
 by an additional output from the function, and supplied to the function in
-addition to the value of each event occurrence.
+addition to the value of each event occurrence. \rn{Murky prose definition...}
 
 The joining combinators provide the ability to combine two event
-streams, two signals, or a signal and an event stream.
+streams, two signals, or a signal and an event stream. 
+\rn{How does that work temporally?  For event/event is this a zip
+  that matches up the left events w/ the right events?}
 
 The {\tt union} combinator is a non-deterministic merge of two event streams.
 Simultaneity of events is only observable up to the sampling rate, but events
@@ -298,11 +314,13 @@ The {\tt combineSignals} combinator applies a binary function pointwise to two
 signals, and produces the result of this application as a third signal. The
 combining function is necessary because we will have two input samples at each
 time step, and must produce exactly one output sample.
+\rn{Wait that sounded like it was covered by join?}
 
 The {\tt capture} combinator adds the last-sampled value of a signal at the time
 of an event occurrence to that event occurrence.
+\rn{Again, what is a signal-event {\bf join} if not that?}
 
-These three combinators together provide the ability to combine elements of
+These three combinators \rn{Which?} together provide the ability to combine elements of
 signal vectors. By combining these combinators, along with the {\tt cancelLeft}
 and {\tt cancelRight} routing combinators, arbitrary signal vectors can be
 reduced.
@@ -310,12 +328,15 @@ reduced.
 A set of combinators are provided for making use of time-dependence in a signal
 function. These combinators allow the modification of signals and events with
 respect to time, and the observation of the current time value.
-
+%
 The simplest time-dependent combinator is {\tt time}, which simply outputs
 the time since it began to be evaluated. This does not necessarily correspond to
 the time since the global signal function began to be evaluated, since the
 signal function in which the {\tt time} combinator is used may have been
 introduced through {\tt switch}.
+
+\rn{If that's the simplest what are the more complex ones?  If not worth mentioning it seems easier to just
+    describe {\bf time}.}
 
 The {\tt delay} signal function allows events to be delayed. An initial delay
 time is given, and event occurrences on the right input can carry a new delay
@@ -325,6 +346,8 @@ waiting.
 
 The {\tt integrate} combinator outputs the rectangle-rule approximation of the
 integral of its input signal with respect to time.
+
+\todo{What's novel here?  After this section is de-listified need to emphasize that.}
 
 \subsection{Evaluation Interface}
 \label{subsection:System_Design_and_Interface-Evaluation_Interface}
