@@ -135,17 +135,20 @@ since no guarantee of their order is given.
 \label{subsection:System_Design_and_Interface-Types}
 
 In a strongly and statically typed functional language, types are a key part of
-an interface. Types provide a mechanism for describing and ensuring properties
+any interface. Types provide a mechanism for describing and ensuring properties
 of the interface's components and about the systems created with these
 components. 
 
 In order to type signal functions, we must be able to describe their input and
 output. In most signal function systems, a signal function takes exactly one
-input and produces exactly one output. Multiple inputs or outputs are handled
-by making the input or output a tuple, and combinators which combine or split
-the inputs or outputs of a signal assume this. Events are represented at the
-type level as a particular type of signal, and at the value level as an option,
-either an event occurrence or not.
+input signal and produces exactly one output signal. Multiple inputs or outputs are handled
+by making the input or output a signal of tuples, and combinators which combine or split
+the inputs or outputs of a signal assume this.  Events are represented at the
+type level as a particular type of signal, and at the value level as an option:
+either an event occurrence or not. 
+\rn{That's a bit confusing, because of the issue of whether we're talking about {\em event occurrences} or
+  event streams.  At runtime there is only a representation for the former, which is a simple {\tt Maybe},
+  right?}
 
 This method of typing excludes push-based evaluation at the outset.
 It is not possible to construct a ``partial tuple'' nor in general is it
@@ -182,7 +185,7 @@ Haskell {\tt GArrow}~\cite{Megacz2011}. Specifically, the signal function
 type constructor (with the initialization parameter fixed) forms the arrow
 type, the {\tt SVAppend} type constructor forms the product type, and the
 {\tt SVEmpty} type constructor forms the unit type.
-
+%
 The representation of signal functions is discussed in
 Section~\ref{subsection:Implementation-Signal_Functions}.
 \begin{figure}
@@ -211,10 +214,11 @@ temporal actions to perform on a signal function in sequence, and in conjunction
 with actions taken in Haskell's {\tt IO} monad, or another monad. Actions are
 provided in this monad to push an event to the signal function's input, step
 the signal function's time, or modify a signal on the signal functions input to
-be observed at the next time step. Outputs are handled by a vector of actuation
+be observed at the next time step. Outputs are handled by a vector \rn{vector? in the same sense as a
+  signal vector?} of actuation
 functions in the underlying monad, supplied by the user of the interface. This
 vector is structured by parameterizing it over the signal function's output
-signal vector.
+signal vector. \rn{huh? more concrete way to say it?}
 
 \subsection{Combinators}
 \label{section:System_Design_and_Interface-Combinators}
