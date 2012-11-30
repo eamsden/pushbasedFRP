@@ -22,8 +22,13 @@ FRP {\em combines} behaviors and events through the use of {\em switching}, in w
 a behavior (in classic FRP) or a signal function (in signal-function FRP) is
 replaced by a new behavior or signal function carried by an event occurrence.
 
-\todo{TODO: it would be good to give SOME sense for how an FRP
-  evaluation proceeds (e.g. a strawman) before getting into the next para.}
+An FRP program is generally evaluated by supplying a behavior or signal function
+to an evaluation function, which supplies input (in the case of a signal
+function) and actuates its outputs as they are produced. For instance, if a
+video game is implemented in a signal-function FRP system, the evaluation
+function is responsible for obtaining keyboard and mouse inputs and supplying
+them to the signal function, and actuating the outputs of the signal function
+as graphics on the monitor and sound through the speakers.
 
 Classic FRP was first described as a system for interactive animations~\cite{Elliott1997}.
 Recent work on classic FRP has focused on efficient implementation. One approach
@@ -37,7 +42,6 @@ for both behaviors and events. ``Reactive''~\cite{Elliott2009}, as well as more
 recent systems such as ``reactive-banana''~\cite{Apfelmus}, make use of
 push-based evaluation for events and pull-based evaluation for behaviors. This
 is known as ``push-pull'' evaluation.
-
 
 Almost all implementations of signal-function FRP to date~\cite{Courtney2001-1,Nilsson2002,Nilsson2005,Sculthorpe2011}
 have used pull-based evaluation for both signals and events. This is due to the
