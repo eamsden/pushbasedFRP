@@ -41,15 +41,17 @@ again to our example: it is appropriate for our system to repeatedly query the
 pressure, wind speed, and rain levels \new{to update the real-time model}. The system should respond quickly to
 lightning strikes, but should not use resources in repeatedly sampling for the
 occurrence (or not) of a lightning strike.  The system should instead be notified
-when a strike has occurred.  \new{Further, this notification should {\em not} result in 
-recomputeing all signals upon each strike event.}
+when a strike has occurred, \new{and that notification should {\em not} result in 
+recomputing all signals upon each strike event.}
+
+\rn{Shall we rename {\em behavior} to {\em signal} below this point?}
 
 FRP systems can generally be categorized as ``classic FRP,'' in which behaviors
 and events are manipulated directly as first-class values,
 or {\em signal-function FRP}. In signal-function FRP, the programmer cannot
 directly manipulate signals, rather, the programmer manipulates time-dependent,
 reactive transformers of signals, events, or combinations of signals and events.
-
+%
 FRP combines behaviors and events through the use of {\em switching}, in which
 a behavior (in classic FRP) or a signal function (in signal-function FRP) is
 replaced by a new behavior or signal function carried by an event occurrence.
@@ -90,7 +92,7 @@ of signal vectors allows the representation of signal function inputs and
 outputs as combinations of signals and events, rather than a single signal which
 may contain multiple values, including option values for events. Signal vectors
 are uninhabited types, which can be used to describe partial or full
-representationsof the signal function inputs and outputs.
+representations of the signal function inputs and outputs.
 
 TimeFlies,\footnote{The sentence ``Time flies like an arrow.'' is a 
 favorite quotation of one of the author's philosophy instructors, used to
