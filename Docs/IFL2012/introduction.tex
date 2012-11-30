@@ -14,11 +14,11 @@ with information from the sensors displayed, as well as an overlay showing an
 estimate of the sizes and motions of storms.
 
 An FRP system provides a means of manipulating {\em signals} and
-{\em events}. Signals are often referred to as {\em behaviors} in FRP literature,
+{\em events}. Signals are often referred to as {\em behaviors} in earlier FRP literature,
 but the definition is the same.  Semantically, a signal or behavior is a
 function from time to a value. An event is a ordered sequence of discrete
-occurrences, carrying both values and timestamps. In our example, inputs from
-the barometers, anemometers, and rain gauges would be abstracted as signals. The
+occurrences, \textred{carrying both values and timestamps}. In our example, inputs from
+the barometers, anemometers, and rain gauges would be signals. The
 information carried by the signal would be the measurement made by the
 instrument, perhaps tagged with the instrument's location. The input from the
 lighting detector would be an event, whose occurrences would each carry the
@@ -26,18 +26,23 @@ location and intensity of a lightning strike.
 
 One key distinction in FRP systems concerns how signals and events are
 evaluated. There are two possibilities. Pull-based evaluation uses repeated and
-frequent updates in a loop to check for updated values (similar to busy waiting
-in concurrency, except that for signals, there should be no waiting). Push-based
-evaluation blocks or waits to be notified about an updated value, similar to
-notification in concurrency. Pull-based evaluation is appropriate for signals,
+frequent updates in a loop to check for updated values (polling).
+% (similar to busy waiting in concurrency, except that for signals, there should be no waiting). 
+\rn{``In concurrency'' seems awkward.  Maybe ``in concurrent
+  programming'', or just nix.  What do you think of this alternative?}
+Push-based
+evaluation blocks or waits to be notified about an updated value (blocking).
+% , similar to notification in concurrency. 
+Pull-based evaluation is appropriate for signals,
 which approximate continuous values and should have a value available whenever
 they are sampled. Push-based evaluation is appropriate for events, which must be
 reacted to quickly without consuming unnecessary resources to wait. Turning
 again to our example: it is appropriate for our system to repeatedly query the
-pressure, wind speed, and rain levels. The system should respond quickly to
+pressure, wind speed, and rain levels \new{to update the real-time model}. The system should respond quickly to
 lightning strikes, but should not use resources in repeatedly sampling for the
-occurrence, or not, of a lightning strike. The system should instead be notified
-when a strike has occurred.
+occurrence (or not) of a lightning strike.  The system should instead be notified
+when a strike has occurred.  \new{Further, this notification should {\em not} result in 
+recomputeing all signals upon each strike event.}
 
 FRP systems can generally be categorized as ``classic FRP,'' in which behaviors
 and events are manipulated directly as first-class values,
