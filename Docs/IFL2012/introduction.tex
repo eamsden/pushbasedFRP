@@ -57,7 +57,7 @@ a behavior (in classic FRP) or a signal function (in signal-function FRP) is
 replaced by a new behavior or signal function carried by an event occurrence.
 
 An FRP program is generally evaluated by supplying a behavior or signal function
-to an evaluation function, which supplies input (in the case of a signal
+to an evaluation function, which provides input (in the case of a signal
 function) and actuates its outputs as they are produced. For our weather system
 example, the evaluation function is responsible for sampling the sensors,
 receiving notification from the lightning strike detectors and pushing the
@@ -65,15 +65,20 @@ occurrences to the signal function, and drawing the picture which is the output
 signal of the signal function.
 
 Classic FRP was first described as a system for interactive animations~\cite{Elliott1997}.
-Recent work on classic FRP has focused on efficient implementation. One approach
-to efficiency is to separate the evaluation of behaviors and events, since
-as was discussed above, the suitable strategy for evaluating signals is not the
-same as that for events. The initial implementations of FRP made use of
+%% Recent work on classic FRP has focused on efficient implementation. One approach
+%% to efficiency is to separate the evaluation of behaviors and events, since
+%% as was discussed above, the suitable strategy for evaluating signals is not the
+%% same as that for events. 
+\rn{Let's not be non-specific: ``focus on efficient implementation.
+  One approach...'', if there aren't actually other examples of
+  ``efficient implementation'' and we're really just talking about push-pull.}
+%%
+The initial implementations of FRP made use of
 pull-based evaluation for both behaviors and events.
 ``Reactive''~\cite{Elliott2009}, as well as more recent systems such as
 ``reactive-banana''~\cite{Apfelmus}, make use of push-based evaluation for
 events and pull-based evaluation for behaviors. This is known as ``push-pull''
-evaluation.
+evaluation \new{and is asymptotically more efficient}.
 
 Almost all implementations of signal-function FRP to
 date~\cite{Courtney2001-1,Nilsson2002,Nilsson2005,Sculthorpe2011} have used
@@ -88,21 +93,26 @@ from signals in a way that permits events to be separately pushed.
 A recent extension of signal-function FRP called N-Ary FRP~\cite{Sculthorpe2011}
 describes a method of typing signal functions which, as we will show, enables
 the push-based evaluation of events in a signal-function FRP system. The notion
-of signal vectors allows the representation of signal function inputs and
-outputs as combinations of signals and events, rather than a single signal which
-may contain multiple values, including option values for events. Signal vectors
+of {\em signal vectors} allows the \new{(type-level)} representation of signal-function inputs and
+outputs as combinations of signals and events, rather than a single
+signal \new{of composite} values, including option values for events. Signal vectors
 are uninhabited types, which can be used to describe partial or full
 representations of the signal function inputs and outputs.
+\rn{But what's the limitation of N-Ary FRP?! It doesn't allow full
+  push-pull right?  Or wait, the SV technique ``enables'' push-pull,
+  but the previous sculthorpe implementation just didn't do it?  Clarify.}
 
+\new{In this paper we introduce}
 TimeFlies,\footnote{The sentence ``Time flies like an arrow.'' is a 
 favorite quotation of one of the author's philosophy instructors, used to
-demonstrate the ambiguity of language. The origin of the quotation is unknown.}
-is a push-pull signal-function FRP system, implemented in the Haskell
-programming language. Our contributions with this system are as follows:
+demonstrate the ambiguity of language. The origin of the quotation is unknown.},
+a push-pull signal-function FRP system, implemented in the Haskell
+programming language. Our contributions are as follows:
+% \rn{Should be the paper contributions, not the system!}
 
 \begin{itemize}
   \item We show that typing signal-function FRP with signal vectors allows
-        push-pull evaluation of signal functions.
+        push-pull evaluation of signal functions. \rn{FIRST?}
   \item We demonstrate a programmable evaluation interface that allows the user
         of TimeFlies to take advantage of this behavior while interfacing
         TimeFlies to a wide range of IO systems.
