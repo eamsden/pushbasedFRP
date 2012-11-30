@@ -46,12 +46,12 @@ signalling that they have received a packet for which they have no handling
 rules, and produce output events which install handling rules for dealing with
 these packets.
 
-The reactive algorithm is simple. A table from machine addresses to switch ports
-is maintained. This table is updated in two ways. When a packet is sent to the
-controller, meta-data for the packet indicates which port it arrived on. The
-source address of the packet can then be mapped to that port in the table.
-Once this occurs, rules are installed for each packet with a destination address
-matching the source, along with reciprocal rules.
+The reactive algorithm maintains a table of machine addresses to switch ports.
+This table is updated in two ways. When a packet is sent to the controller,
+meta-data for the packet indicates which port it arrived on. The source address
+of the packet can then be mapped to that port in the table. Once this occurs,
+rules are installed for each packet with a destination address matching the
+source, along with reciprocal rules.
 
 Each mapping in the table has a timestamp. After a certain amount of time, the
 table entry is deleted. The table entry is also deleted if a packet is received
@@ -92,7 +92,7 @@ y-axis is a higher rate of responses (higher numbers are preferred).
 
 There is some correlation between the sampling rate and the response rate
 for TimeFlies, which is due to the continued wrapping of a replacement signal
-function by {\tt switch} until the next time step (see Section~\ref{subsection:Implementation-Signal_Functions-Implementation_of_Signal_Function_Combinators}).
+function by {\tt switch} until the next time step (see Section~\ref{subsection:Implementation-Signal_Functions}).
 Nevertheless, TimeFlies outperforms Yampa in event response by several orders of magnitude,
 even at a very high sampling rate. This is due to two factors. First, TimeFlies can react
 to individual events without evaluating the whole signal function. Second, the
