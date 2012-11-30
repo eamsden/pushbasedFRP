@@ -1,22 +1,17 @@
-% (set-fill-column 100)
-
 \section{System Design and Interface}
 \label{section:System_Design_and_Interface}
 
 The purpose of FRP is to provide an efficient, declarative abstraction for creating
 reactive programs. To this end, there are three goals that the TimeFlies
-system is intended to meet. \rn{What are the three!?  Enumerate.  Push
-based, composable, IO-system agnostic?}
+system is intended to meet:
 
-Efficient evaluation is the motivation for push-based evaluation of events.
-Since FRP programs are expected to  interact with an outside world in real time,
-efficiency cannot simply be measured by the runtime of a program. Thus, when speaking of efficiency,
-we are expressing a desire that the system utilize as few system resources as possible
-for the task at hand, while responding as quickly as possible to external inputs and
-producing output at a consistently high sample rate.
-
-\todo{At this point we still need a clear notion of what a pull-based
-  evaluation of events would actually do.}
+An FRP system should permit efficient evaluation. Since FRP programs are
+expected to  interact with an outside world in real time, efficiency cannot
+simply be measured by the runtime of a program. Thus, when speaking of
+efficiency, we are expressing a desire that the system utilize as few system
+resources as possible for the task at hand, while responding as quickly as
+possible to external inputs and producing output at a consistently high sample
+rate.
 
 A composable abstraction is one in which values in that abstraction may be
 combined in such a way that reasoning about their combined actions involves
@@ -27,111 +22,71 @@ attractive form of software engineering in which successively larger systems are
 created from by combining smaller systems, without having to reason about the 
 implementation of the components of the systems being combined.
 
-\rn{Can the above be made into a slightly more technical claim?
-  Composable abstractions enable composing $O(N)$ components while
-  reasoning about the $O(N)$ local interactions, rather than the
-  $O(N^2)$ global interactions between all components?  Second, I
-  think not needing to know the implementation is separate from
-  ``composability''; surely there is some name for that: ADTs,
-  ``encapsulation'', information hiding, etc.}
-
-% It is fine for a system to be composable with regards to itself, but
-% an FRP system must
-\new{Further, an FRP program is not a closed system; it}
-interacts with the outside world. Since we cannot anticipate every
-possible form of input and output that the system will be asked to interact
-with, we must interface with Haskell's IO system. 
-\rn{First mention of Haskell... need some transition?}
-In particular, most libraries
-for user interaction (e.g. GUI and graphics libraries such as GTK+ and GLUT) and
-most libraries for time-dependent IO (e.g. audio and video systems) make use of
-the event-loop abstraction. In this abstraction, event handlers are registered
-\new{centrally}; 
-\new{once initiated, the running event-loop detects events and invokes handlers; and
-  handlers are responsible for rendering output.}
-%% and then a command is issued to run a loop which detects events
-%% and runs the handlers, and uses the results of the handlers to render the
-%% appropriate output. 
-
-\rn{Is the event loop really an {\em abstraction}?  What is
-  abstracted?  Or is it just a ``model'' or an API?}
+Further, an FRP program is not a closed system; it interacts with the outside
+world. Since we cannot anticipate every possible form of input and output that
+the system will be asked to interact with, we must interface with IO systems.
+In particular, most libraries for user interaction (e.g. GUI and graphics
+libraries such as GTK+ and GLUT) and most libraries for time-dependent IO
+(e.g. audio and video systems) make use of the event-loop model. In this
+model, event handlers are registered for various forms of input, and then a
+loop is initiated which checks for, or blocks waiting for, input and then
+actuates the appropriate handlers to compute on the input and actuate outputs.
 
 We would like for the FRP system to be easy to integrate with such IO systems,
 while being flexible enough to enable its use with other forms of IO systems,
-such as simple imperative systems, threaded systems, or network servers.
-\rn{vague... not sure what these mean.  Threaded = multiple event
-  loop?  Alternative to an event loop is... what?... blocking IO operations?}
+such as systems which use blocking IO and threads, rather than event loops.
 
 \subsection{Semantics}
 \label{subsection:System_Design_and_Interface-Semantics}
 
-A rigorous 
-%and formal elucidation of the 
-semantics of signal-function FRP with signal
-vectors remains unattempted, though a categorical semantics for signal-function
-FRP using {\em fan categories} has been explored~\cite{Jeffrey2012}. In both
-these semantics and their implementation, events are represented (following
+A rigorous semantics of signal-function FRP with signal vectors remains
+unattempted, though a categorical semantics for signal-function FRP using
+{\em fan categories} has been explored~\cite{Jeffrey2012}. In both these
+semantics and their implementation, events are represented (following
 AFRP~\cite{Courtney2001-1} and Yampa~\cite{Nilsson2005}) as option-valued
 signals. A push-based implementation of these semantics is proposed, but the
 unit being pushed is a {\em segment} of signals, and not event occurrences. This
 approach requires processing the whole signal function at each time step,
 whether an event occurs or not, and checking for its occurrence at each step.
 
-\rn{Might want to make it clear -- the ``whole'' signal function means
-  ``all signal functions in the program'' (i.e. which are composed
-  to form the global signal function) right?}
-
 Another concern is that this approach limits the event rate to the sampling rate.
 The rate of sampling should, at some level, not matter to the FRP system. Events
 which occur between sampling intervals are never observed by the
-system. \rn{An FRP system has sampling intervals?  Where were we told
-  this!?}  
-Since the signal function is never evaluated except at the sampling intervals, no
-events can otherwise be observed.
+system. Since the signal function is never evaluated except at the sampling
+intervals, no events can otherwise be observed.
 
-This \new{raises another} concern. Events are not instantaneous in this
+This raises another concern. Events are not instantaneous in this
 formulation. If events are signals, the sampling instant must fall within
 the interval where there is an event occurrence present for that event to be
 observed. If events are instantaneous, the probability of observing an event 
-occurrence is zero. \rn{So.... how do existing systems/semantics
-  compensate for this?  They allow events to have temporal extent?}
+occurrence is zero. So in current signal-function semantics, events occurrences
+implicitly have some duration which contains the point of sampling.
 
 Therefore, TimeFlies employs the N-Ary FRP type formulation to represent signals and
 events as distinct entities in the inputs and outputs of signal functions. This means
 we are now free to choose our representation of events, and to separate it from the
 representation and evaluation of signals.
-%
-This freedom yields the additional ability to make events independent of the sampling
-interval altogether. The semantics of event handling in TimeFlies is that an event occurrence
-is responded to immediately, and does not wait for the next sampling
-instant. 
-\rn{Could you flesh out how this is a {\em semantics} issue and not
-  merely a more efficient or accurate implementation?  Ah, that's
-  answered in the next para, but might be good to use the word
-  semantics somewhere and connect this explicitly.} 
-This allows events to be instantaneous, and further, allows multiple
-events to occur within a single sampling interval.
-\rn{Clarification---even in traditional approaches multiple {\bf
-    different} events could occur in one sampling round right?  It's
-  just that {\em each} event [stream] could only have one occurrence per
-  sampling interval?}
 
+This freedom yields the additional ability to make events independent of the
+sampling interval altogether. The semantics of event handling in TimeFlies is
+that an event occurrence is responded to immediately, and does not wait for the
+next sampling instant. This allows events to be instantaneous, and further,
+allows multiple occurrences for an event within a single sampling interval.
 
-There are two tradeoffs intrinsic to this approach. The first is that events are only partially ordered
-temporally. There is no way to guarantee the order of observation of event occurrences occurring in the
-same sampling interval. Further, the precise time of an event occurrence cannot be observed, only the 
-time of the last \rn{[signal?]} sample prior to the occurrence.
-\rn{That last sentence had an ambiguous parse wherein the first time I read it I thought it was saying that you
-couldn't tell the timestamp of event N only of the preceding event $N-1$, which of course makes no sense,
-but it might be good to clarify what {\em sample} you're referring to.}
+There are two tradeoffs intrinsic to this approach. The first is that events are
+only partially ordered temporally. There is no way to guarantee the order of
+observation of event occurrences occurring in the same sampling interval.
+Further, the precise time of an event occurrence cannot be observed, only the 
+time that the signal function was last sampled prior to the occurrence.
 
-In return for giving up total ordering and precise observation of the timing of events, we obtain the
-ability to employ push-based evaluation for event occurrences, and the ability to non-deterministically
-merge event occurrences. When events being input to a non-deterministic merge have simultaneous occurrences,
-we arbitrarily select one to occur first. This does not violate any guarantee about time values, since
-they will both have the same time value in either case, and does not violate any guarantee about ordering,
-since no guarantee of their order is given.
-\rn{Nice.}
+In return for giving up total ordering and precise observation of the timing of 
+events, we obtain the ability to employ push-based evaluation for event
+occurrences, and the ability to non-deterministically merge event occurrences.
+When events being input to a non-deterministic merge have simultaneous
+occurrences, we arbitrarily select one to occur first. This does not violate any
+guarantee about time values, since they will both have the same time value in
+either case, and does not violate any guarantee about ordering, since no
+guarantee of their order is given.
 
 \subsection{Types}
 \label{subsection:System_Design_and_Interface-Types}
@@ -143,14 +98,11 @@ components.
 
 In order to type signal functions, we must be able to describe their input and
 output. In most signal function systems, a signal function takes exactly one
-input signal and produces exactly one output signal. Multiple inputs or outputs are handled
-by making the input or output a signal of tuples, and combinators which combine or split
-the inputs or outputs of a signal assume this.  Events are represented at the
-type level as a particular type of signal, and at the value level as an option:
-either an event occurrence or not. 
-\rn{That's a bit confusing, because of the issue of whether we're talking about {\em event occurrences} or
-  event streams.  At runtime there is only a representation for the former, which is a simple {\tt Maybe},
-  right?}
+input signal and produces exactly one output signal. Multiple inputs or outputs
+are handled by making the input or output a signal of tuples, and combinators
+which combine or split the inputs or outputs of a signal assume this. Events are
+represented at the type level as a particular type of signal, and at the value
+level as an option: either an event occurrence or not.
 
 This method of typing excludes push-based evaluation at the outset.
 It is not possible to construct a ``partial tuple'' nor in general is it
@@ -216,147 +168,35 @@ temporal actions to perform on a signal function in sequence, and in conjunction
 with actions taken in Haskell's {\tt IO} monad, or another monad. Actions are
 provided in this monad to push an event to the signal function's input, step
 the signal function's time, or modify a signal on the signal functions input to
-be observed at the next time step. Outputs are handled by a vector \rn{vector? in the same sense as a
-  signal vector?} of actuation
+be observed at the next time step. Outputs are handled by a set of actuation
 functions in the underlying monad, supplied by the user of the interface. This
-vector is structured by parameterizing it over the signal function's output
-signal vector. \rn{huh? more concrete way to say it?}
-
-\rn{Evaluation interface: Very cool.  It sounds a bit your FRP implementation itself is kind of
-  ``scriptable'' rather than black box...}
+set's type is parameterized over the signal function's output signal vector.
 
 \subsection{Combinators}
 \label{section:System_Design_and_Interface-Combinators}
 
-%% Signal functions are constructed from combinators, which are primitive signal
-%% functions and operations to combine these primitives. 
-\new{TimeFlies includes basic signal functions and a library of signal function combinators, falling
-  into these categories:}
-% These combinators are grouped as basic signal functions, 
-lifting operations from pure functions to signal functions,
-routing, reactivity, feedback, event processing, joining, and time dependence.
-%
-\rn{Eek, I get thrown off by a definition of combinators which is so broad as to include everything.  I
-  like the definition here 
-   \url{http://stackoverflow.com/tags/combinators/info} : 
-   {\em A combinator is a higher-order function that uses only function application and earlier defined
-    combinators to define a result from its arguments.}  Does everything in the above list meet that
-   definition?}
+TimeFlies includes basic signal functions and a library of signal function
+combinators, grouped into lifting operations from pure functions to signal
+functions, routing, reactivity, feedback, event processing, joining, and time
+dependence.
 
-The basic signal functions
-provide very simple operations. The {\tt identity} signal function, as expected,
-simply copies its input to its output. The {\tt constant} signal function
-produces the provided value as a signal at all times. The {\tt never} signal
-function has an event output which never produces occurrences. The {\tt asap}
-function produces an event occurrence with the given value at the first time
-step after it is switched into the network. The {\tt after} function waits for
-the specified amount of time before producing an event occurrence.
+These signal functions can be combined in serial (the output of one becomes
+the input of the other) or in parallel (their input and output vectors are
+combined). Signal functions are independently reactive or non-reactive, which
+is the basis of their compositionality. Reactivity is introduced using the
+{\tt switch} combinator, which takes an initial signal function, watches
+one of its outputs for an event occurrence carrying a new signal function,
+and replaces itself with this new signal function. Its type is:
 
-Two combinators are provided to lift pure functions to signal functions.
-The {\tt pureSignalTransformer} combinator applies the pure function pointwise
-to a signal. The {\tt pureEventTransformer} combinator applies the function to
-the value carried by each occurrence of an input event.
+\begin{code}
+switch ::    (svIn :~> (svOut :^: SVEvent (svIn :~> svOut)))
+          -> svIn :~> svOut
+\end{code}
 
-The routing combinators are used to combine signal functions, and to re-arrange
-and discard components of signal vectors in order to connect signal functions.
-%
-Only those routing combinators which modify or combine signal functions
-({\tt (>>>)}, {\tt first}, {\tt second}) are reactive (\ie{} may replace themselves in
-response to events, and then only if they inherit their reactivity from the
-signal function(s) which are inputs to combinator. The rest do not
-react to or modify the input in any way, except to re-arrange it, copy it, or
-discard it altogether.
-
-Reactivity is introduced by means of the {\tt switch} combinator.
-The design of this combinator
-allows modular packaging of reactivity. A signal function can determine
-autonomously when to replace itself, based only on its input and state,
-by emitting an event occurrence carrying its replacement. The combinator
-consumes and hides the event carrying the replacement signal function, 
-so the reactivity is not exposed by the resulting reactive signal function.
-
-It is often useful for a signal function to receive a portion of its
-own output as input. This is especially useful when we have two
-signal functions which we would like to mutually interact. We cannot
-just serially compose them, we must also bring the output of the second
-back around to the first. Many signal-processing algorithms also depend
-on feedback. This ability is provided by the {\tt loop} operator. 
-
-This combinator provides decoupling for signals
-(the input signal is the output signal at the previous time-step)
-but not events (event occurrences are supplied to the combinator immediately).
-This means that the programmer has the responsibility to ensure that feedback
-does not generate an infinite sequence of events in a single time-step.
-\rn{Presumably that is different from previous formulations of FRP?  Because ... there was no
-  notion of multiple events in a sampling interval?}
-
-The {\tt filter} and {\tt filterList} combinators are stateless signal functions
-which apply a function to each event occurrence. The {\tt filter} combinator
-expects an option-typed output, while the {\tt list} combinator expects a list
-output. \rn{and input right?} If the function yields a non-empty output, one or more output occurrences
-are produced with the elements of that output. If the output is empty, there
-are no output occurrences.
-
-The {\tt accumulate} and {\tt accumulateList} functions are similar, except that
-they maintain a state value which is replaced after each input event occurrence
-by an additional output from the function, and supplied to the function in
-addition to the value of each event occurrence. \rn{Murky prose definition...}
-
-The joining combinators provide the ability to combine two event
-streams, two signals, or a signal and an event stream. 
-\rn{How does that work temporally?  For event/event is this a zip
-  that matches up the left events w/ the right events?}
-
-The {\tt union} combinator is a non-deterministic merge of two event streams.
-Simultaneity of events is only observable up to the sampling rate, but events
-can occur in between sampling intervals. Thus, if two events occur
-simultaneously, one occurrence is arbitrarily selected to be first in the output
-stream.
-
-The {\tt combineSignals} combinator applies a binary function pointwise to two
-signals, and produces the result of this application as a third signal. The
-combining function is necessary because we will have two input samples at each
-time step, and must produce exactly one output sample.
-\rn{Wait that sounded like it was covered by join?}
-
-The {\tt capture} combinator adds the last-sampled value of a signal at the time
-of an event occurrence to that event occurrence.
-\rn{Again, what is a signal-event {\bf join} if not that?}
-
-These three combinators \rn{Which?} together provide the ability to combine elements of
-signal vectors. By combining these combinators, along with the {\tt cancelLeft}
-and {\tt cancelRight} routing combinators, arbitrary signal vectors can be
-reduced.
-
-A set of combinators are provided for making use of time-dependence in a signal
-function. These combinators allow the modification of signals and events with
-respect to time, and the observation of the current time value.
-%
-The simplest time-dependent combinator is {\tt time}, which simply outputs
-the time since it began to be evaluated. This does not necessarily correspond to
-the time since the global signal function began to be evaluated, since the
-signal function in which the {\tt time} combinator is used may have been
-introduced through {\tt switch}.
-
-\rn{If that's the simplest what are the more complex ones?  If not worth mentioning it seems easier to just
-    describe {\bf time}.}
-
-The {\tt delay} signal function allows events to be delayed. An initial delay
-time is given, and event occurrences on the right input can carry a new delay
-time. Event occurrences on the left input are stored and output when their delay
-time has passed. Changing the delay time does not affect occurrences already
-waiting.
-
-The {\tt integrate} combinator outputs the rectangle-rule approximation of the
-integral of its input signal with respect to time.
-
-\todo{What's novel here?  After this section is de-listified, need to emphasize that.}
-
+The full interface is described in the API documentation~\cite{TimefliesAPI}.
 
 \subsection{Evaluation Interface}
 \label{subsection:System_Design_and_Interface-Evaluation_Interface}
-
-\rn{Is the thing that really sets TimeFlies apart?  (Apart from being the first push/pull for SFFRP.)}
 
 The evaluation interface provides a modified state monad which holds a signal
 function, together with some additional information, as its state.
@@ -368,15 +208,10 @@ handlers which actuate effects based on output events or changes to the output
 signal.
 
 Sets which correspond to signal vectors are built with ``smart'' constructors.
-For instance, to construct a set of handlers, 
-\rn{is this ``set'' the same as the earlier ``vector of actuation functions''?}
-individual handling functions are
+For instance, to construct a set of handlers, individual handling functions are
 lifted to handler sets with the {\tt signalHandler} and {\tt eventHandler}
 functions, and then combined with each other and {\tt emptyHandler} leaves
 using the {\tt combineHandlers} function.
-%
-\rn{Examples, examples, examples.  There's a lot of prose here that gives the reader some idea, but doesn't
-  show them exactly what it would look like.  Too much guesswork required to fill in the gaps.}
 
 Building the initial input sample is similar, but {\tt sampleEvt} leaves do
 not carry a value.
@@ -396,8 +231,14 @@ parameterized over an underlying monad whose actions may be lifted to
 {\tt SFEvalT} actions are constructed using combinators to push events,
 update inputs, and step time, as well as actions lifted from the underlying
 monad (used to obtain these inputs). 
-\rn{That sounds introductory... I thought that was supposed to be what we were learning about throughout
-  this subsection?}
-An action in the underlying monad
-which produces the result and a new state is obtained with the {\tt runSFEvalT}
-function.
+
+{\tt SFEvalT} actions are run using a supplied function which takes a signal
+function's evaluation state and an {\tt SFEvalT} action and provides an action
+in its underlying monad. This action includes the actions to actuate the outputs,
+and returns the new evaluation state, along with the return value of the
+{\tt SFEvalT} here.
+
+Using this interface, the state can be stored in a mutable reference, or in a
+closure. Handlers can be registered with the IO interface which push events, and
+the actuation function can be constructed from the primitives given by the IO
+library for actuation.
