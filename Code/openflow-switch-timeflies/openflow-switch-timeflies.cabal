@@ -53,8 +53,8 @@ executable openflow-switch-timeflies
   -- other-modules:       
   
   -- Other library packages from which modules are imported.
-  build-depends:       base == 4.5.*,
-                       containers == 0.4.*,
+  build-depends:       base == 4.*,
+                       containers == 0.5.*,
                        nettle-openflow == 0.3.*,
                        HList,
                        clock,
@@ -63,3 +63,12 @@ executable openflow-switch-timeflies
   -- Directories containing source files.
   hs-source-dirs:      src
   
+executable openflow-switch-timeflies-spinning
+  main-is: openflow-switch-timeflies-spinning.hs
+  build-depends:       base == 4.*,
+                       containers == 0.5.*,
+                       nettle-openflow == 0.3.*,
+                       HList,
+                       clock,
+                       time-flies
+  hs-source-dirs:      src
