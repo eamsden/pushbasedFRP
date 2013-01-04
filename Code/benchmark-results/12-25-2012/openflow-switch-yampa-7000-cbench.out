@@ -1,0 +1,17 @@
+17:38:44.676 16  switches: fmods/sec:  9  9  9  9  9  9  9  9  9  9  8  8  8  8  8  8   total = 0.138000 per ms 
+17:38:45.776 16  switches: fmods/sec:  8  8  8  9  9  9  9  9  10  9  8  8  8  8  9  9   total = 0.138000 per ms 
+17:38:46.876 16  switches: fmods/sec:  8  8  8  9  10  8  8  8  9  9  9  9  9  8  9  9   total = 0.138000 per ms 
+17:38:47.977 16  switches: fmods/sec:  8  8  9  9  9  8  8  8  9  9  9  10  9  8  9  9   total = 0.139000 per ms 
+17:38:49.077 16  switches: fmods/sec:  8  8  9  9  9  8  8  8  9  9  9  9  9  8  10  9   total = 0.139000 per ms 
+17:38:50.177 16  switches: fmods/sec:  8  8  9  9  9  8  8  8  9  9  9  10  9  8  9  9   total = 0.139000 per ms 
+17:38:51.277 16  switches: fmods/sec:  8  8  9  9  9  8  8  8  9  9  9  9  9  8  9  9   total = 0.138000 per ms 
+17:38:52.377 16  switches: fmods/sec:  8  8  9  9  9  8  8  8  9  9  9  9  9  8  9  9   total = 0.138000 per ms 
+17:38:53.477 16  switches: fmods/sec:  8  8  9  9  9  8  8  8  9  9  9  9  9  8  9  9   total = 0.138000 per ms 
+17:38:54.578 16  switches: fmods/sec:  8  8  9  9  9  8  8  8  9  9  10  9  9  8  9  9   total = 0.139000 per ms 
+17:38:55.678 16  switches: fmods/sec:  8  8  9  9  9  8  8  8  9  9  9  9  9  8  10  9   total = 0.139000 per ms 
+17:38:56.778 16  switches: fmods/sec:  8  8  9  9  10  8  8  8  9  9  9  9  9  8  9  9   total = 0.139000 per ms 
+17:38:57.878 16  switches: fmods/sec:  8  8  9  9  9  8  8  8  9  9  9  9  9  8  9  9   total = 0.138000 per ms 
+17:38:58.978 16  switches: fmods/sec:  8  8  9  9  9  8  8  8  9  9  9  9  9  8  9  9   total = 0.138000 per ms 
+17:39:00.078 16  switches: fmods/sec:  8  8  9  9  9  8  8  8  9  9  9  9  9  8  9  9   total = 0.138000 per ms 
+17:39:01.179 16  switches: fmods/sec:  8  8  9  9  9  8  8  8  9  9  9  9  9  8  9  10   total = 0.139000 per ms 
+RESULT: 16 switches 15 tests min/max/avg/stdev = 138.00/139.00/138.47/0.50 responses/s

@@ -1,0 +1,17 @@
+17:33:07.086 16  switches: fmods/sec:  55  56  54  54  53  53  53  51  51  50  50  48  49  48  47  46   total = 0.817999 per ms 
+17:33:08.186 16  switches: fmods/sec:  57  57  57  57  57  57  57  57  57  56  57  56  57  57  57  57   total = 0.909999 per ms 
+17:33:09.286 16  switches: fmods/sec:  57  57  57  57  57  57  57  57  57  56  56  56  57  57  57  57   total = 0.908999 per ms 
+17:33:10.386 16  switches: fmods/sec:  57  57  57  57  57  57  58  57  57  57  57  57  59  57  57  57   total = 0.914999 per ms 
+17:33:11.486 16  switches: fmods/sec:  57  57  57  57  57  57  58  57  57  58  57  57  57  57  57  57   total = 0.913999 per ms 
+17:33:12.587 16  switches: fmods/sec:  57  58  57  58  58  58  58  57  57  57  57  57  57  57  57  57   total = 0.916999 per ms 
+17:33:13.687 16  switches: fmods/sec:  57  57  57  57  57  57  57  57  57  57  57  57  57  57  57  57   total = 0.911999 per ms 
+17:33:14.787 16  switches: fmods/sec:  58  57  58  57  57  57  57  58  58  57  57  57  57  57  57  57   total = 0.915999 per ms 
+17:33:15.887 16  switches: fmods/sec:  57  57  57  57  57  57  57  57  57  57  56  56  57  56  56  56   total = 0.906999 per ms 
+17:33:16.987 16  switches: fmods/sec:  57  59  57  57  57  58  57  57  57  58  57  57  57  57  57  57   total = 0.915999 per ms 
+17:33:18.088 16  switches: fmods/sec:  57  57  57  57  56  57  56  57  57  57  57  57  56  57  57  57   total = 0.908999 per ms 
+17:33:19.188 16  switches: fmods/sec:  58  57  57  58  57  57  57  58  58  57  58  57  57  57  57  57   total = 0.916999 per ms 
+17:33:20.288 16  switches: fmods/sec:  57  57  57  57  57  57  57  57  57  57  57  57  57  57  57  57   total = 0.911999 per ms 
+17:33:21.388 16  switches: fmods/sec:  57  57  57  57  57  57  57  57  57  57  56  57  57  57  57  58   total = 0.911999 per ms 
+17:33:22.489 16  switches: fmods/sec:  57  57  56  57  57  57  57  57  57  57  57  57  57  57  57  57   total = 0.910999 per ms 
+17:33:23.589 16  switches: fmods/sec:  57  58  57  57  57  58  57  57  57  58  58  58  57  58  59  57   total = 0.919999 per ms 
+RESULT: 16 switches 15 tests min/max/avg/stdev = 907.00/920.00/913.13/3.54 responses/s

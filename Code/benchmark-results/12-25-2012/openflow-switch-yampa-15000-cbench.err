@@ -1,0 +1,9 @@
+cbench: controller benchmarking tool
+   running in mode 'latency'
+   connecting to controller at localhost:6633 
+   faking 16 switches :: 16 tests each; 1000 ms per test
+   with 100000 unique source MACs per switch
+   starting test with 0 ms delay after features_reply
+   ignoring first 1 "warmup" and last 0 "cooldown" loops
+   connection delay of 0ms per 1 switch(es)
+   debugging info is off
