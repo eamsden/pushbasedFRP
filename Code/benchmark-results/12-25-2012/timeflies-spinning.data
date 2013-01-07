@@ -1,11 +1,13 @@
-RESULT: 16 switches 15 tests min/max/avg/stdev = 14967.99/26383.92/24547.17/3187.17 responses/s
-RESULT: 16 switches 15 tests min/max/avg/stdev = 14994.99/25637.97/23775.24/2835.89 responses/s
-RESULT: 16 switches 15 tests min/max/avg/stdev = 14769.96/24265.98/22543.10/2645.17 responses/s
-RESULT: 16 switches 15 tests min/max/avg/stdev = 14465.99/22630.98/21301.45/2209.20 responses/s
-RESULT: 16 switches 15 tests min/max/avg/stdev = 13750.93/21489.98/19979.24/2165.20 responses/s
-RESULT: 16 switches 15 tests min/max/avg/stdev = 14091.99/20020.98/19008.25/1709.62 responses/s
-RESULT: 16 switches 15 tests min/max/avg/stdev = 15659.98/31159.97/28720.09/4078.29 responses/s
-RESULT: 16 switches 15 tests min/max/avg/stdev = 13478.99/18528.98/17466.98/1549.60 responses/s
-RESULT: 16 switches 15 tests min/max/avg/stdev = 12293.99/16943.98/16262.97/1196.42 responses/s
-RESULT: 16 switches 15 tests min/max/avg/stdev = 15813.98/29341.97/27231.29/3776.29 responses/s
-RESULT: 16 switches 15 tests min/max/avg/stdev = 15141.98/28165.97/25974.31/3538.97 responses/s
+# delay     min         max         avg         stdev
+3000		821.00		823.00		821.67		0.60
+5000		821.00		823.00		821.67		0.60
+7000		821.00		823.00		822.00		0.73
+10000		819.00		823.00		821.73		1.12
+12000		819.00		823.00		821.93		1.00
+15000		819.00		823.00		821.80		0.98
+20000		907.00		920.00		913.13		3.54
+25000		821.00		827.00		823.53		1.45
+30000		821.00		827.00		823.87		1.67
+40000		833.00		842.00		837.53		2.99
+50000		826.00		830.00		827.80		1.33
+
