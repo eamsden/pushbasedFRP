@@ -1,0 +1,296 @@
+\chapter{Example Application}
+\label{chapter:Example_Application}
+
+TimeFlies is a library for Functional Reactive Programming, which is a paradigm
+for creating interactive and time-dependent applications. This chapter presents
+the design of one such application, and its implementation using TimeFlies. The
+application is an OpenFlow controller which implements a learning switch. In
+short, it is a re-implementation of the standard kind of switch used in local
+area networks, using ``software-defined networking.'' This
+is the application which is benchmarked for performance comparisons in
+Chapter~\ref{chapter:Evaluation_and_Comparisons}.
+
+\section{OpenFlow}
+\label{section:Example_Application-OpenFlow}
+
+The OpenFlow protocol~\cite{OpenflowSpec} is a protocol for software-defined
+networking applications. In particular, it defines the communication between
+switches (devices which quickly route packets from input ports to output ports
+based on learned rules) and {\em controllers}, which are generally devices with
+large computational resources, such as servers. OpenFlow allows switches to
+report packets for which no rule exists to a controller, and provides a means
+for the controller to install new rules on a switch either preemptively, or in
+response to a reported packet.
+
+One of the simplests tasks which may be implemented as a OpenFlow controller is
+a ``learning switch''. Such a switch uses the source and destination hardware
+addresses in network packets to make routing decisions. A table is kept which
+records the ports where source addresses are observed on incoming packets. This
+table thus contains knowledge of which hardware address(es) can be reached on
+which port. Using this table, rules are constructed to route packets with
+particular source-destination pairs to the correct port. When a packet is seen
+for which no rule exists, it is reported to the controller, which updates the
+table and rules based on the new knowledge, and broadcasts the packet so that
+it can reach its intended destination and receive a response.
+
+Our example application is a controller for a ``learning switch.'' We describe
+its implementation as a TimeFlies signal function, and two approaches to running
+this signal function using the TimeFlies evaluation interface.
+
+\section{Implementation}
+\label{section:Example_Application-Implementation}
+
+The first component for our learning switch is the table which maps addresses
+to ports. This is a stateful data structure which will be updated by input
+events and possibly produce output events. We employ the {\tt accumulateList}
+combinator to produce the signal function:
+
+\begin{figure}
+\begin{code}
+-- | Function type to modify a table and produce messages to the switch
+type TableAccumulator = 
+     SwitchTable 
+  -> ([(SwitchHandle EthernetFrame,
+        TransactionID,
+        CSMessage)],
+      SwitchTable)
+
+-- | Empty map
+M.empty :: M.Map k v
+
+-- | Reverse application
+rapp :: a -> (a -> b) -> b
+rapp x f = f x
+
+-- | Accumulate a switch table, producing output messages
+--   based on the incoming functions
+switchTable ::    SVEvent TableAccumulator
+              :~> SVEvent (SwitchHandle EthernetFrame,
+                           TransactionID,
+                           CSMessage)
+switchTable = accumulateList rapp M.empty
+\end{code}
+\hrule
+\caption{Signal function for switch table.}
+\label{figure:switch_table_sf}
+\end{figure}
+
+Note that the input events are closures which expect the table as input and
+produce an updated table as output. This enables us to write several different
+event sources whose final events require state (the table) and produce
+messages to the switch.
+
+The first source of such events is packets forwarded to the controller by
+switches. The closures carried by these events implement the response to
+packet inputs. The signal function from input switch message events to events
+from the accumulator is shown in Figure~\ref{figure:packet_in_sf}, but the
+details of the switch routing algorithm are elided.
+
+\begin{figure}
+\begin{code}
+getPacketIn ::     SVEvent (SwitchHandle EthernetFrame,
+                            TransactionID,
+                            SCMessage EthernetFrame)
+               :~> SVEvent (SwitchHandle EthernetFrame,
+                            TransactionID,
+                            PacketInfo EthernetFrame)
+
+-- | Handle a packet in event
+handlePacketIn ::    ((SwitchHandle EthernetFrame,
+                       TransactionID,
+                       PacketInfo EthernetFrame), Double)
+                  -> TableAccumulator
+
+packetIn ::     SVEvent ((SwitchHandle EthernetFrame,
+                          TransactionID,
+                          PacketInfo EthernetFrame),
+                         Double)
+            :~> SVEvent TableAccumulator
+packetIn = pureEventTransformer handlePacketIn
+
+-- | Capture the occurrence time of an event.
+captureTime :: SVEvent a :~> SVEvent (a, Double)
+captureTime = uncancelLeft >>>
+              first time >>>
+              capture
+
+-- | Build TableAccumulator events from input packets.
+handleSCMessage ::     SVEvent (SwitchHandle EthernetFrame,
+                                TransactionID,
+                                SCMessage EthernetFrame)
+                   :~> SVEvent TableAccumulator
+handleSCMessage = getPacketIn >>> captureTime >>> packetIn
+
+\end{code}
+\hrule
+\caption{Signal function handling incoming packets.}
+\label{figure:packet_in_sf}
+\end{figure}
+
+The {\tt captureTime} signal function attaches the time to incoming packets. The
+{\tt getPacketIn} signal function extracts packet-in messages from the variety
+of message events that a switch may send to the controller. These two signal
+functions feed into the {\tt packetIn} signal function, which builds the
+closures for the accumulator using the {\tt handlePacketIn} pure function.
+
+The other task is to periodically eliminate all rules which are older than a
+specified threshold. For this purpose, we construct another signal function
+which produces {\tt TableAccumulator} events. This signal function runs a timer
+(the {\tt every} combinator) and produces events carrying closures which scan
+the table for old rules, delete them, and produces messages to inform the
+switches of their deletion. This signal function is shown in Figure~\ref{figure:clean_sf},
+again eliding the implementation of the closures.
+
+\begin{figure}
+\begin{code}
+-- | Take a function-value pair and return the application.
+pairApp :: (a -> b, a) -> b
+pairApp (f, x) = f x
+
+-- | Alter a table and generate messages to remove expired entries and rules
+cleanTable :: Double -> Double -> TableAccumulator
+
+
+-- | Produce an event with the rule-cleaning accumulator.
+cleanRules :: Double -> SVEmpty :~> SVEvent TableAccumulator
+cleanRules t = copy >>>
+               second (every t cleanRulesAcc) >>>
+               first time >>>
+               capture >>>
+               pureEventTransformer pairApp
+  where 
+    cleanRulesAcc :: Double -> TableAccumulator
+    cleanRulesAcc nowT table = cleanTable t nowT table
+\end{code}
+\hrule
+\caption{Table-cleaning signal function.}
+\label{figure:clean_sf}
+\end{figure}
+
+We now have all of the pieces for a signal function implementing a learning
+switch, as shown in Figure~\ref{figure:learn_sf}.
+
+\begin{figure}
+\begin{code}
+-- | A constant, for how long rules may survive
+tableTime :: Double
+
+-- | Make IO actions to send each packet.
+sendCSMessage ::     SVEvent (SwitchHandle EthernetFrame,
+                              TransactionID,
+                              CSMessage)
+                 :~> SVEvent (IO ())
+
+-- | The learning switch
+learn ::     SVEvent (SwitchHandle EthernetFrame,
+                      TransactionID,
+                      SCMessage EthernetFrame)
+         :~> SVEvent (IO ())
+learn = uncancelLeft >>> 
+        first (cleanRules tableTime) >>>
+        second handleSCMessage >>>
+        union >>>
+        switchTable >>>
+        sendCSMessage
+\end{code}
+\hrule
+\caption{The signal function for a learning switch.}
+\label{figure:learn_sf}
+\end{figure}
+
+The learning switch composes the {\tt cleanRules} and {\tt handleSCMessage}
+signal functions in parallel, but routes input only to {\tt handleSCMessage},
+by using the {\tt uncancelLeft} routing combinator. The event streams are
+merged and fed to the {\tt switchTable} signal function, and the resulting
+packets are fed to the {\tt sendCSMessage} signal function which constructs
+{\tt IO ()} events.
+
+Note that this approach enables a modular design where each task is implemented
+in its own signal function. Additional behaviors could be coded as additional
+signal functions, whose events were also routed to the table accumulator.
+
+Finally, we show how the signal function is interfaced with IO code using the
+evaluation interface. First, we need a few extra definitions. For starters,
+a controller must also handle switches when they first connect. We create a
+separate signal function for this purpose, and compose it in parallel with our
+learning switch signal function. We also need a definition of which port to
+listen on, and an IO action for reading the time. These are shown in
+Figure~\ref{figure:example_io_prelim}.
+
+\begin{figure}
+\begin{code}
+
+-- | The port for the server to listen on.
+port :: Word16
+
+-- | Get the current time from the monotonic timer
+getMonoTimeAsDouble :: IO Double
+
+-- | Handle the connection of a new switch          
+switchConnect ::     SVEvent (SwitchHandle EthernetFrame)
+                 :~> SVEvent (IO ())
+switchConnect = pureEventTransformer (void . handshake)
+
+-- | Run switch connection and learning concurrently
+learningSwitch ::     (SVEvent (SwitchHandle EthernetFrame) :^:
+                       SVEvent (SwitchHandle EthernetFrame,
+                                TransactionID,
+                                SCMessage EthernetFrame))
+                  :~> SVEvent (IO ())
+learningSwitch = first switchConnect >>> second learn >>> union
+\end{code}
+\hrule
+\caption{Evaluation preliminaries.}
+\label{figure:example_io_prelim}
+\end{figure}
+
+Now we can create the main procedure for our learning switch. Note that
+the code for placing an event on the input of a signal function is a simple
+monadic sequence, sandwich between {\tt IORef} reads and writes of an opaque
+value (Figure~\ref{figure:example_io}).
+
+\begin{figure}
+\begin{code}
+-- | Entry point
+main :: IO ()
+main = do (argS:_) <- getArgs
+          let sampleTime = read argS
+          time <- getMonoTimeAsDouble
+          reactiveRef <- newIORef $ initSFEval 
+                                      (eventHandler id)
+                                      (combineSamples sampleEvt sampleEvt)
+                                      time
+                                      learningSwitch
+          ofEventManager <- 
+            openFlowEventManager
+              Nothing
+              port 
+              -- Switch addition inputs
+              (\handle -> do rState <- readIORef reactiveRef
+                             ((), rState') <- runSFEvalT 
+                                                (push $ svLeft $ svOcc handle)
+                                                rState
+                             writeIORef reactiveRef rState')
+              -- Switch message inputs:
+              (\((tid, msg), handle) -> 
+                 do rState <- readIORef reactiveRef
+                              ((), rState') <- runSFEvalT 
+                                                 (push $ svRight $
+                                                  svOcc (handle, tid, msg))
+                                                 rState
+                              writeIORef reactiveRef rState')
+          let evtMgr = getEventManager ofEventManager
+              -- Sampling:
+              sample = void $ registerTimeout evtMgr sampleTime $ 
+                         do rState <- readIORef reactiveRef
+                            time <- getMonoTimeAsDouble
+                            ((), rState') <- runSFEvalT (step time) rState
+                            writeIORef reactiveRef rState'
+                            sample
+          sample 
+          loop $ evtMgr      
+\end{code}
+\hrule
+\caption{Using the evaluation interface for IO.}
+\label{figure:example_io}
+\end{figure}
