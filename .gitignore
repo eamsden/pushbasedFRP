@@ -1,4 +1,6 @@
 # Some of this is from github.com/github/gitignore
+*~
+
 # Latex
 *.acn
 *.acr
@@ -35,9 +37,11 @@
 
 # Haskell
 dist
+dist_*
 cabal-dev
 *.o
 *.hi
 *.chi
 *.chs.h
 .virthualenv
+.hsenv*
