@@ -56,9 +56,10 @@ unattempted, but there is a sufficient change to the practical semantics of
 signal-function FRP between previous signal-function systems and TimeFlies to warrant
 some description.
 
-In previous systems such as Yampa, events were understood (and implemented) as option-valued
-signals. This approach is undesirable for several reasons. The most pressing reason is
-that it prohibits push-based evaluation of events, because events are embedded in the
+In previous systems such as Yampa, events were understood (and implemented) as
+option-valued signals.\footnote{{\tt type Event a = Signal (Maybe a)}} This
+approach is undesirable for several reasons. The most pressing reason is that it
+prohibits push-based evaluation of events, because events are embedded in the
 samples of a signal and must be searched for when sampling.
 
 Another concern is that this approach limits the event rate to the sampling rate.
@@ -324,7 +325,7 @@ The routing combinators are shown in Figure~\ref{figure:routing_combinators}.
 
 Only those combinators which modify or combine signal functions
 ({\tt (>>>)}, {\tt first}, {\tt second}) are reactive (may replace themselves in
-response to events, and then only if they inherit their reactivity from the
+response to events), and then only if they inherit their reactivity from the
 signal function(s) which are inputs to combinator. The rest do not
 react to or modify the input in any way, except to re-arrange it, copy it, or
 discard it altogether.
@@ -394,9 +395,9 @@ switch ::    (svIn :~> (svOut :^: SVEvent (svIn :~> svOut)))
 \end{figure}
 
 There are other formulations of a reactive combinator found in FRP literature
-and libraries, which may be implemented using the one supplied. These are shown
-in Figure~\ref{figure:alternate_switching_combinators} and may be provided in a
-future version of the TimeFlies library.
+and libraries, which may be implemented using the one supplied. Some of these
+are shown in Figure~\ref{figure:alternate_switching_combinators} and may be
+provided in a future version of the TimeFlies library.
 
 \begin{figure}
 \begin{code}
@@ -407,11 +408,6 @@ switch_gen ::    (svIn :~> (svOut :^: SVEvent a))
               -> svIn :~> svOut
 switch_gen sf f =
   switch (sf >>> second (pureEventTransformer f))
-
--- Supplied version in terms of alternate version
-switch ::    (svIn :~> (svOut :^: SVEvent (svIn :~> svOut)))
-          -> svIn :~> svOut
-switch sf = switch_gen sf id
 
 -- Repeated switch, which takes replacement signal functions
 -- externally.
@@ -596,8 +592,15 @@ integral of its input signal with respect to time.
 \section{Evaluation}
 \label{section:System_Design_and_Interface-Evaluator}
 
+The goal of the evaluation interface is to provide a means to evaluate
+declaratively specified signal functions in the context of a monadic
+input/output system, such as Haskell's IO monad. The means providing a simple
+monadic interface for taking actions on a signal function in response to
+inputs, and for actuating the outputs of a signal function.
+
 The evaluation interface provides a modified state monad which holds a signal
-function, together with some additional information, as its state (shown in Figure~\ref{figure:evaluation_state}.
+function, together with some additional information, as its state (shown in
+Figure~\ref{figure:evaluation_state}).
 Rather than monadic instructions to put and get the state, the monad provides instructions
 to trigger an input event, update an input signal, and trigger sampling of
 signals in the signal function. Additional state includes the current set of

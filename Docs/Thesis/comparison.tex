@@ -37,13 +37,59 @@ the switch is signaled to remove all corresponding rules.
 In both Yampa and TimeFlies, this algorithm is implemented by using an accumulator,
 which applies functions carried by event occurrences to a state value. It stores
 the new state and outputs new event occurrences based on the output of the function.
+The accumulator has a simple implementation using {\tt switch}.
 
-The state stored is the table (implemented using the {\tt Data.Map} module in the
-Haskell {\tt containers} library) and the output event occurrences carry messages
-to be sent to the switch. The events are sourced internally to the learning
-switch signal function (using the {\tt after} combinator in TimeFlies and the {\tt repeatedly}
-function in Yampa) to delete expired rules, and externally, by transforming messages
-from the switch to the controller into accumulator functions.
+The state stored is the table (implemented using the {\tt Data.Map} module in
+the Haskell {\tt containers} library) and the output event occurrences carry
+messages to be sent to the switch. The events are sourced internally to the
+learning switch signal function (using the {\tt after} combinator in TimeFlies
+and the {\tt repeatedly} function in Yampa) to delete expired rules, and
+externally, by transforming messages from the switch to the controller into
+accumulator functions. This implementation is shown in Figure~\ref{figure:openflow_implementation}.
+
+\begin{figure}
+\begin{code}
+learn ::     SVEvent (SwitchHandle EthernetFrame,
+                      TransactionID,
+                      SCMessage EthernetFrame)
+         :~> SVEvent (IO ())
+learn = uncancelLeft >>>
+        -- Timer to clean the table
+        first (cleanRules tableTime) >>>
+        -- Builds accumulator actions from input messages 
+        second handleSCMessage >>>
+        -- Bring together accumulator inputs     
+        union >>> 
+        -- The accumulator                       
+        switchTable >>>
+        -- Produce IO actions as event outputs                 
+        sendCSMessage                    
+
+cleanRules ::     Double
+               -> SVEmpty
+              :~> SVEvent TableAccumulator
+cleanRules t = copy >>> -- two empty inputs
+               -- Fire every t seconds
+               second (every t cleanRulesAcc) >>> 
+               -- capture the time each fires
+               first time >>>
+               capture >>>                        
+               pureEventTransformer (uncurry ($))
+  where 
+    cleanRulesAcc :: Double -> TableAccumulator
+    cleanRulesAcc nowT table = cleanTable t nowT table
+
+-- | Produce an event with the given value at the given time interval
+every :: Double -> a -> SVEmpty :~> SVEvent a
+every t x = let e = switch (after t x >>>
+                            copy >>>
+                            second (pureEventTransformer $ const e))
+            in e
+\end{code}
+\hrule
+\caption{Partial implementation of the OpenFlow switch using TimeFlies}.
+\label{figure:openflow_implementation}
+\end{figure}
 
 \section{Methodology and Results}
 \label{section:Evaluation_and_Comparisons-Methodology_and_Results}
