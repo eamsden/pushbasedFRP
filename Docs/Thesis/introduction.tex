@@ -8,21 +8,25 @@ robotic control programs, and many others. This attribute of a program is called
 
 Functional reactive programming (FRP) is a promising class of abstractions for
 writing interactive programs in functional languages. The FRP abstractions are
-behaviors or signals, which are functions of continuous time, and events, which
-are sequences of time-value pairs. These abstractions translate desirable
-properties of the underlying functional languages, such as higher-order
-functions and referential transparency, to reactive constructs, generally
-without modifications to the underlying language. This permits the compositional
-construction of reactive programs in purely functional languages.
+{\em behaviors} (also termed {\em signals}), which are functions of continuous
+time, and {\em events}, which are sequences of time-value pairs. These
+abstractions translate desirable properties of the underlying functional
+languages, such as higher-order functions and referential transparency, to
+reactive constructs, generally without modifications to the underlying language.
+This permits the compositional construction of reactive programs in purely
+functional languages.
 
-Functional reactive programming was introduced, though not quite by name, with Fran~\cite{Elliott1997}, a compositional system for writing
-reactive animations. From the start, two key challenges emerged: the enforcement of {\em causality}\footnote{Causality is the property 
-that a value in an FRP program depends only on present or past values. Obviously, a program which violates this property is impossible to
-evaluate, but in some FRP systems such programs are unfortunately quite easy to write down.} in FRP programs, and the efficient
-evaluation of FRP programs.
+Functional reactive programming was introduced, though not quite by name, with
+Fran~\cite{Elliott1997}, a compositional system for writingm reactive
+animations. From the start, two key challenges emerged: the enforcement of
+{\em causality}\footnote{Causality is the property that a value in an FRP
+program depends only on present and past values. Obviously, a program which
+violates this property is impossible to evaluate, but in some FRP systems such
+programs are unfortunately quite easy to write down.} in FRP programs, and the
+efficient evaluation of FRP programs.
 
 The first challenge was addressed by representing FRP programs, not as
-compositions of signals and events, but as compositions of transformers of
+compositions of behaviors and events, but as compositions of transformers of
 behaviors and events called {\em signal functions}. By not permitting direct
 access to behaviors or events, but representing them implicitly, signal
 functions prohibit accessing past or future time values, only allowing access to
@@ -52,17 +56,17 @@ when no computation needs to be performed. The computation cannot be suspended
 entirely as a value representation.
 
 To address both challenges in a FRP implementation, we combine the approaches
-and demonstrate a push-based signal-function FRP system. The current
+and demonstrate a push-pull signal-function FRP system. The current
 implementation approach for signal-function FRP is inherently
 pull-based~\cite{Nilsson2002}, but recent work on N-ary
 FRP~\cite{Sculthorpe2011}, a variant of signal-function FRP which enumerates
 inputs and distinguishes between events and behaviors, provides a representation
 which suggests a method of push-based evaluation. In previous implementations of
-FRP, events were simply option-valued signals. This approach has the advantage
-of being simple to implement. However, it does not have an obvious semantics for
-event merging. Further, it necessitates pull-based evaluation, since there is no
-way to separate the events which may be pushed from the truly continuous values
-which must be repeatedly sampled.
+signal-function FRP, events were simply option-valued signals. This approach has
+the advantage of being simple to implement. However, it does not have an obvious
+semantics for event merging. Further, it necessitates pull-based evaluation,
+since there is no way to separate the events which may be pushed from the truly
+continuous values which must be repeatedly sampled.
 
 This thesis describes the design and implementation of TimeFlies, a push-pull signal-function FRP system. This system is presented as a library
 of combinators for constructing and evaluating FRP programs.

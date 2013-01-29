@@ -213,10 +213,10 @@ This type parameter is instantiated with the type constructor of the underlying
 monad, and an extra operation {\tt lift} is provided which converts values in
 the underlying monad to values in the monad transformer.
 
-The evaluation monad is a monad transformer. This permits it to be used in
-conjunction with the {\tt IO} monad (or any other monad) to describe how input
-is to be obtained for the signal function being evaluated, and how outputs are
-to be handled.
+In TimeFlies, the evaluation monad is a monad transformer. This permits it to be
+used in conjunction with the {\tt IO} monad (or any other monad) to describe how
+input is to be obtained for the signal function being evaluated, and how outputs
+are to be handled.
 
 The evaluation monad, in addition to the standard monad operators, provides a
 means of {\em initializing} a signal function, and a means of translating the
@@ -225,11 +225,14 @@ means, for instance, that we can obtain an action in the {\tt IO} monad to
 evaluate a signal function.
 
 The type of the evaluation monad must track the input and output type of the
-signal function. The monad's context stores a mapping from outputs to handling
-actions. There are thus four type parameters to the monad's type
-constructor: the input signal vector, the output signal vector, the type of the
-underlying monad, and the monadic type parameter. The type is shown in
-Figure~\ref{figure:evaluation_monad_types}.
+signal function. The monad is a state monad, and its state is a record with
+fields for a mapping from outputs to handling actions, the current state of the
+signal function, the last time the signal function was sampled, and the
+currently-unsampled input. There are thus four type parameters to the monad's
+type constructor: the input signal vector (to type the signal function and
+unsampled input), the output signal vector (to type the signal function and
+output handlers), the type of the underlying monad, and the monadic type
+parameter. The type is shown in Figure~\ref{figure:evaluation_monad_types}.
 
 \begin{figure}
 \begin{code}

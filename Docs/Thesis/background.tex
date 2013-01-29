@@ -23,18 +23,19 @@ The goal of FRP is to provide compositional and high-level abstractions for
 creating reactive programs. The key abstractions of FRP are behaviors or
 signals\footnote{Behaviors are generally referred to as {\em signals} in
 signal-function literature. This is unfortunate, since a {\em signal function}
-may operate on events, signals, or some combination of the two.}, which are
+may operate on events, behaviors, or some combination of the two.}, which are
 time-dependent values defined at every point in continuous time, and events,
 which are values defined at countably many points in time. An FRP system will
-provide combinators to manipulate events and signals and to react to events by
+provide combinators to manipulate events and behaviors and to react to events by
 replacing a portion of the running program in response to an event. Behaviors
 and events, or some abstraction based on them, will be first class, in keeping
 with the spirit of functional programming. Programs implemented in FRP languages
 should of course be efficiently executable, but this has proven to be the main
 challenge in implementing FRP.
 
-The two general approaches to FRP are ``classic'' FRP, where behaviors and signals are first-class and reactive objects, and ``signal-function'' FRP,
-where transformers of signals and events are first-class and reactive objects.
+The two general approaches to FRP are ``classic'' FRP, where behaviors and
+events are first-class and reactive objects, and ``signal-function'' FRP, where
+transformers of signals and events are first-class and reactive objects.
 
 \section{Classic FRP}
 \label{section:Background-Classic_FRP}

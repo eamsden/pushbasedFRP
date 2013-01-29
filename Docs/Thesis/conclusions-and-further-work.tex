@@ -6,7 +6,7 @@ push-based signal-function system.
 
 \section{Conclusions}
 \label{section:Conclusions_and_Further_Work-Conclusions}
-The TimeFlies system is a fully-implemented and -documented FRP library which
+The TimeFlies system is a fully-implemented and fully-documented FRP library which
 may be extended with utility functions and further optimized. Its performance in
 responding to events is demonstrated to be superior to that of the predominant
 pull-based signal-function FRP library.
@@ -49,7 +49,10 @@ to be evaluated as one signal function, with addition or removal of signal funct
 of the total replacement given by the {\tt switch} combinator. This is useful, for instance,
 when simulating objects for games or computer models, as the behavior of each object can be
 modeled as a signal function, and these signal functions can be added to and removed from the
-collection.
+collection. An attempt was made to add such a function to TimeFlies. Currently,
+it is not clear what the type of such a combinator would be in a system
+employing signal vectors, or how the "routing" of inputs to individual signal
+functions in the collection would be specified.
 
 The TimeFlies system provides a principled and performant system for future experimentation
 on FRP, as well as implementation of FRP applications.
