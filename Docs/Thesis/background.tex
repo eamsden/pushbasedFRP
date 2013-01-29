@@ -193,14 +193,18 @@ An alternative approach to FRP was first proposed in work on
 Fruit~\cite{Courtney2001-1}, a library for declarative specification of GUIs.
 This library utilized the concept of Arrows~\cite{Hughes2000} as an abstraction
 for {\em signal functions}. Arrows are abstract type constructors with input and
-output type parameters, together with a set of routing combinators (see Figure~\ref{figure:arrow_combinators}).
-Signal functions form an arrow. Signal functions represent time-dependent and
-reactive transformers of events and signals. Signals and events
-cannot be directly manipulated by the programmer. This approach has two
-motivations: it increases modularity since both the input and output of signal
-functions may be transformed (as opposed to signals or events which may only be
-transformed in their output) and it avoids a large class of time and space leaks
-which have emerged when implementing FRP with first-class signals and events.
+output type parameters, together with a set of routing combinators (see
+Figure~\ref{figure:arrow_combinators}). The concept of an Arrow in Haskell,
+including the axioms the combinators of an arrow must satisfy, are derived from
+the concept of arrows from category theory.
+
+Signal functions are time-dependent and reactive transformers of events and
+signals. Signals and events cannot be directly manipulated by the programmer.
+This approach has two motivations: it increases modularity since both the input
+and output of signal functions may be transformed (as opposed to signals or
+events which may only be transformed in their output) and it avoids a large
+class of time and space leaks which have emerged when implementing FRP with
+first-class signals and events.
 
 \begin{figure}
 \begin{code}
