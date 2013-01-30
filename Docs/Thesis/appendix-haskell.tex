@@ -1,0 +1,398 @@
+\chapter{Haskell Concepts}
+\label{chapter:Haskell_Concepts}
+
+One of the primary attractions of the Haskell language, and the reason for its
+use throughout this work, is its advanced yet practical and usable type system.
+This type system enables the use of compositional software design that would
+be rendered infeasible without a type system to both inform and verify
+composition and implementation. This appendix gives an overview of Haskell
+concepts, design patterns, and idioms which are used in this thesis.
+
+\section{Datatypes and Pattern Matching}
+\label{section:Haskell_Concepts-Datatypes_and_Pattern_Matching}
+
+In Haskell, new type constructors are introduced by defining Algebraic Datatypes.
+An ADT declaration can take one of two forms. The first is a {\tt data}
+declaration, e.g.:
+
+\begin{code}
+data Bool = True | False
+data Maybe a = Just a | Nothing
+\end{code}
+
+In this form the identifier(s) preceding the {\tt =} character are a type
+constructor followed by zero or more type variables. Following the {\tt =} 
+character, and separated by {\tt |} characters, are data constructors. Each data
+constructor is an identifier followed by zero or more types, which are the types
+of its arguments. Data constructors can be used in expressions to construct a
+value of this newly-declared type constructor, and in pattern matching to
+``take apart'' the value and observe its components (the arguments to the data
+constructor.
+
+The second form is the {\tt newtype} declaration. This form is more restricted.
+It is limited to one data constructor with exactly one argument. It introduces
+a new type without introducing a new runtime restriction, though the Haskell
+code must still use the data constructor in pattern matches and expressions
+to explicitly coerce between the new type and the type of its data constructor's
+parameter. This behavior is most often used to hide implementation types without
+introducing the runtime overhead of value construction and pattern-matching, as
+these are erased for constructors declared using {\tt newtype} once type-checking
+is complete.
+
+Once a type constructor has been introduced, it can be used in a type, with
+its arguments replaced by any valid Haskell type. For instance:
+
+\begin{code}
+not      :: Bool -> Bool
+cbool    :: Bool -> Int
+maybeInt :: Int -> Maybe Int -> Int
+isJust   :: Maybe a -> Bool
+mapMaybe :: (a -> b) -> Maybe a -> Maybe b
+\end{code}
+
+Its data constructors can be used in the patterns of functions, and in their
+expressions. For instance:
+
+\begin{code}
+not :: Bool -> Bool
+not True  = False
+not False = True
+
+isJust :: Maybe a -> Bool
+isJust (Just _) = True
+isJust Nothing  = False
+
+mapMaybe :: (a -> b) -> Maybe a -> Maybe b
+mapMaybe f (Just x) = Just (f x)
+mapMaybe _ Nothing  = Nothing
+\end{code}
+
+\subsection{Generalized Algebraic Datatypes}
+\label{subsection:Haskell_Concepts-Datatypes_and_Pattern_Matching-Generalized_Algebraic_Datatypes}
+
+GADTs~\cite{Cheney2003,Xi2003} permit us to specify what types fill in the type
+parameters for specific constructors. For instance, if we wish to build a tiny
+expression language, we can use a standard ADT:
+
+\begin{code}
+data Exp a = Const a 
+           | Plus (Exp a) (Exp a)
+           | LessThan (Exp a) (Exp a)
+           | If (Exp a) (Exp a) (Exp a)
+\end{code}
+
+Let us assume for the moment that Haskell exports functions\footnote{The types
+for addition and comparison actually involve a typeclass constraint, but the
+point is that the functions' types are not parametric.}:
+
+\begin{code}
+(+)  :: Int -> Int -> Int
+(<)  :: Int -> Int -> Bool
+\end{code}
+
+An attempt to write an evaluation function for our expression type is:
+
+\begin{code}
+eval :: Exp a -> a
+eval (Const x)  = x
+eval (Plus x y) = eval x + eval y
+eval (LessThan x y) = eval x < eval y
+eval (If p c a) = if (eval p)
+                  then eval c
+                  else eval a
+\end{code}
+
+But this function will not typecheck. In the {\tt Plus} case, we cannot
+assume that the argument to the type constructor {\tt Exp} typing {\tt x} or {\tt y}
+is {\tt Int}, and similarly for the {\tt LessThan} case. Again in the {\tt If}
+case, we cannot assume that the predicate is of type {\tt Exp Bool}, and if we
+could, that would force our results to be of type {\tt Exp Bool} as well.
+
+Let's try a slightly modified ADT:
+
+\begin{code}
+data Exp a = Const a
+           | Plus (Exp Int) (Exp Int)
+           | LessThan (Exp Int) (Exp Int)
+           | IfThenElse (Exp Bool) (Exp a) (Exp a)
+\end{code}
+
+Here the motivation for a type parameter to our type constructor becomes clear.
+We can introduce both {\tt Bool} and {\tt Int} constants (as well as others, but
+we cannot do anything with them unless we extend the language). Further, we
+can constrain the types of the input expressions to each of our constructors to
+be of the appropriate type.
+
+The code for our our evaluator is the same. But now note that the in the
+{\tt Plus} and {\tt LessThan} cases, even though the input types are compatible
+with the functions used, the output type expected from our function is not.
+{\tt Plus x y} has type {\tt Exp a} in the pattern match, so our output is
+expected to be of type {\tt a} for any {\tt a} argument to type of an 
+input {\tt Exp}.
+
+Here is our expression type as a GADT:
+\begin{code}
+data Exp a where
+  Const    :: a                               -> Exp a
+  Plus     :: Exp Int  -> Exp Int             -> Exp Int
+  LessThan :: Exp Int  -> Exp Int             -> Exp Bool
+  If       :: Exp Bool -> Exp a   -> Exp a    -> Exp a
+\end{code}
+
+Now our evaluation function can typecheck. Each constructor is able to constrain
+the type parameter for output, not just its arguments. So when pattern matching
+on the {\tt Plus} case, we know that each of our inputs will be of type
+{\tt Exp Int}, and that the type of the expression we are pattern matching has
+type {\tt Exp Int}, so the output from our function can be constrained to type
+{\tt Int}, similarly for {\tt LessThan}. The type argument to {\tt Exp} in the
+type of the {\tt If} is constrainted to be the same as that as the argument
+to the types of the consequent and alternate to the conditional. This permits
+our {\tt If} statement to be parametric while still allowing our evaluation to
+typecheck.
+
+This capacity to constrain the output types of data constructors, and thus, to
+constrain the types of expressions in the scope of pattern matches of these data
+constructors, is called {\em type refinement}. We will make use of this ability
+to parameterize concrete datatypes over abstract type structures, rather than to
+permit typechecking in specific cases, but the principle is the same.
+
+\section{Typeclasses}
+\label{section:Haskell_Concepts-Typeclasses}
+
+Typeclasses in Haskell provide a means to implement functions that are openly
+polymorphic while not being parametric. A typeclass is declared as follows:
+
+\begin{code}
+class Show t where
+  show :: t -> String
+\end{code}
+
+A typeclass has an identifier and a single type parameter. This type parameter
+is used in the type of one or more functions which are members of the class.
+
+The class can then be instantiated:
+
+\begin{code}
+instance Show Bool where
+  show True  = "True"
+  show False = "False"
+
+instance (Show a) => Show (Maybe a) where
+  show (Just x) = "Just " ++ show x
+  show Nothing  = Nothing
+\end{code}
+
+Functions can now be written polymorphically over the types instantiating the
+typeclass, by including the typeclass as a constraint:
+
+\begin{code}
+repL :: (Show t) => t -> Int
+repL x = length (show x)
+\end{code}
+
+Typeclasses are used in Haskell to provide common interfaces or functionality
+across types. The {\tt Show} class used as an example is exported, along with
+instances for most of the basic Haskell types, from Haskell's Prelude (the
+standard module imported into every Haskell module). 
+
+\section{Monads and Monad Transformers}
+\label{section:Haskell_Concepts-Monads_and_Monad_Transformers}
+
+One of the primary concepts employed in Haskell programs is that of the
+monad~\cite{PeytonJones1993,PeytonJones2001}. The concept of the monad is
+borrowed from category theory, but it is quite simple when understood within
+Haskell. A monad is a type constructor with a single parameter, and two
+associated functions. In Haskell's {\tt Monad} typeclass, these functions are
+denoted {\tt return} and {tt (>>=)}.
+
+\begin{code}
+class Monad m where
+  return :: a -> m a
+  (>>=)  :: m a -> (a -> m b) -> m b
+\end{code}
+
+A monad must obey the following axioms:
+\begin{itemize}
+\item Left identity: {\tt return x >>= f = f x}
+\item Right identity: {\tt m >>= return = m}
+\item Associativity: {\tt (a >>= b) >>= c) = (a >>= (\\x -> b x >>= c))}
+\end{itemize}
+
+Several standard Haskell type constructor are monads in interesting ways, but
+the most well-known is Haskell's {\tt IO} type constructor. This is the basis of
+Haskell's input/output system. The entry point to a Haskell program is the
+{\tt main} function, of type {\tt IO ()}. This function can be constructed by
+using the monadic functions to sequence an arbitrary number of other functions
+whose output type is {\tt IO a}. Since the sequencing operator takes an
+arbitrary function, this allows the full power of Haskell functions, including
+first-class and higher-order functions, to be employed in defining a program's
+input and output. A convenience function is commonly used when the result is not
+necessary as part of the sequencing:
+
+\begin{code}
+(>>) :: Monad m => m a -> m b -> m b
+(>>) m1 m2 = m1 >>= (const m2)
+
+\subsection{Do-notation}
+\label{subsection:Haskell_Concepts-Monads_and_Monad_Transformers-Do_notation}
+
+Because monads are such a pervasive concept in Haskell, the language includes
+special syntax for writing monadic expressions. Do-notation is expression syntax
+which begins with the keyword {\tt do} and is followed by lines of two forms:
+
+\begin{code}
+do
+  x <- m1
+  m2
+\end{code}
+
+The first form is a binding expression: it binds the variable {\tt x} to the
+output of the monadic value {\tt m2}. The second form simply sequences the monad
+value {\tt m2} into the monadic value being built. Do-notation has a syntax-driven
+translation to desugared Haskell expression:
+
+\begin{code}
+desugar {
+do x <- m1
+   ...} = 
+m1 >>= \x -> desugar {do ...}
+
+desugar {
+do m1
+   ...} =
+m1 >> desugar {do ...}
+\end{code}
+
+\subsection{Monad Transformers}
+\label{subsection:Haskell_Concepts-Monads_and_Monad_Transformers-Monad_Transformers}
+A monad transformer is a type constructor with two parameters. The first
+parameter parameterizes over a one-parameter type constructor, rather than a
+type. The second is the monadic type parameter. A type constructor {T} is a monad
+transformer if it has the following instance of the Monad typeclass:
+
+\begin{code}
+instance Monad m => Monad T m
+\end{code}
+
+and is also an instance of the class
+
+\begin{code}
+class MonadTrans t where
+  lift :: (Monad m) => m a -> t m a
+\end{code}
+
+The axioms for the lift function are:
+\begin{itemize}
+\item {\tt lift . return = return}
+\item {\tt lift (m >>= f) = lift m >>= (lift . f)}
+\end{itemize}
+
+Restated, {\tt lift} does not modify return and distributes over monadic
+sequencing.
+
+As an example of a monad transformer, we can consider the {\tt StateT} type,
+which is employed in the implementation of this thesis.
+
+The type is declared:
+\begin{code}
+newtype StateT s m a = S { runStateT :: s -> m (s, a) }
+\end{code}
+
+Its monad instance, for any {\tt s}, is
+
+\begin{code}
+instance Monad m => Monad (StateT s m) where
+  return x  = S (\s -> return (x, s))
+  (>>=) (S f) mf = S (\s -> f s >>= (\ (x, s') -> let (S f') = mf x in f' s ))
+\end{code}
+
+The return and sequencing functions carry the state through the underlying monad.
+
+The {\tt MonadTrans} instance is:
+\begin{code}
+instance MonadTrans (StateT s) where
+  lift m = S (\s -> m >>= (\x -> return (x, s))
+\end{code}
+
+Finally, there are two functions provided to access and set the state:
+
+\begin{code}
+put :: s -> StateT s m ()
+put = S (\_ -> return ((), s'))
+
+get :: StateT s m s
+get = S (\s -> return (s, s))
+\end{code}
+
+If we use {\tt StateT} as a wrapper around the IO monad, we might employ it as
+a way to generate a unique line number for each "putStrLn" we call.
+
+\begin{code}
+putStrLnN :: String -> StateT Int IO ()
+putStrLnN s = do i <- get
+                 put (i + 1)
+                 lift (putStrLn (show i ++ " " ++ s))
+
+main = runStateT mainSt 1
+  where mainSt = do g <- lift getLine
+                    putStrLnN g
+                    mainSt
+\end{code}
+
+\section{Glossary of Type Terminology}
+\label{section:Haskell_Concepts-Glossary_of_Type_Terminology}
+\begin{description}
+\item[ADT] See {\em Algebraic Datatype}.
+
+\item[Algebraic Datatype] An Algebraic Datatype or ADT is a type whose terms
+are {\em data constructors}. An ADT is defined by naming a
+{\em type constructor} and its parameters (zero or more)
+(as {\em type variables}), together with one or more data constructors and the
+types of their members. Each data constructor takes a fixed number
+(zero or more) data members, whose types are given following the constructor
+name. These types are defined in terms of the type variables named as parameters
+of the type constructor and any type constructors (including the type
+constructor associated with the ADT) in scope in the module.
+
+\item[Data Constructor] A Data Constructor is a component of an
+Algebraic~Datatype which, when applied to values of the appropriate type, 
+creates a value typed with the ADT. Data constructors are the primary element
+which may be pattern matched in languages such as Haskell.
+
+\item[GADT] See {\em Generalized Algebraic Datatype}.
+
+\item[Generalized Algebraic Datatype] Similar to an {\em Algebraic Datatype},
+but {\em type variables} in the {\em type constructor} declaration serve merely
+to denote the number of type parameters (and thus may be replaced by a
+{\em kind signature}) and types are given for each {\em data constructor}. These
+types must have the type constructor as their top-level term, but may fill in
+the parameters of the type constructor with arbitrary types. Variables which
+appear in the data member types but on in the data constructor type are
+{\em existentially quantified}, and types appearing in the data constructor
+type but not the data member types may be instantiated arbitrarily.
+
+\item[Kind] A ``type of types.'' Kinds are used to verify that types are
+consistent during typechecking. The kind of types which contain values is
+{\tt *}, and the kind of single-parameter type constructors which take a
+type is {\tt * -> *}. Other kinds may also be introduced. For instance,
+signal vectors should be their own separate kind, but the Haskell type mechanism
+was not mature enough to support this at the time of this writing..
+
+\item[Kind Signature] A means of specifying the number and kind of types which
+may instantiate type variables. Type variables in Haskell are not restricted to
+types, but may be instantiated by type constructors as well. The kind of a
+variable restricts what it may be instantiated with. A kind signature gives
+kinds to a type constructor, and thus to its parameters. Specifying the kind
+of a type constructor perfectly constrains the number of parameters.
+
+\item[Type Constructor] A type constructor is a type level term which, when
+applied to the proper number of types, produces a type. Type constructors,
+together with {\em type variables}, form the basis of polymorphism in Haskell
+and similar languages.
+
+\item[Type Variable] A type variable is a type-level term which may be 
+instantiated (by the typechecker via inference, or by the user via annotation)
+with any type at the point where the value so typed is used. 
+Together with {\em type constructors}, type variables form the basis of
+polymorphism in Haskell and similar languages.
+\end{description}
