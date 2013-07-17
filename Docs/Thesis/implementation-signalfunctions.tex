@@ -48,10 +48,15 @@ Figure~\ref{figure:signal_sample_datatype}.
 \begin{figure}
 \begin{code}
 data SVSample sv where
+  -- Store a value at an SVSignal leaf
   SVSample      ::    a
                    -> SVSample (SVSignal a)
+  -- Empty constructor for event leaves
   SVSampleEvent ::    SVSample (SVEvent a)
+  -- Empty constructor for empty leaves
   SVSampleEmpty ::    SVSample SVEmpty
+  -- Construct a sample from two samples, typed
+  --  with the SVAppend of their signal vectors
   SVSampleBoth  ::    SVSample svLeft
                    -> SVSample svRight
                    -> SVSample (SVAppend svLeft svRight)
@@ -78,10 +83,13 @@ datatype for occurrences is shown in Figure~\ref{figure:event_occurrence_datatyp
 \begin{figure}
 \begin{code}
 data SVOccurrence sv where
+  -- Leaf, carrying a value for the occurrence
   SVOccurrence ::    a
                   -> SVOccurrence (SVEvent a)
+  -- Lift an occurrence to be on the left side of a signal vector
   SVOccLeft    ::    SVOccurrence svLeft
                   -> SVOccurrence (SVAppend svLeft svRight)
+  -- Lift an occurrence to be on the right side of a signal vector
   SVOccRight   ::    SVOccurrence svRight 
                   -> SVOccurrence (SVAppend svLeft svRight)
 \end{code}
@@ -104,9 +112,14 @@ This datatype is shown in Figure~\ref{figure:signal_update_datatype}.
 \begin{figure}
 \begin{code}
 data SVDelta sv where
+  -- A replacement value for a sample of a single signal
   SVDeltaSignal  ::    a
                     -> SVDelta (SVSignal a)
+  -- No replacement value for a sample of an arbitrary
+  --  signal vector
   SVDeltaNothing ::    SVDelta sv
+  -- Combine replacements for component signal vectors into 
+  --   replacements for the SVAppend of the vectors.
   SVDeltaBoth    ::    SVDelta svLeft
                     -> SVDelta svRight
                     -> SVDelta (SVAppend svLeft svRight)
@@ -157,20 +170,39 @@ is shown in Figure~\ref{figure:signal_function_datatype}.
 
 \begin{figure}
 \begin{code}
+-- Type tag for signal functions which don't require
+--  an initial input
 data Initialized
 
+-- Type tag for signal functions which require
+--  an initial input
 data NonInitialized
 
+-- Type of signal functions
 data SF init svIn svOut where
+  -- Non-initialized signal functions consist of a function
+  --  from an input sample to a pair of an output sample
+  --  and an initialized continuation of the signal function
   SF     ::    (SVSample svIn 
                   -> (SVSample svOut,
                       SF Initialized svIn svOut)) 
             -> SF NonInitialized svIn svOut
+  
+  -- Initialized signal functions consist of two functions.
+  -- The first function's inputs are the time delta, and updates
+  --   to the input signals. Its outputs are updates to the output
+  --   signals, a set of output events, and a continuation of the
+  --   signal function.
   SFInit ::    (Double 
                   -> SVDelta svIn
                   -> (SVDelta svOut,
                       [SVOccurrence svOut],
                       SF Initialized svIn svOut)) 
+
+  -- The second function's input is an event occurrence for an
+  --   event in its input signal vector. Its outputs are a set 
+  --   of output occurrences for events in its output signal
+  --   vector, and a continuation of the signal function.
             -> (SVOccurrence svIn
                   -> ([SVOccurrence svOut],
                       SF Initialized svIn svOut))
@@ -274,19 +306,20 @@ composeInit (SFInit dtCont1 inputCont1) sf2@(SFInit dtCont2 inputCont2) =
            composeInit sf1New sf2Newest)
     )
     (\evtOcc -> 
-      let (sf1Outputs, newSf1) = inputCont1 evtOcc
-          (sf2FoldOutputs, newSf2) = applySF sf2 sf1Outputs
-      in (sf2FoldOutputs, composeInit newSf1 newSf2)   
+      let (sf1Outputs, sf1New) = inputCont1 evtOcc
+          (sf2FoldOutputs, sf2New) = applySF sf2 sf1Outputs
+      in (sf2FoldOutputs, composeInit sf1New sf2New)   
     )
 
+-- The programmer should not rely on any 
 applySF ::    SF Initialized svIn svOut
            -> [SVOccurrence svIn]
            -> ([SVOccurrence svOut],
                SF Initialized svIn svOut)
 applySF sf indices =
   foldr (\evtOcc (changes, SFInit _ changeCont) ->
-           let (newChanges, nextSF) = changeCont evtOcc
-               in (newChanges ++ changes, nextSF))
+           let (newChanges, sfNew) = changeCont evtOcc
+               in (newChanges ++ changes, sfNew))
         ([], sf)
         indices
 \end{code}
@@ -295,14 +328,14 @@ applySF sf indices =
 \label{figure:serial_composition_implementation}
 \end{figure}
 
-The switch combinator is the means of introducing reactivity into a signal
+The {\tt switch} combinator is the means of introducing reactivity into a signal
 function. This combinator allows a signal function to replace itself by
 producing an event occurrence. The combinator wraps a signal function, and 
 observes an event on the right side of the output signal vector. At the first
 occurrence of the event, the signal function carried by the occurrence replaces
 the signal function. 
 
-The switch combinator stores the input sample provided during initialization,
+The {\tt switch} combinator stores the input sample provided during initialization,
 and updates it with the input signal updates. When the wrapped signal function
 produces an occurrence carrying a new signal function, that signal function is
 initialized with the stored input sample. It is then "wrapped" by another
@@ -329,22 +362,25 @@ an example in Figure~\ref{figure:swap_implementation}
 \begin{figure}
 \begin{code}
 -- T.swap is imported from Data.Tuple
+-- chooseOccurrence, splitSample, splitDelta,
+--  combineSamples, combineDeltas, occRight, and
+--  occLeft are convenience functions for manipulating
+--  signal sample
 swap :: (sv1 :^: sv2) :~> (sv2 :^: sv1)
 swap =
-  SF ((, swapInit) . 
-      uncurry combineSamples .
-      T.swap . splitSample)
+  SF (\sigSample ->  
+       (uncurry combineSamples $ T.swap $ splitSample sigSample, 
+        swapInit)
 
 swapInit :: SF Initialized (SVAppend sv1 sv2) (SVAppend sv2 sv1)
 swapInit =
-  SFInit (flip (const .
-                (, [], swapInit) .
-                uncurry combineDeltas .
-                T.swap . splitDelta))
-          (\evtOcc ->
-             (case chooseOccurrence evtOcc of
-                Left lOcc  -> [occRight lOcc]
-                Right rOcc -> [occLeft rOcc], swapInit))
+  SFInit (\_ sigDelta ->
+           (uncurry combineDeltas $ T.swap $ splitDelta sigDelta,
+            swapInit) 
+         (\evtOcc ->
+            (case chooseOccurrence evtOcc of
+               Left lOcc  -> [occRight lOcc]
+               Right rOcc -> [occLeft rOcc], swapInit))
 
 \end{code}
 \hrule
@@ -406,14 +442,14 @@ accumulateList f a = acc a
 \label{figure:accumulate_implementation}
 \end{figure}
 
-The implementation of the joining combinators is simple. The {\tt union}
-combinator simply passes along every event occurrence it receives on either
-input, stripping off the left and right combinator. This is acceptable since we
-do not insist on a total ordering of events, or an event time resolution greater
-than the sampling rate. The {\tt combineSignals} combinator maintains the values
-of both signals, and applies the combination function whenever one is updated.
-The {\tt capture} combinator maintains the input signal value, and adds it to
-each event occurrence.
+The {\tt union} combinator's implementation passes along every event occurrence 
+it receives on either input, stripping off the left and right combinator. This is 
+acceptable since we do not insist on a total ordering of events, or an event time
+resolution greater than the sampling rate. The {\tt combineSignals} combinator 
+maintains the values of both signals, and applies the combination function whenever
+one is updated, producing an update to the output signal's value.
+The {\tt capture} combinator similarly maintains the input signal value, and adds it
+to each event occurrence.
 
 Time dependence is introduced by the {\tt time}, {\tt delay}, and {\tt integrate}
 combinators. The time combinator simply sums the time updates and provides the
@@ -425,10 +461,11 @@ rectangle-rule integration on signal samples with respect to time.
 The implementation strategy leaves room for optimizations. In particular, an
 additional constructor for time-independent signal functions would allow
 portions of a signal function to forgo evaluation during time steps unless they
-had signal updates. Optimizations in the style of Yampa, observed by keeping
-an updated AST for the signal function and pattern-matching on it when switching,
+had signal updates. Optimizations in the style of Yampa, where an AST for the
+current signal function is maintained alongside the continations and checked for
+opportunities to eliminate redundant components of the signal function,
 might further improve performance. In particular, collapsing nested or
-serially-composed versions of the {\tt switchWait} step when switching would
+serially-composed switches which have occurred since the last time step would
 remove at least some of the observed dependence of performance on sampling rate.
 Nevertheless, this implementation performs quite well as it currently exists, as
 we demonstrate in Chapter~\ref{chapter:Evaluation_and_Comparisons}.

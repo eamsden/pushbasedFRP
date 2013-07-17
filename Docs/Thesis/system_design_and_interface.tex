@@ -264,11 +264,11 @@ constant :: a -> SVEmpty :~> SVSignal a
 never    :: SVEmpty :~> SVEvent a
 
 -- An event with one occurrence, as soon as possible after
--- the signal function is initialized
+--   the signal function is initialized
 asap     :: a -> SVEmpty :~> SVEvent a
 
 -- An event with one occurrence
--- after the specified amount of time has elapsed.
+--   after the specified amount of time has elapsed.
 after    :: Double -> a -> SVEmpty :~> SVEvent a
 \end{code}
 \hrule
@@ -345,10 +345,10 @@ cancelRight :: (sv :^: SVEmpty) :~> sv
 uncancelRight :: sv :~> (sv :^: SVEmpty)
 
 -- Make right-associative
-associate :: ((sv1 :^: sv2) :^: sv3) :~> (sv1 :^: (sv2 :^: sv3))
+associateRight :: ((sv1 :^: sv2) :^: sv3) :~> (sv1 :^: (sv2 :^: sv3))
 
 -- Make left-associative
-unassociate :: (sv1 :^: (sv2 :^: sv3)) :~> ((sv1 :^: sv2) :^: sv3)
+associateLeft :: (sv1 :^: (sv2 :^: sv3)) :~> ((sv1 :^: sv2) :^: sv3)
 \end{code}
 \hrule
 \caption{Routing combinators.}
@@ -516,7 +516,11 @@ intervals.
 The {\tt combineSignals} combinator applies a binary function pointwise to two
 signals, and produces the result of this application as a third signal. The
 combining function is necessary because we will have two input samples at each
-time step, and must produce exactly one output sample.
+time step, and must produce exactly one output sample. Even if we restrict the types
+to be the same, parametricity forbids assuming that we can combine two values of
+an arbitrary type.\footnote{The {\tt union} combinator does not encounter this difficulty
+since event occurrences, being temporally discrete, can be temporally interleaved without
+ combining their individual values}
 
 The {\tt capture} combinator adds the last-sampled value of a signal at the time
 of an event occurrence to that event occurrence.
