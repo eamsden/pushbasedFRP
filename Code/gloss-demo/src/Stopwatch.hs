@@ -3,8 +3,6 @@ module Stopwatch where
 
 import FRP.TimeFlies.SignalFunctions
 
-import World (GlossEvent(..))
-
 timeTracker :: Double -> (SVEvent a :~> SVSignal Double)
 timeTracker initialInterval = switch $ uncancelLeft >>> 
                                        (second $ pureEventTransformer startTimeTracker) >>>
