@@ -20,8 +20,8 @@ should remain first-class) while incorporating reactivity into the language mode
 and functions themselves ought to be reactive.
 
 The goal of FRP is to provide compositional and high-level abstractions for
-creating reactive programs. The key abstractions of FRP are behaviors or
-signals\footnote{Behaviors are generally referred to as {\em signals} in
+creating reactive programs. The key abstractions of FRP are behaviors
+\footnote{Behaviors are generally referred to as {\em signals} in
 signal-function literature. This is unfortunate, since a {\em signal function}
 may operate on events, behaviors, or some combination of the two.}, which are
 time-dependent values defined at every point in continuous time, and events,
@@ -35,7 +35,7 @@ challenge in implementing FRP.
 
 The two general approaches to FRP are ``classic'' FRP, where behaviors and
 events are first-class and reactive objects, and ``signal-function'' FRP, where
-transformers of signals and events are first-class and reactive objects.
+transformers of behaviors and events are first-class and reactive objects.
 
 \section{Classic FRP}
 \label{section:Background-Classic_FRP}
@@ -123,7 +123,7 @@ interval and a new behavior. Events are represented as ``improving values'',
 which, when sampled with a time, produce a lower bound on the time to the next
 occurrence, or the next occurrence if it has indeed occurred.
 
-The first implementation of FRP outside the Haskell language was Frapp\'{e}, 
+The first implementation of FRP outside the Haskell language was Frapp\'{e}~\cite{Courtney2001-2},
 implemented in the Java Beans framework. Frapp\'{e} built on the notion
 of events\footnote{These are semantic objects to which callbacks may be added,
 and not events in the FRP sense, though they are related.} and ``bound
@@ -131,17 +131,17 @@ properties'' in the Beans framework, providing abstract interfaces for FRP
 events and behaviors, and combinators as concrete classes implementing these
 interfaces. The evaluation of Frapp\'{e} used Bean components as sources and
 sinks, and the implementation of Bean events and bound properties to propagate
-changes to the network~\cite{Courtney2001-2}. 
+changes to the network.
 
 \subsection{Current Classic FRP Systems}
 \label{subsection:Background-Classic_FRP-Current_Classic_FRP_Systems}
 
-The FrTime\footnote{FrTime is available in the current version of Dr Racket (5.2.1).}~\cite{Cooper2006}
+The FrTime\footnote{FrTime is available in all recent versions of Dr. Racket}~cite{Cooper2006}
 language extends the Scheme evaluator with a mutable dependency graph, which is
 constructed by program evaluation. This graph is then updated by signal changes.
 FrTime does not provide a distinct concept of events, and chooses branches of
-the dependency graph by conditional evaluation of signals, rather than by the
-substitution of signals used by FRP systems.
+the dependency graph by conditional evaluation of behaviors, rather than by the
+substitution of behaviors used by FRP systems.
 
 The Reactive~\cite{Elliott2009} system is a push-pull FRP system with
 first-class behaviors and events. The primary insight of Reactive is the
@@ -199,12 +199,12 @@ including the axioms the combinators of an arrow must satisfy, are derived from
 the concept of arrows from category theory.
 
 Signal functions are time-dependent and reactive transformers of events and
-signals. Signals and events cannot be directly manipulated by the programmer.
+behaviors. Behaviors and events cannot be directly manipulated by the programmer.
 This approach has two motivations: it increases modularity since both the input
-and output of signal functions may be transformed (as opposed to signals or
+and output of signal functions may be transformed (as opposed to behaviors or
 events which may only be transformed in their output) and it avoids a large
 class of time and space leaks which have emerged when implementing FRP with
-first-class signals and events.
+first-class behaviors and events.
 
 \begin{figure}
 \begin{code}
@@ -246,8 +246,8 @@ A recent PhD thesis~\cite{Sculthorpe2011} introduced N-Ary FRP, a technique for
 typing Arrowized FRP systems using dependent types. The bulk of the work
 consisted in using the dependent type system to prove the correctness of the FRP
 system discussed. This work introduced signal vectors, a typing construct
-which permits the distinction of signal and event types at the level of the FRP
-system, instead of making events merely a special type of signal.
+which permits the distinction of behavior and event types at the level of the FRP
+system, instead of making events merely a special type of behavior.
 
 \section{Outstanding Challenges}
 \label{section:Background-outstanding_challenges}

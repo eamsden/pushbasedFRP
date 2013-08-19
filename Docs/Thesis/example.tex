@@ -43,7 +43,7 @@ this signal function using the TimeFlies evaluation interface.
 The first component for our learning switch is the table which maps addresses
 to ports. This is a stateful data structure which will be updated by input
 events and possibly produce output events. We employ the {\tt accumulateList}
-combinator to produce the signal function:
+combinator to produce the signal function shown in Figure~\ref{figure:switch_table_sf}.
 
 \begin{figure}
 \begin{code}
@@ -136,7 +136,8 @@ closures for the accumulator using the {\tt handlePacketIn} pure function.
 The other task is to periodically eliminate all rules which are older than a
 specified threshold. For this purpose, we construct another signal function
 which produces {\tt TableAccumulator} events. This signal function runs a timer
-(the {\tt every} combinator) and produces events carrying closures which scan
+(the {\tt every} combinator, which is implemented using {\tt switch} and {\tt after}
+and produces an event repeatedly on a given interval) and produces events carrying closures which scan
 the table for old rules, delete them, and produces messages to inform the
 switches of their deletion. This signal function is shown in Figure~\ref{figure:clean_sf},
 again eliding the implementation of the closures.
@@ -274,11 +275,11 @@ main = do (argS:_) <- getArgs
               -- Switch message inputs:
               (\((tid, msg), handle) -> 
                  do rState <- readIORef reactiveRef
-                              ((), rState') <- runSFEvalT 
-                                                 (push $ svRight $
-                                                  svOcc (handle, tid, msg))
-                                                 rState
-                              writeIORef reactiveRef rState')
+                    ((), rState') <- runSFEvalT 
+                                       (push $ svRight $
+                                        svOcc (handle, tid, msg))
+                                       rState
+                    writeIORef reactiveRef rState')
           let evtMgr = getEventManager ofEventManager
               -- Sampling:
               sample = void $ registerTimeout evtMgr sampleTime $ 
@@ -288,7 +289,7 @@ main = do (argS:_) <- getArgs
                             writeIORef reactiveRef rState'
                             sample
           sample 
-          loop $ evtMgr      
+          loop evtMgr      
 \end{code}
 \hrule
 \caption{Using the evaluation interface for IO.}

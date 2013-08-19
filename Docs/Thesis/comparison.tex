@@ -19,10 +19,10 @@ a suitable application in both.
 The example application from Chapter~\ref{chapter:Example_Application}, an
 OpenFlow controller, was also implemented in Yampa. A slightly-modified
 TimeFlies implementation, which used a polling loop rather than the GHC event
-system to obtain events, but still "pushed" events to TimeFlies once they were
+system to obtain events, but still ``pushed'' events to TimeFlies once they were
 acquired, was also implemented.
 
-These threee controllers were benchmarked using the {\tt cbench}
+These three controllers were benchmarked using the {\tt cbench}
 program~\cite{cbench}. The amount to time to pause between time and signal
 updates (the inverse of the sampling rate for signals) was passed as a parameter
 to each program. The {\tt cbench} benchmark operates by sending a simulated

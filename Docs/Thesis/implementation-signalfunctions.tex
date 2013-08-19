@@ -28,7 +28,7 @@ The types are therefore expressed in the system exactly as they were described
 in Chapter~\ref{chapter:System_Design_and_Interface}. (To refresh, see
 Figure~\ref{figure:signal_vector_types}.) The striking observation about these
 types is that they have {\em no data constructors}. There are no values which
-take these types.
+have these types.
 
 Instead, we will create concrete representations which are parameterized over
 these types. These concrete representations will be expressed as GADTs, allowing
@@ -338,10 +338,10 @@ the signal function.
 The {\tt switch} combinator stores the input sample provided during initialization,
 and updates it with the input signal updates. When the wrapped signal function
 produces an occurrence carrying a new signal function, that signal function is
-initialized with the stored input sample. It is then "wrapped" by another
+initialized with the stored input sample. It is then ``wrapped'' by another
 function which closes over its output sample, and outputs the sample as a signal
 update as the next time step. After this, it acts as the new signal function.
-This wrapping has some performance implications, which are discussed 
+This wrapping has some performance implications, which are discussed in Chapter~\ref{chapter:Evaluation_and_Comparisons}.
 
 This combinator checks the outputs of the wrapped
 signal function for an event occurrence from which an uninitialized signal

@@ -19,7 +19,7 @@ the set of handlers for outputs, the current input signal delta, and the last
 sample time.
 
 The {\tt SFEvalT} monad transformer is a newtype wrapper around the {\tt StateT}
-monad available in the Haskell {\tt transformers} package. The StateT monad
+monad available in the Haskell {\tt transformers} package. The {\tt StateT} monad
 wraps any other monad, providing a state which may be read using the {\tt get}
 action and replaced with the {\tt put} action. An action in the underlying
 monad is obtained by supplying a {\tt StateT} value and an initial state

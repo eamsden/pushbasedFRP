@@ -39,7 +39,7 @@ possible form of input and output that the system will be asked to interact
 with, we must interface with Haskell's IO system. In particular, most libraries
 for user interaction (e.g. GUI and graphics libraries such as GTK+ and GLUT) and
 most libraries for time-dependent IO (e.g. audio and video systems) make use of
-the event loop abstraction. In this abstraction, event handlers are registered
+the event-loop abstraction. In this abstraction, event handlers are registered
 with the system, and then a command is issued to run a loop which detects events
 and runs the handlers, and uses the results of the handlers to render the
 appropriate output. 
@@ -191,7 +191,7 @@ type svLeft :^: svRight = SVAppend svLeft svRight
 \subsection{Evaluation Monad Transformer}
 \label{section:System_Design_and_Interface-Types-Evaluation_Monad_Transformer}
 
-TimeFlies provides a monad transformer for evaluating signal functions. Thi
+TimeFlies provides a monad transformer for evaluating signal functions. This
 monad transformer may be used in conjunction with the {\tt IO} monad (or any
 other monad) to describe how input is to be obtained for the signal function
 being evaluated, and how outputs are to be handled.
@@ -215,7 +215,7 @@ Figure~\ref{figure:evaluation_monad_types}.
 
 \begin{figure}
 \begin{code}
--- A signal function's evaluations state
+-- A signal function's evaluation state
 data SFEvalState svIn svOut m
 -- The evaluation monad
 data SFEvalT svIn svOut m a
@@ -250,7 +250,7 @@ the specified amount of time before producing an event occurrence.
 With the exception of {\tt identity}, all of the basic signal functions have
 empty inputs. This allows these signal functions to be used to insert values
 into the network which are known when the signal function is created, without
-having to route those values from an input.
+having to route those values from an external input.
 
 \begin{figure}
 \begin{code}
@@ -732,7 +732,7 @@ push :: (Monad m) => SVEventInput svIn -> SFEvalT svIn svOut m ()
 
 -- Update the value of an input signal sample
 -- (not immediately observed)
-update :: (Monad m) => SVEventInput svIn -> SFEvalT svIn svOut m ()
+update :: (Monad m) => SVSignalUpdate svIn -> SFEvalT svIn svOut m ()
 
 -- Step forward in time, observing the updated signal values
 step :: (Monad m) => Double -> SFEvalT svIn svOut m ()
